@@ -11,15 +11,16 @@ if not logging_started():
 
 PLUGIN_NAME = "IDAConnect"
 PLUGIN_VERSION = "0.0.1"
-PLUGIN_AUTHORS = "neat"
-PLUGIN_DATE = "2018"
+PLUGIN_AUTHORS = "The IDAConnect Team"
+
 
 def PLUGIN_ENTRY():
     return IDAConnect()
 
+
 class IDAConnect(idaapi.plugin_t):
-    flags = idaapi.PLUGIN_MOD | idaapi.PLUGIN_HIDE
-    comment = "Collaborative reverse engineering plugin"
+    flags = idaapi.PLUGIN_HIDE
+    comment = "Collaborative Reverse Engineering plugin"
     help = ""
     wanted_name = PLUGIN_NAME
     wanted_hotkey = ""
@@ -58,11 +59,11 @@ class IDAConnect(idaapi.plugin_t):
         self.network.uninstall()
 
     def _print_banner(self):
-        params = PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHORS, PLUGIN_DATE
-        banner = "%s v%s - (c) %s - %s" % params
+        params = PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHORS
+        banner = "%s v%s - (c) %s" % params
 
         log("")
         log("-" * 75)
-        log("---[ %s" % banner)
+        log(banner)
         log("-" * 75)
         log("")

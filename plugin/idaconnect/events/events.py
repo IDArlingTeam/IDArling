@@ -1,29 +1,28 @@
-REGISTRY = {}
-
-def register_event(event_cls):
-    REGISTRY[event_cls._type] = event_cls
-
 class MetaRegistry(type):
+    REGISTRY = {}
 
     def __new__(cls, name, bases, attrs):
         event_cls = type.__new__(cls, name, bases, attrs)
-        register_event(event_cls)
+        MetaRegistry.REGISTRY[event_cls._type] = event_cls
         return event_cls
 
-class Event(object):
+
+class Event(dict):
     __metaclass__ = MetaRegistry
 
     _type = None
 
-    def call(self):
-        pass
-
     @staticmethod
-    def from_dict(d):
-        return REGISTRY[d['event_type']].from_dict(d)
+    def new(dct):
+        del dct['type']
+        event_cls = MetaRegistry.REGISTRY[dct['event_type']]
+        del dct['event_type']
+        return event_cls(**dct)
 
-    def to_dict(self):
-        return {
-            'type': 'event',
-            'event_type': self._type
-        }
+    def __init__(self):
+        super(Event, self).__init__()
+        self['type'] = 'event'
+        self['event_type'] = self._type
+
+    def __call__(self):
+        raise NotImplementedError('call not implemented')

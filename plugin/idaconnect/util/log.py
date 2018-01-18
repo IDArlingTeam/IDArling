@@ -4,6 +4,7 @@ import logging
 
 import idaapi
 
+
 def log(message):
     prefix_message = "[IDAConnect] %s" % message
 
@@ -12,17 +13,20 @@ def log(message):
     else:
         logger.info(message)
 
+
 def get_log_dir():
-    return os.path.join(idaapi.get_user_idadir(), ".idaconnect")
+    return os.path.join(idaapi.get_user_idadir(), '.idaconnect')
+
 
 def logging_started():
     return 'logger' in globals()
 
+
 class LoggerProxy(object):
     def __init__(self, logger, stream, log_level=logging.INFO):
-        self._logger    = logger
+        self._logger = logger
         self._log_level = log_level
-        self._stream    = stream
+        self._stream = stream
 
     def write(self, buf):
         for line in buf.rstrip().splitlines():
@@ -35,14 +39,15 @@ class LoggerProxy(object):
     def isatty(self):
         pass
 
+
 def start_logging():
     global logger
-    logger = logging.getLogger("IDAConnect")
+    logger = logging.getLogger('IDAConnect')
 
     log_dir = get_log_dir()
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    log_path = os.path.join(log_dir, "idaconnect.%s.log" % os.getpid())
+    log_path = os.path.join(log_dir, 'idaconnect.%s.log' % os.getpid())
 
     logging.basicConfig(
         filename=log_path,
