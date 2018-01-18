@@ -77,6 +77,7 @@ class Network(object):
         self._factory = ClientFactory(self)
         logger.debug('connectTCP(%s, %s)' % (SERVER_HOST, SERVER_PORT))
         reactor.connectTCP(SERVER_HOST, SERVER_PORT, self._factory)
+        reactor.runReturn()
 
     def uninstall(self):
         pass
