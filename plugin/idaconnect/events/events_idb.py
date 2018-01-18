@@ -4,7 +4,7 @@ from events import Event
 
 
 class MakeCodeEvent(Event):
-    _type = 'makecode'
+    _type = 'make_code'
 
     def __init__(self, ea):
         super(MakeCodeEvent, self).__init__()

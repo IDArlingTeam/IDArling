@@ -11,13 +11,17 @@ class Event(dict):
     __metaclass__ = MetaRegistry
 
     _type = None
+    _disabled = False
 
     @staticmethod
     def new(dct):
         del dct['type']
         event_cls = MetaRegistry.REGISTRY[dct['event_type']]
         del dct['event_type']
-        return event_cls(**dct)
+        Event._disabled = True
+        event = event_cls(**dct)
+        Event._disabled = False
+        return event
 
     def __init__(self):
         super(Event, self).__init__()
