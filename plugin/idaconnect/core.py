@@ -43,7 +43,6 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
         return 0
 
     def make_data(self, ea, flags, tid, size):
-        print(ea, flags, tid, size)
         self._send_event(MakeDataEvent(ea, flags, tid, size))
         return 0
 
