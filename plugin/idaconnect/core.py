@@ -3,6 +3,7 @@ import logging
 import ida_idp
 
 from events.events_idp import *
+from events.events_idb import *
 
 logger = logging.getLogger("IDAConnect.Core")
 
@@ -32,6 +33,10 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
     def __init__(self, network):
         ida_idp.IDB_Hooks.__init__(self)
         Hooks.__init__(self, network)
+
+    def make_code(self, insn):
+        self._send_event(MakeCodeEvent(insn.ea))
+        return 0
 
 
 class Core(object):
