@@ -75,3 +75,15 @@ class SetFuncStartEvent(Event):
 
     def __call__(self):
         ida_funcs.set_func_start(self['ea'], self['new_ea'])
+
+
+class SetFuncEndEvent(Event):
+    _type = 'set_func_end'
+
+    def __init__(self, ea, new_ea):
+        super(SetFuncEndEvent, self).__init__()
+        self['ea'] = ea
+        self['new_ea'] = new_ea
+
+    def __call__(self):
+        ida_funcs.set_func_end(self['ea'], self['new_ea'])

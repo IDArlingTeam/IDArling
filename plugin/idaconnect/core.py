@@ -60,6 +60,10 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
         self._send_event(SetFuncStartEvent(func.startEA, new_ea))
         return 0
 
+    def set_func_end(self, func, new_ea):
+        self._send_event(SetFuncEndEvent(func.startEA, new_ea))
+        return 0
+
 
 class Core(object):
 
