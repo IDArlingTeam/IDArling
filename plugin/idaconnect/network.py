@@ -10,6 +10,7 @@ from twisted.internet.protocol import ReconnectingClientFactory
 from twisted.protocols import basic
 
 from events.events import Event
+from util.misc import byteify
 
 SERVER_HOST = '127.0.0.1'
 SERVER_PORT = 31013
@@ -44,7 +45,7 @@ class ClientProtocol(basic.LineReceiver, object):
         self._outgoing.put(pkt)
 
     def recv_packet(self, pkt):
-        Event.new(json.loads(pkt))()
+        Event.new(byteify(json.loads(pkt)))()
         if self._connected:
             d = self._incoming.get()
             d.addCallback(self.recv_packet)
