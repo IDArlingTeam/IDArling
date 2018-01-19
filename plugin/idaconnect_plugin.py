@@ -3,15 +3,13 @@ import logging
 import idaapi
 
 from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5.QtWidgets import (
-    QApplication,
-    QMainWindow,
-    QSplitter,
-    QLabel,
-    QFrame)
+    QApplication, QMainWindow,
+    QSplitter, QLabel, QFrame,
+    QMenu, QAction)
 
-from idaconnect.core import Core
+from idaconnect.hooks import Hooks
 from idaconnect.network import Network
 from idaconnect.util import *
 
@@ -36,6 +34,10 @@ class IDAConnect(idaapi.plugin_t):
 
     _widget = None
 
+    def __init__(self):
+        self.hooks = Hooks(self)
+        self.network = Network(self)
+
     def init(self):
         try:
             self._init()
@@ -56,20 +58,17 @@ class IDAConnect(idaapi.plugin_t):
         except Exception as e:
             logger.exception("Failed to terminate properly")
 
-        logger.info("Plugin terminated")
+        logger.info("Terminated properly")
 
     def _init(self):
-        self.core = Core(self)
-        self.network = Network(self)
-
         self._install_ui()
-        self.core.install()
+        self.hooks.install()
         self.network.install()
 
     def _term(self):
-        self._uninstall_ui()
-        self.core.uninstall()
         self.network.uninstall()
+        self.hooks.uninstall()
+        self._uninstall_ui()
 
     def _install_ui(self):
         self._install_widget()
@@ -106,14 +105,30 @@ class IDAConnect(idaapi.plugin_t):
 
         line = QFrame()
         line.setFrameShape(QFrame.VLine)
-        line.setFrameShadow(QFrame.Raised)
+        line.setFrameShadow(QFrame.Plain)
         szLine = QSize(line.sizeHint().width(), szInfo.height())
         addWidget(line, szLine)
 
-        text = QLabel("Disconnected")
-        text.setStyleSheet('padding-left: 1px; padding-right: 1px; color:red;')
+        def addContextMenu(widget):
+            def contextMenu(point):
+                menu = QMenu(widget)
+                settings = QAction('Network Settings', menu)
+                icon_path = plugin_resource('settings.png')
+                settings.setIcon(QIcon(icon_path))
+                menu.addAction(settings)
+                menu.addSeparator()
+                menu.addAction("localhost")
+                menu.exec_(widget.mapToGlobal(point))
+
+            widget.setToolTip("No server selected")
+            widget.setContextMenuPolicy(Qt.CustomContextMenu)
+            widget.customContextMenuRequested.connect(contextMenu)
+
+        text = QLabel('<span style="color: red;">Disconnected</span>')
+        text.setStyleSheet('padding-left: 1px; padding-right: 1px;')
         szText = text.sizeHint()
         addWidget(text, szText)
+        addContextMenu(text)
 
         icon = QLabel()
         icon.setStyleSheet('padding-right: 3px;')
@@ -124,6 +139,7 @@ class IDAConnect(idaapi.plugin_t):
                                      Qt.SmoothTransformation))
         szIcon = QSize(icon.sizeHint().width(), szIcon.height())
         addWidget(icon, szIcon)
+        addContextMenu(icon)
 
         # Disable and hide handles
         self._widget.setHandleWidth(0)

@@ -7,35 +7,34 @@ from events.events import Event
 from events.events_idp import *
 from events.events_idb import *
 
-logger = logging.getLogger("IDAConnect.Core")
+logger = logging.getLogger("IDAConnect.Hooks")
 
 
-class Hooks(object):
+class HooksBase(object):
 
     def __init__(self, network):
         self._network = network
 
     def _send_event(self, event):
-        logger.debug("Sending event %s" % event.__class__.__name__)
         self._network.send_event(event)
 
 
-class IDPHooks(ida_idp.IDP_Hooks, Hooks):
+class IDPHooks(ida_idp.IDP_Hooks, HooksBase):
 
     def __init__(self, network):
         ida_idp.IDP_Hooks.__init__(self)
-        Hooks.__init__(self, network)
+        HooksBase.__init__(self, network)
 
     def ev_undefine(self, ea):
         self._send_event(UndefinedEvent(ea))
         return 0
 
 
-class IDBHooks(ida_idp.IDB_Hooks, Hooks):
+class IDBHooks(ida_idp.IDB_Hooks, HooksBase):
 
     def __init__(self, network):
         ida_idp.IDB_Hooks.__init__(self)
-        Hooks.__init__(self, network)
+        HooksBase.__init__(self, network)
 
     def make_code(self, insn):
         self._send_event(MakeCodeEvent(insn.ea))
@@ -71,22 +70,33 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
         return 0
 
 
-class Core(object):
+class Hooks(object):
 
     def __init__(self, plugin):
-        super(Core, self).__init__()
+        super(Hooks, self).__init__()
         self._plugin = plugin
+        self._installed = False
 
     def install(self):
-        network = self._plugin.network
-        self._idp_hooks = IDPHooks(network)
-        self._idb_hooks = IDBHooks(network)
-
+        if self._installed:
+            return
         logger.debug("Installing hooks")
+        self._idp_hooks = IDPHooks(self._plugin.network)
+        self._idb_hooks = IDBHooks(self._plugin.network)
+        self.hook_all()
+        self._installed = True
+
+    def uninstall(self):
+        if not self._installed:
+            return
+        logger.debug("Uninstalling hooks")
+        self.unhook_all()
+        self._installed = False
+
+    def hook_all(self):
         self._idp_hooks.hook()
         self._idb_hooks.hook()
 
-    def uninstall(self):
-        logger.debug("Uninstalling hooks")
+    def unhook_all(self):
         self._idp_hooks.unhook()
         self._idb_hooks.unhook()
