@@ -48,6 +48,10 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
         self._send_event(RenamedEvent(ea, new_name, local_name))
         return 0
 
+    def func_added(self, func):
+        self._send_event(FuncAddedEvent(func.startEA, func.endEA))
+        return 0
+
 
 class Core(object):
 

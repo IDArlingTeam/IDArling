@@ -39,3 +39,15 @@ class RenamedEvent(Event):
 
     def __call__(self):
         idc.set_name(self['ea'], self['new_name'], self['local_name'])
+
+
+class FuncAddedEvent(Event):
+    _type = 'func_added'
+
+    def __init__(self, start_ea, end_ea):
+        super(FuncAddedEvent, self).__init__()
+        self['start_ea'] = start_ea
+        self['end_ea'] = end_ea
+
+    def __call__(self):
+        idc.add_func(self['start_ea'], self['end_ea'])
