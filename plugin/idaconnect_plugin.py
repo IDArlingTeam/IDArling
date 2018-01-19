@@ -2,6 +2,15 @@ import logging
 
 import idaapi
 
+from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QSplitter,
+    QLabel,
+    QFrame)
+
 from idaconnect.core import Core
 from idaconnect.network import Network
 from idaconnect.util import *
@@ -19,11 +28,13 @@ def PLUGIN_ENTRY():
 
 
 class IDAConnect(idaapi.plugin_t):
-    flags = idaapi.PLUGIN_HIDE
+    flags = idaapi.PLUGIN_FIX | idaapi.PLUGIN_HIDE
     comment = "Collaborative Reverse Engineering plugin"
     help = ""
     wanted_name = PLUGIN_NAME
     wanted_hotkey = ""
+
+    _widget = None
 
     def init(self):
         try:
@@ -61,12 +72,73 @@ class IDAConnect(idaapi.plugin_t):
         self.network.uninstall()
 
     def _install_ui(self):
+        self._install_widget()
         self._install_open_action()
         self._install_save_action()
 
     def _uninstall_ui(self):
+        self._uninstall_widget()
         self._uninstall_open_action()
         self._uninstall_save_action()
+
+    def _find_status_bar(self):
+        for widget in QApplication.topLevelWidgets():
+            if isinstance(widget, QMainWindow):
+                return widget.statusBar()
+        raise RuntimeError("Could not find status bar")
+
+    def _install_widget(self):
+        if self._widget:
+            return
+
+        status = self._find_status_bar()
+        self._widget = QSplitter()
+
+        def addWidget(widget, sz):
+            widget.setMinimumSize(sz)
+            widget.setMaximumSize(sz)
+            self._widget.addWidget(widget)
+
+        info = QLabel("%s - v%s" % (PLUGIN_NAME, PLUGIN_VERSION))
+        info.setStyleSheet('padding-right: 1px;')
+        szInfo = info.sizeHint()
+        addWidget(info, szInfo)
+
+        line = QFrame()
+        line.setFrameShape(QFrame.VLine)
+        line.setFrameShadow(QFrame.Raised)
+        szLine = QSize(line.sizeHint().width(), szInfo.height())
+        addWidget(line, szLine)
+
+        text = QLabel("Disconnected")
+        text.setStyleSheet('padding-left: 1px; padding-right: 1px; color:red;')
+        szText = text.sizeHint()
+        addWidget(text, szText)
+
+        icon = QLabel()
+        icon.setStyleSheet('padding-right: 3px;')
+        szIcon = QSize(szInfo.height(), szInfo.height())
+        pixmap = QPixmap(plugin_resource('disconnected.png'))
+        icon.setPixmap(pixmap.scaled(szIcon.width(), szIcon.height(),
+                                     Qt.KeepAspectRatio,
+                                     Qt.SmoothTransformation))
+        szIcon = QSize(icon.sizeHint().width(), szIcon.height())
+        addWidget(icon, szIcon)
+
+        # Disable and hide handles
+        self._widget.setHandleWidth(0)
+        for i in range(self._widget.count()):
+            self._widget.handle(i).setEnabled(False)
+
+        status.addPermanentWidget(self._widget)
+        logger.info("Installed widget in status bar")
+
+    def _uninstall_widget(self):
+        if self._widget:
+            status = self._find_status_bar
+            status.removeWidget(self._widget)
+            self._widget = None
+            logger.info("Uninstalled widget from status bar")
 
     ACTION_OPEN = 'idaconnect:open'
     ACTION_SAVE = 'idaconnect:save'
@@ -181,8 +253,6 @@ class IDAConnect(idaapi.plugin_t):
         params = PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHORS
         banner = "%s v%s - (c) %s" % params
 
-        log("")
         log("-" * 75)
         log(banner)
         log("-" * 75)
-        log("")
