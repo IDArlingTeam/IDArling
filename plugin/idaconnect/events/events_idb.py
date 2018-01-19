@@ -87,3 +87,16 @@ class SetFuncEndEvent(Event):
 
     def __call__(self):
         ida_funcs.set_func_end(self['ea'], self['new_ea'])
+
+
+class CmtChangedEvent(Event):
+    _type = 'cmt_changed'
+
+    def __init__(self, ea, repeatable_cmt, cmt):
+        super(CmtChangedEvent, self).__init__()
+        self['ea'] = ea
+        self['repeatable_cmt'] = repeatable_cmt
+        self['cmt'] = cmt
+
+    def __call__(self):
+        idc.set_cmt(self['ea'], self['cmt'], self['repeatable_cmt'])

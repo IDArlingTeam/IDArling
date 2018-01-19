@@ -1,6 +1,7 @@
 import logging
 
 import ida_idp
+import idc
 
 from events.events import Event
 from events.events_idp import *
@@ -62,6 +63,11 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
 
     def set_func_end(self, func, new_ea):
         self._send_event(SetFuncEndEvent(func.startEA, new_ea))
+        return 0
+
+    def cmt_changed(self, ea, repeatable_cmt):
+        cmt = idc.get_cmt(ea, repeatable_cmt)
+        self._send_event(CmtChangedEvent(ea, repeatable_cmt, cmt))
         return 0
 
 
