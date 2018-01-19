@@ -1,4 +1,5 @@
 import idc
+import ida_funcs
 
 from events import Event
 
@@ -62,3 +63,15 @@ class DeletingFuncEvent(Event):
 
     def __call__(self):
         idc.del_func(self['start_ea'])
+
+
+class SetFuncStartEvent(Event):
+    _type = 'set_func_start'
+
+    def __init__(self, ea, new_ea):
+        super(SetFuncStartEvent, self).__init__()
+        self['ea'] = ea
+        self['new_ea'] = new_ea
+
+    def __call__(self):
+        ida_funcs.set_func_start(self['ea'], self['new_ea'])
