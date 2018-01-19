@@ -45,7 +45,7 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
     def make_data(self, ea, flags, tid, size):
         self._send_event(MakeDataEvent(ea, flags, tid, size))
         return 0
-    
+
     def renamed(self, ea, new_name, local_name):
         self._send_event(RenamedEvent(ea, new_name, local_name))
         return 0

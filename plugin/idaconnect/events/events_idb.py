@@ -27,6 +27,7 @@ class MakeDataEvent(Event):
     def __call__(self):
         idc.create_data(self['ea'], self['flags'], self['size'], self['tid'])
 
+
 class RenamedEvent(Event):
     _type = 'renamed'
 
@@ -37,4 +38,4 @@ class RenamedEvent(Event):
         self['local_name'] = local_name
 
     def __call__(self):
-        idc.set_name(self['ea'], str(self['new_name']), self['local_name'])
+        idc.set_name(self['ea'], self['new_name'], self['local_name'])

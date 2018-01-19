@@ -11,6 +11,7 @@ def plugin_resource(resource_name):
         resource_name
     )
 
+
 def byteify(input):
     if isinstance(input, dict):
         return {byteify(key): byteify(value)
