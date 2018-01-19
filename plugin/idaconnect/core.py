@@ -52,6 +52,10 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
         self._send_event(FuncAddedEvent(func.startEA, func.endEA))
         return 0
 
+    def deleting_func(self, func):
+        self._send_event(DeletingFuncEvent(func.startEA))
+        return 0
+
 
 class Core(object):
 

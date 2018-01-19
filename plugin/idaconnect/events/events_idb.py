@@ -51,3 +51,14 @@ class FuncAddedEvent(Event):
 
     def __call__(self):
         idc.add_func(self['start_ea'], self['end_ea'])
+
+
+class DeletingFuncEvent(Event):
+    _type = 'deleting_func'
+
+    def __init__(self, start_ea):
+        super(DeletingFuncEvent, self).__init__()
+        self['start_ea'] = start_ea
+
+    def __call__(self):
+        idc.del_func(self['start_ea'])
