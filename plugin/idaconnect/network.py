@@ -26,6 +26,7 @@ class ClientProtocol(basic.LineReceiver, object):
         self._connected = False
         self._incoming = defer.DeferredQueue()
         self._outgoing = defer.DeferredQueue()
+        self._calling = False
 
     def connectionMade(self):
         logger.debug("Connected to server")
@@ -42,10 +43,13 @@ class ClientProtocol(basic.LineReceiver, object):
         self._connected = False
 
     def send_packet(self, pkt):
-        self._outgoing.put(pkt)
+        if not self._calling:
+            self._outgoing.put(pkt)
 
     def recv_packet(self, pkt):
+        self._calling = True
         Event.new(byteify(json.loads(pkt)))()
+        self._calling = False
         if self._connected:
             d = self._incoming.get()
             d.addCallback(self.recv_packet)

@@ -15,8 +15,6 @@ class Hooks(object):
         self._network = network
 
     def _send_event(self, event):
-        if Event._disabled:
-            return
         logger.debug("Sending event %s" % event.__class__.__name__)
         self._network.send_event(event)
 

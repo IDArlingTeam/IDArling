@@ -135,7 +135,7 @@ class IDAConnect(idaapi.plugin_t):
 
     def _uninstall_widget(self):
         if self._widget:
-            status = self._find_status_bar
+            status = self._find_status_bar()
             status.removeWidget(self._widget)
             self._widget = None
             logger.info("Uninstalled widget from status bar")
