@@ -14,23 +14,23 @@ def log(message):
         logger.info(message)
 
 
-def get_log_dir():
+def getLogDir():
     return os.path.join(idaapi.get_user_idadir(), '.idaconnect', 'logs')
 
 
-def logging_started():
+def loggingStarted():
     return 'logger' in globals()
 
 
 class LoggerProxy(object):
-    def __init__(self, logger, stream, log_level=logging.INFO):
+    def __init__(self, logger, stream, logLevel=logging.INFO):
         self._logger = logger
-        self._log_level = log_level
+        self._logLevel = logLevel
         self._stream = stream
 
     def write(self, buf):
         for line in buf.rstrip().splitlines():
-            self._logger.log(self._log_level, line.rstrip())
+            self._logger.log(self._logLevel, line.rstrip())
         self._stream.write(buf)
 
     def flush(self):
@@ -40,25 +40,26 @@ class LoggerProxy(object):
         pass
 
 
-def start_logging():
+def startLogging():
     global logger
     logger = logging.getLogger('IDAConnect')
 
-    log_dir = get_log_dir()
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-    log_path = os.path.join(log_dir, 'idaconnect.%s.log' % os.getpid())
+    logDir = getLogDir()
+    if not os.path.exists(logDir):
+        os.makedirs(logDir)
+    logPath = os.path.join(logDir, 'idaconnect.%s.log' % os.getpid())
 
     logging.basicConfig(
-        filename=log_path,
+        filename=logPath,
         format='%(asctime)s | %(name)20s | %(levelname)7s: %(message)s',
         datefmt='%m-%d-%Y %H:%M:%S',
         level=logging.DEBUG
     )
 
-    stdout_logger = logging.getLogger('IDAConnect.STDOUT')
-    stderr_logger = logging.getLogger('IDAConnect.STDERR')
-    sys.stdout = LoggerProxy(stdout_logger, sys.stdout, logging.INFO)
-    sys.stderr = LoggerProxy(stderr_logger, sys.stderr, logging.ERROR)
+    stdoutLogger = logging.getLogger('IDAConnect.STDOUT')
+    sys.stdout = LoggerProxy(stdoutLogger, sys.stdout, logging.INFO)
+
+    stderrLogger = logging.getLogger('IDAConnect.STDERR')
+    sys.stderr = LoggerProxy(stderrLogger, sys.stderr, logging.ERROR)
 
     return logger

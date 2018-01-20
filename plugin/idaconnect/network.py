@@ -25,37 +25,37 @@ class ClientProtocol(basic.LineReceiver, object):
         self._incoming = defer.DeferredQueue()
         self._outgoing = defer.DeferredQueue()
 
-    def is_connected(self):
+    def isConnected(self):
         return self._connected
 
     def connectionMade(self):
         logger.debug("Connected to server")
         self._connected = True
-        self._plugin.when_connected()
+        self._plugin.whenConnected()
 
         d = self._outgoing.get()
         d.addCallback(self.sendLine)
         d.addErrback(logger.exception)
 
         d = self._incoming.get()
-        d.addCallback(self.recv_packet)
+        d.addCallback(self.recvPacket)
         d.addErrback(logger.exception)
 
     def connectionLost(self, reason):
         logger.debug("Disconnected from server: %s" % reason)
         self._connected = False
-        self._plugin.when_disconnected()
+        self._plugin.whenDisconnected()
 
-    def send_packet(self, pkt):
+    def sendPacket(self, pkt):
         self._outgoing.put(pkt)
 
-    def recv_packet(self, pkt):
-        self._plugin.hooks.unhook_all()
+    def recvPacket(self, pkt):
+        self._plugin.hooks.unhookAll()
         Event.new(byteify(json.loads(pkt)))()
-        self._plugin.hooks.hook_all()
+        self._plugin.hooks.hookAll()
         if self._connected:
             d = self._incoming.get()
-            d.addCallback(self.recv_packet)
+            d.addCallback(self.recvPacket)
             d.addErrback(logger.exception)
 
     def sendLine(self, pkt):
@@ -80,12 +80,12 @@ class ClientFactory_(ClientFactory, object):
     def buildProtocol(self, addr):
         return self._protocol
 
-    def is_connected(self):
-        return self._protocol.is_connected()
+    def isConnected(self):
+        return self._protocol.isConnected()
 
-    def send_packet(self, pkt):
-        if self.is_connected():
-            self._protocol.send_packet(pkt)
+    def sendPacket(self, pkt):
+        if self.isConnected():
+            self._protocol.sendPacket(pkt)
 
 
 class Network(object):
@@ -98,10 +98,10 @@ class Network(object):
         self._host = ''
         self._port = 0
 
-    def get_host(self):
+    def getHost(self):
         return self._host
 
-    def get_port(self):
+    def getPort(self):
         return self._port
 
     def install(self):
@@ -119,21 +119,21 @@ class Network(object):
         reactor.stop()
 
     def connect(self, host, port):
-        if self._factory.is_connected():
+        if self._factory.isConnected():
             return
         self._host = host
         self._port = port
         logger.debug("Connecting to %s:%d" % (host, port))
         self._connector = reactor.connectTCP(host, port, self._factory)
-        self._plugin.when_connecting()
+        self._plugin.whenConnecting()
 
     def disconnect(self):
-        if not self._factory.is_connected():
+        if not self._factory.isConnected():
             return
         logger.debug("Disconnecting")
         self._connector.disconnect()
-        self._plugin.when_disconnected()
+        self._plugin.whenDisconnected()
 
-    def send_event(self, event):
+    def sendEvent(self, event):
         pkt = json.dumps(event)
-        self._factory.send_packet(pkt)
+        self._factory.sendPacket(pkt)

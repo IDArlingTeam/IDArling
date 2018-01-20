@@ -9,8 +9,8 @@ from idaconnect.network import Network
 from idaconnect.ui.widgets import StatusWidget
 from idaconnect.util import *
 
-if not logging_started():
-    logger = start_logging()
+if not loggingStarted():
+    logger = startLogging()
 
 
 def PLUGIN_ENTRY():
@@ -36,7 +36,8 @@ class IDAConnect(idaapi.plugin_t):
         for widget in QApplication.topLevelWidgets():
             if isinstance(widget, QMainWindow):
                 self._window = widget
-        self._status = None
+        self._labelWidget = None
+        self._statusWidget = None
 
     def init(self):
         try:
@@ -45,7 +46,7 @@ class IDAConnect(idaapi.plugin_t):
             logger.exception("Failed to initialize")
             return idaapi.PLUGIN_SKIP
 
-        self._print_banner()
+        self._printBanner()
         logger.info("Successfully initialized")
         return idaapi.PLUGIN_KEEP
 
@@ -61,46 +62,46 @@ class IDAConnect(idaapi.plugin_t):
         logger.info("Terminated properly")
 
     def _init(self):
-        self._install_ui()
+        self._installUI()
         self.hooks.install()
         self.network.install()
 
     def _term(self):
-        self._uninstall_ui()
+        self._uninstallUI()
         self.hooks.uninstall()
         self.network.uninstall()
 
-    def _install_ui(self):
-        self._install_open_action()
-        self._install_save_action()
-        self._install_widgets()
+    def _installUI(self):
+        self._installOpenAction()
+        self._installSaveAction()
+        self._installWidgets()
 
-    def _uninstall_ui(self):
-        self._uninstall_open_action()
-        self._uninstall_save_action()
-        self._uninstall_widgets()
+    def _uninstallUI(self):
+        self._uninstallOpenAction()
+        self._uninstallSaveAction()
+        self._uninstallWidgets()
 
-    def _install_widgets(self):
-        if self._status:
+    def _installWidgets(self):
+        if self._statusWidget:
             return
-        self._label = QLabel("%s v%s" % (self.PLUGIN_NAME,
-                                         self.PLUGIN_VERSION))
-        self._window.statusBar().addPermanentWidget(self._label)
-        self._status = StatusWidget(self)
-        self._window.statusBar().addPermanentWidget(self._status)
+        self._labelWidget = QLabel("%s v%s" % (self.PLUGIN_NAME,
+                                               self.PLUGIN_VERSION))
+        self._window.statusBar().addPermanentWidget(self._labelWidget)
+        self._statusWidget = StatusWidget(self)
+        self._window.statusBar().addPermanentWidget(self._statusWidget)
         logger.info("Installed widgets in status bar")
 
-    def _uninstall_widgets(self):
-        if not self._status:
+    def _uninstallWidgets(self):
+        if not self._statusWidget:
             return
-        self._window.statusBar().removeWidget(self._label)
-        self._window.statusBar().removeWidget(self._status)
+        self._window.statusBar().removeWidget(self._labelWidget)
+        self._window.statusBar().removeWidget(self._statusWidget)
         logger.info("Uninstalled widgets from status bar")
 
     ACTION_OPEN = 'idaconnect:open'
     ACTION_SAVE = 'idaconnect:save'
 
-    def _install_open_action(self):
+    def _installOpenAction(self):
         class OpenActionHandler(idaapi.action_handler_t):
 
             def activate(self, ctx):
@@ -109,20 +110,20 @@ class IDAConnect(idaapi.plugin_t):
             def update(self, ctx):
                 return idaapi.AST_ENABLE_ALWAYS
 
-        icon_path = plugin_resource('open.png')
-        icon_data = str(open(icon_path, 'rb').read())
-        self._icon_id_open = idaapi.load_custom_icon(data=icon_data)
+        iconPath = getPluginResource('open.png')
+        iconData = str(open(iconPath, 'rb').read())
+        self._openIconId = idaapi.load_custom_icon(data=iconData)
 
-        action_desc = idaapi.action_desc_t(
+        actionDesc = idaapi.action_desc_t(
             self.ACTION_OPEN,
             "Open from server...",
             OpenActionHandler(),
             None,
             "Load a database from the server",
-            self._icon_id_open
+            self._openIconId
         )
 
-        result = idaapi.register_action(action_desc)
+        result = idaapi.register_action(actionDesc)
         if not result:
             raise RuntimeError("Failed to register open action")
 
@@ -136,7 +137,7 @@ class IDAConnect(idaapi.plugin_t):
 
         logger.info("Installed the 'Open from server' menu entry")
 
-    def _uninstall_open_action(self):
+    def _uninstallOpenAction(self):
         result = idaapi.detach_action_from_menu(
             'File/Open...',
             self.ACTION_OPEN
@@ -148,12 +149,12 @@ class IDAConnect(idaapi.plugin_t):
         if not result:
             return False
 
-        idaapi.free_custom_icon(self._icon_id_open)
-        self._icon_id_open = idaapi.BADADDR
+        idaapi.free_custom_icon(self._openIconId)
+        self._openIconId = idaapi.BADADDR
 
         logger.info("Uninstalled the 'Open from server' menu entry")
 
-    def _install_save_action(self):
+    def _installSaveAction(self):
         class SaveActionHandler(idaapi.action_handler_t):
 
             def activate(self, ctx):
@@ -162,20 +163,20 @@ class IDAConnect(idaapi.plugin_t):
             def update(self, ctx):
                 return idaapi.AST_ENABLE_ALWAYS
 
-        icon_path = plugin_resource('save.png')
-        icon_data = str(open(icon_path, 'rb').read())
-        self._icon_id_save = idaapi.load_custom_icon(data=icon_data)
+        iconPath = getPluginResource('save.png')
+        iconData = str(open(iconPath, 'rb').read())
+        self._saveIconId = idaapi.load_custom_icon(data=iconData)
 
-        action_desc = idaapi.action_desc_t(
+        actionDesc = idaapi.action_desc_t(
             self.ACTION_SAVE,
             "Save to server...",
             SaveActionHandler(),
             None,
             "Save the database to the server",
-            self._icon_id_save
+            self._saveIconId
         )
 
-        result = idaapi.register_action(action_desc)
+        result = idaapi.register_action(actionDesc)
         if not result:
             raise RuntimeError("Failed to register save action")
 
@@ -189,7 +190,7 @@ class IDAConnect(idaapi.plugin_t):
 
         logger.info("Installed the 'Save to server' menu entry")
 
-    def _uninstall_save_action(self):
+    def _uninstallSaveAction(self):
         result = idaapi.detach_action_from_menu(
             'File/Save...',
             self.ACTION_SAVE
@@ -201,26 +202,26 @@ class IDAConnect(idaapi.plugin_t):
         if not result:
             return False
 
-        idaapi.free_custom_icon(self._icon_id_save)
-        self._icon_id_save = idaapi.BADADDR
+        idaapi.free_custom_icon(self._saveIconId)
+        self._saveIconId = idaapi.BADADDR
 
         logger.info("Uninstalled the 'Save to server' menu entry")
 
-    def _print_banner(self):
-        params = self.PLUGIN_NAME, self.PLUGIN_VERSION, self.PLUGIN_AUTHORS
-        banner = "%s v%s - (c) %s" % params
+    def _printBanner(self):
+        parameters = self.PLUGIN_NAME, self.PLUGIN_VERSION, self.PLUGIN_AUTHORS
+        bannerText = "%s v%s - (c) %s" % parameters
 
         log("-" * 75)
-        log(banner)
+        log(bannerText)
         log("-" * 75)
 
-    def when_disconnected(self):
-        self._status.set_state(StatusWidget.DISCONNECTED)
-        self._status.set_server()
+    def whenDisconnected(self):
+        self._statusWidget.setState(StatusWidget.DISCONNECTED)
+        self._statusWidget.setServer()
 
-    def when_connecting(self):
-        self._status.set_state(StatusWidget.CONNECTING)
-        self._status.set_server(self.network.get_host())
+    def whenConnecting(self):
+        self._statusWidget.setState(StatusWidget.CONNECTING)
+        self._statusWidget.setServer(self.network.getHost())
 
-    def when_connected(self):
-        self._status.set_state(StatusWidget.CONNECTED)
+    def whenConnected(self):
+        self._statusWidget.setState(StatusWidget.CONNECTED)

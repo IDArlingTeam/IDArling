@@ -2,9 +2,9 @@ class MetaRegistry(type):
     REGISTRY = {}
 
     def __new__(cls, name, bases, attrs):
-        event_cls = type.__new__(cls, name, bases, attrs)
-        MetaRegistry.REGISTRY[event_cls._type] = event_cls
-        return event_cls
+        eventCls = type.__new__(cls, name, bases, attrs)
+        MetaRegistry.REGISTRY[eventCls._type] = eventCls
+        return eventCls
 
 
 class Event(dict):
@@ -15,9 +15,9 @@ class Event(dict):
     @staticmethod
     def new(dct):
         del dct['type']
-        event_cls = MetaRegistry.REGISTRY[dct['event_type']]
+        eventCls = MetaRegistry.REGISTRY[dct['event_type']]
         del dct['event_type']
-        event = event_cls(**dct)
+        event = eventCls(**dct)
         return event
 
     def __init__(self):

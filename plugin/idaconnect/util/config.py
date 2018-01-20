@@ -4,22 +4,22 @@ import json
 import idaapi
 
 
-def get_config_path():
-    config_dir = os.path.join(idaapi.get_user_idadir(), '.idaconnect')
-    if not os.path.exists(config_dir):
-        os.makedirs(config_dir)
-    return os.path.join(log_dir, 'config.json')
+def getConfigPath():
+    configDir = os.path.join(idaapi.get_user_idadir(), '.idaconnect')
+    if not os.path.exists(configDir):
+        os.makedirs(configDir)
+    return os.path.join(configDir, 'config.json')
 
 
-def load_config():
-    config_path = get_config_path()
-    if not os.path.isfile(config_path):
+def loadConfig():
+    configPath = getConfigPath()
+    if not os.path.isfile(configPath):
         return {}
-    return json.loads(open(config_path))
+    return json.loads(open(configPath))
 
 
-def save_config(config):
-    config_path = get_config_path()
-    with open(config_path, 'w') as config_file:
-        config_file.write(json.dumps(config, sort_keys=True,
-                                     indent=4, separators=(',', ': ')))
+def saveConfig(config):
+    configPath = getConfigPath()
+    with open(configPath, 'w') as configFile:
+        configFile.write(json.dumps(config, sort_keys=True,
+                                    indent=4, separators=(',', ': ')))

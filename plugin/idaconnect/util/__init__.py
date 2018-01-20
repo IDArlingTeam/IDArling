@@ -1,3 +1,3 @@
-from .config import load_config, save_config
-from .log import log, logging_started, start_logging
+from .config import loadConfig, saveConfig
+from .log import log, loggingStarted, startLogging
 from .misc import *
