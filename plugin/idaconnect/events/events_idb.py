@@ -100,3 +100,15 @@ class CmtChangedEvent(Event):
 
     def __call__(self):
         idc.set_cmt(self['ea'], self['cmt'], self['repeatable_cmt'])
+
+
+class TiChangedEvent(Event):
+    _type = 'ti_changed'
+
+    def __init__(self, ea, t):
+        super(TiChangedEvent, self).__init__()
+        self['ea'] = ea
+        self['t'] = t
+
+    def __call__(self):
+        idc.ApplyType(self['ea'], self['t'])
