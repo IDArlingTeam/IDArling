@@ -12,8 +12,6 @@ from twisted.protocols import basic
 from events.events import Event
 from util.misc import byteify
 
-SERVER_HOST = '127.0.0.1'
-SERVER_PORT = 31013
 
 logger = logging.getLogger('IDAConnect.Network')
 
@@ -33,6 +31,7 @@ class ClientProtocol(basic.LineReceiver, object):
     def connectionMade(self):
         logger.debug("Connected to server")
         self._connected = True
+        self._plugin.when_connected()
 
         d = self._outgoing.get()
         d.addCallback(self.sendLine)
@@ -45,6 +44,7 @@ class ClientProtocol(basic.LineReceiver, object):
     def connectionLost(self, reason):
         logger.debug("Disconnected from server: %s" % reason)
         self._connected = False
+        self._plugin.when_disconnected()
 
     def send_packet(self, pkt):
         self._outgoing.put(pkt)
@@ -95,32 +95,44 @@ class Network(object):
         self._plugin = plugin
         self._installed = False
 
+        self._host = ''
+        self._port = 0
+
+    def get_host(self):
+        return self._host
+
+    def get_port(self):
+        return self._port
+
     def install(self):
         if self._installed:
             return
         self._factory = ClientFactory_(self._plugin)
-        self.connect()
         self._installed = True
+        reactor.runReturn()
 
     def uninstall(self):
         if not self._installed:
             return
         self.disconnect()
-        reactor.threadpool.stop()
         self._installed = False
+        reactor.stop()
 
-    def connect(self):
+    def connect(self, host, port):
         if self._factory.is_connected():
             return
-        logger.debug("Connecting to %s:%s" % (SERVER_HOST, SERVER_PORT))
-        self._connector = reactor.connectTCP(SERVER_HOST, SERVER_PORT,
-                                             self._factory)
+        self._host = host
+        self._port = port
+        logger.debug("Connecting to %s:%d" % (host, port))
+        self._connector = reactor.connectTCP(host, port, self._factory)
+        self._plugin.when_connecting()
 
     def disconnect(self):
         if not self._factory.is_connected():
             return
         logger.debug("Disconnecting")
         self._connector.disconnect()
+        self._plugin.when_disconnected()
 
     def send_event(self, event):
         pkt = json.dumps(event)

@@ -2,23 +2,15 @@ import logging
 
 import idaapi
 
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QPixmap, QIcon
-from PyQt5.QtWidgets import (
-    QApplication, QMainWindow,
-    QSplitter, QLabel, QFrame,
-    QMenu, QAction)
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel
 
 from idaconnect.hooks import Hooks
 from idaconnect.network import Network
+from idaconnect.ui.widgets import StatusWidget
 from idaconnect.util import *
 
 if not logging_started():
     logger = start_logging()
-
-PLUGIN_NAME = "IDAConnect"
-PLUGIN_VERSION = "0.0.1"
-PLUGIN_AUTHORS = "The IDAConnect Team"
 
 
 def PLUGIN_ENTRY():
@@ -26,17 +18,25 @@ def PLUGIN_ENTRY():
 
 
 class IDAConnect(idaapi.plugin_t):
+    PLUGIN_NAME = "IDAConnect"
+    PLUGIN_VERSION = "0.0.1"
+    PLUGIN_AUTHORS = "The IDAConnect Team"
+
     flags = idaapi.PLUGIN_FIX | idaapi.PLUGIN_HIDE
     comment = "Collaborative Reverse Engineering plugin"
     help = ""
     wanted_name = PLUGIN_NAME
     wanted_hotkey = ""
 
-    _widget = None
-
     def __init__(self):
         self.hooks = Hooks(self)
         self.network = Network(self)
+
+        self._window = None
+        for widget in QApplication.topLevelWidgets():
+            if isinstance(widget, QMainWindow):
+                self._window = widget
+        self._status = None
 
     def init(self):
         try:
@@ -66,95 +66,36 @@ class IDAConnect(idaapi.plugin_t):
         self.network.install()
 
     def _term(self):
-        self.network.uninstall()
-        self.hooks.uninstall()
         self._uninstall_ui()
+        self.hooks.uninstall()
+        self.network.uninstall()
 
     def _install_ui(self):
-        self._install_widget()
         self._install_open_action()
         self._install_save_action()
+        self._install_widgets()
 
     def _uninstall_ui(self):
-        self._uninstall_widget()
         self._uninstall_open_action()
         self._uninstall_save_action()
+        self._uninstall_widgets()
 
-    def _find_status_bar(self):
-        for widget in QApplication.topLevelWidgets():
-            if isinstance(widget, QMainWindow):
-                return widget.statusBar()
-        raise RuntimeError("Could not find status bar")
-
-    def _install_widget(self):
-        if self._widget:
+    def _install_widgets(self):
+        if self._status:
             return
+        self._label = QLabel("%s v%s" % (self.PLUGIN_NAME,
+                                         self.PLUGIN_VERSION))
+        self._window.statusBar().addPermanentWidget(self._label)
+        self._status = StatusWidget(self)
+        self._window.statusBar().addPermanentWidget(self._status)
+        logger.info("Installed widgets in status bar")
 
-        status = self._find_status_bar()
-        self._widget = QSplitter()
-
-        def addWidget(widget, sz):
-            widget.setMinimumSize(sz)
-            widget.setMaximumSize(sz)
-            self._widget.addWidget(widget)
-
-        info = QLabel("%s - v%s" % (PLUGIN_NAME, PLUGIN_VERSION))
-        info.setStyleSheet('padding-right: 1px;')
-        szInfo = info.sizeHint()
-        addWidget(info, szInfo)
-
-        line = QFrame()
-        line.setFrameShape(QFrame.VLine)
-        line.setFrameShadow(QFrame.Plain)
-        szLine = QSize(line.sizeHint().width(), szInfo.height())
-        addWidget(line, szLine)
-
-        def addContextMenu(widget):
-            def contextMenu(point):
-                menu = QMenu(widget)
-                settings = QAction('Network Settings', menu)
-                icon_path = plugin_resource('settings.png')
-                settings.setIcon(QIcon(icon_path))
-                menu.addAction(settings)
-                menu.addSeparator()
-                menu.addAction("localhost")
-                menu.exec_(widget.mapToGlobal(point))
-
-            widget.setToolTip("No server selected")
-            widget.setContextMenuPolicy(Qt.CustomContextMenu)
-            widget.customContextMenuRequested.connect(contextMenu)
-
-        text = QLabel('<span style="color: red;">Disconnected</span>')
-        text.setStyleSheet('padding-left: 1px; padding-right: 1px;')
-        szText = text.sizeHint()
-        addWidget(text, szText)
-        addContextMenu(text)
-
-        icon = QLabel()
-        icon.setStyleSheet('padding-right: 3px;')
-        szIcon = QSize(szInfo.height(), szInfo.height())
-        pixmap = QPixmap(plugin_resource('disconnected.png'))
-        icon.setPixmap(pixmap.scaled(szIcon.width(), szIcon.height(),
-                                     Qt.KeepAspectRatio,
-                                     Qt.SmoothTransformation))
-        szIcon = QSize(icon.sizeHint().width(), szIcon.height())
-        addWidget(icon, szIcon)
-        addContextMenu(icon)
-
-        # Disable and hide handles
-        self._widget.setHandleWidth(0)
-        for i in range(self._widget.count()):
-            self._widget.handle(i).setEnabled(False)
-
-        status.addPermanentWidget(self._widget)
-        logger.info("Installed widget in status bar")
-
-    def _uninstall_widget(self):
-        if self._widget:
-            status = self._find_status_bar()
-            status.removeWidget(self._widget)
-            self._widget = None
-            logger.info("Uninstalled widget from status bar")
+    def _uninstall_widgets(self):
+        if not self._status:
+            return
+        self._window.statusBar().removeWidget(self._label)
+        self._window.statusBar().removeWidget(self._status)
+        logger.info("Uninstalled widgets from status bar")
 
     ACTION_OPEN = 'idaconnect:open'
     ACTION_SAVE = 'idaconnect:save'
@@ -266,9 +207,20 @@ class IDAConnect(idaapi.plugin_t):
         logger.info("Uninstalled the 'Save to server' menu entry")
 
     def _print_banner(self):
-        params = PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHORS
+        params = self.PLUGIN_NAME, self.PLUGIN_VERSION, self.PLUGIN_AUTHORS
         banner = "%s v%s - (c) %s" % params
 
         log("-" * 75)
         log(banner)
         log("-" * 75)
+
+    def when_disconnected(self):
+        self._status.set_state(StatusWidget.DISCONNECTED)
+        self._status.set_server()
+
+    def when_connecting(self):
+        self._status.set_state(StatusWidget.CONNECTING)
+        self._status.set_server(self.network.get_host())
+
+    def when_connected(self):
+        self._status.set_state(StatusWidget.CONNECTED)

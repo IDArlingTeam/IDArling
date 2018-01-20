@@ -15,7 +15,7 @@ def log(message):
 
 
 def get_log_dir():
-    return os.path.join(idaapi.get_user_idadir(), '.idaconnect')
+    return os.path.join(idaapi.get_user_idadir(), '.idaconnect', 'logs')
 
 
 def logging_started():
