@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel
 
 from idaconnect.hooks import Hooks
 from idaconnect.network import Network
+from idaconnect.ui.dialogs import OpenDatabase
 from idaconnect.ui.widgets import StatusWidget
 from idaconnect.util import *
 
@@ -84,8 +85,8 @@ class IDAConnect(idaapi.plugin_t):
     def _installWidgets(self):
         if self._statusWidget:
             return
-        self._labelWidget = QLabel("%s v%s" % (self.PLUGIN_NAME,
-                                               self.PLUGIN_VERSION))
+        self._labelWidget = QLabel("%s v%s " % (self.PLUGIN_NAME,
+                                                self.PLUGIN_VERSION))
         self._window.statusBar().addPermanentWidget(self._labelWidget)
         self._statusWidget = StatusWidget(self)
         self._window.statusBar().addPermanentWidget(self._statusWidget)
@@ -105,6 +106,18 @@ class IDAConnect(idaapi.plugin_t):
         class OpenActionHandler(idaapi.action_handler_t):
 
             def activate(self, ctx):
+                databases = [
+                    ('Sample Database 1', 'ba9991fb4f68b5bcf54f4448b3a01e6b'),
+                    ('Sample Database 2', '5f42921db216a6408b840bfdcf28c9d2'),
+                    ('Sample Database 3', 'e934d89939136e8fa69bfde2f2033504')
+                ]
+                dialog = OpenDatabase(databases)
+
+                def dialogAccepted():
+                    db = dialog.getDatabase()
+                    print 'Opening database %s' % db[0]
+                dialog.accepted.connect(dialogAccepted)
+                dialog.open()
                 return 1
 
             def update(self, ctx):

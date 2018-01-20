@@ -43,7 +43,7 @@ class StatusWidget(QWidget):
                                                  Qt.KeepAspectRatio,
                                                  Qt.SmoothTransformation))
 
-        size = QSize(self._textWidget.sizeHint().width() +
+        size = QSize(self._textWidget.sizeHint().width() + 6 +
                      self._iconWidget.sizeHint().width(), pixmapHeight)
         self.setMinimumSize(size)
         self.setMaximumSize(size)
@@ -76,7 +76,7 @@ class StatusWidget(QWidget):
         painter = QPainter(self)
         map_ = painter.deviceTransform().map
         self._textWidget.render(painter, map_(QPoint(0, 0)))
-        current = self._textWidget.sizeHint().width()
+        current = self._textWidget.sizeHint().width() + 3
         self._iconWidget.render(painter, map_(QPoint(current, 0)))
 
     def setState(self, state):
