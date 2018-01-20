@@ -73,7 +73,7 @@ class IDBHooks(ida_idp.IDB_Hooks, HooksBase):
 
     def ti_changed(self, ea, t, fname):
         t = idc.GetTinfo(ea)
-        self._send_event(TiChangedEvent(ea, t))
+        self._sendEvent(TiChangedEvent(ea, t))
         return 0
 
 
