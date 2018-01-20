@@ -3,9 +3,9 @@ import logging
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
-    QDialog, QHBoxLayout, QVBoxLayout, QFormLayout, QGridLayout,
+    QDialog, QHBoxLayout, QVBoxLayout, QGridLayout,
     QWidget, QTableWidget, QTableWidgetItem,
-    QGroupBox, QLabel, QLineEdit, QPushButton)
+    QGroupBox, QLabel, QPushButton)
 
 from idaconnect.util import *
 

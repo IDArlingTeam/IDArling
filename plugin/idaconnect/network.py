@@ -104,6 +104,9 @@ class Network(object):
     def getPort(self):
         return self._port
 
+    def isConnected(self):
+        return self._installed and self._factory.isConnected()
+
     def install(self):
         if self._installed:
             return

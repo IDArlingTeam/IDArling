@@ -1,6 +1,7 @@
 import logging
 
 import idaapi
+import ida_kernwin
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel
 
@@ -120,16 +121,19 @@ class IDAConnect(idaapi.plugin_t):
                 return 1
 
             def update(self, ctx):
-                return idaapi.AST_ENABLE_ALWAYS
+                if plugin.network.isConnected():
+                    return idaapi.AST_ENABLE
+                return idaapi.AST_DISABLE
 
         iconPath = getPluginResource('open.png')
         iconData = str(open(iconPath, 'rb').read())
         self._openIconId = idaapi.load_custom_icon(data=iconData)
 
+        self._openHandler = OpenActionHandler()
         actionDesc = idaapi.action_desc_t(
             self.ACTION_OPEN,
             "Open from server...",
-            OpenActionHandler(),
+            self._openHandler,
             None,
             "Load a database from the server",
             self._openIconId
@@ -166,6 +170,10 @@ class IDAConnect(idaapi.plugin_t):
 
         logger.info("Uninstalled the 'Open from server' menu entry")
 
+    def _updateOpenAction(self):
+        ida_kernwin.update_action_state(self.ACTION_OPEN,
+                                        self._openHandler.update(None))
+
     def _installSaveAction(self):
         plugin = self
 
@@ -183,16 +191,19 @@ class IDAConnect(idaapi.plugin_t):
                 return 1
 
             def update(self, ctx):
-                return idaapi.AST_ENABLE_ALWAYS
+                if plugin.network.isConnected():
+                    return idaapi.AST_ENABLE
+                return idaapi.AST_DISABLE
 
         iconPath = getPluginResource('save.png')
         iconData = str(open(iconPath, 'rb').read())
         self._saveIconId = idaapi.load_custom_icon(data=iconData)
 
+        self._saveHandler = SaveActionHandler()
         actionDesc = idaapi.action_desc_t(
             self.ACTION_SAVE,
             "Save to server...",
-            SaveActionHandler(),
+            self._saveHandler,
             None,
             "Save the database to the server",
             self._saveIconId
@@ -229,6 +240,14 @@ class IDAConnect(idaapi.plugin_t):
 
         logger.info("Uninstalled the 'Save to server' menu entry")
 
+    def _updateSaveAction(self):
+        ida_kernwin.update_action_state(self.ACTION_SAVE,
+                                        self._saveHandler.update(None))
+
+    def _updateActions(self):
+        self._updateOpenAction()
+        self._updateSaveAction()
+
     def _printBanner(self):
         parameters = self.PLUGIN_NAME, self.PLUGIN_VERSION, self.PLUGIN_AUTHORS
         bannerText = "%s v%s - (c) %s" % parameters
@@ -243,10 +262,13 @@ class IDAConnect(idaapi.plugin_t):
     def whenDisconnected(self):
         self._statusWidget.setState(StatusWidget.DISCONNECTED)
         self._statusWidget.setServer()
+        self._updateActions()
 
     def whenConnecting(self):
         self._statusWidget.setState(StatusWidget.CONNECTING)
         self._statusWidget.setServer(self.network.getHost())
+        self._updateActions()
 
     def whenConnected(self):
         self._statusWidget.setState(StatusWidget.CONNECTED)
+        self._updateActions()
