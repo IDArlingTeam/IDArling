@@ -66,6 +66,8 @@ class IDBHooks(ida_idp.IDB_Hooks, HooksBase):
 
     def cmt_changed(self, ea, repeatable_cmt):
         cmt = idc.get_cmt(ea, repeatable_cmt)
+        if not cmt:
+            cmt = ""
         self._send_event(CmtChangedEvent(ea, repeatable_cmt, cmt))
         return 0
 
