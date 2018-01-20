@@ -3,7 +3,7 @@ import logging
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
-    QDialog, QHBoxLayout, QVBoxLayout, QFormLayout,
+    QDialog, QHBoxLayout, QVBoxLayout, QFormLayout, QGridLayout,
     QWidget, QTableWidget, QTableWidgetItem,
     QGroupBox, QLabel, QLineEdit, QPushButton)
 
@@ -23,36 +23,58 @@ class OpenDialog(QDialog):
         self.setWindowTitle("Open from Remote Server")
         iconPath = self._plugin.getResource('open.png')
         self.setWindowIcon(QIcon(iconPath))
-        self.resize(600, 300)
+        self.resize(900, 450)
 
         layout = QHBoxLayout(self)
-        self._leftSide = QTableWidget(3, 1, self)
-        self._leftSide.setHorizontalHeaderLabels(('Remote Databases',))
+        self._dbsTable = QTableWidget(len(dbs), 1, self)
+        self._dbsTable.setHorizontalHeaderLabels(('Remote Databases',))
         for i, db in enumerate(dbs):
-            item = QTableWidgetItem(db[0])
+            item = QTableWidgetItem("%s (%s)" % (str(db.getName()),
+                                                 str(db.getHash())))
             item.setData(Qt.UserRole, db)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self._leftSide.setItem(i, 0, item)
-        self._leftSide.horizontalHeader().setSectionsClickable(False)
-        self._leftSide.horizontalHeader().setStretchLastSection(True)
-        self._leftSide.verticalHeader().setVisible(False)
-        self._leftSide.setSelectionBehavior(QTableWidget.SelectItems)
-        self._leftSide.setSelectionMode(QTableWidget.SingleSelection)
-        self._leftSide.itemClicked.connect(self._itemClicked)
-        layout.addWidget(self._leftSide)
+            self._dbsTable.setItem(i, 0, item)
+        self._dbsTable.horizontalHeader().setSectionsClickable(False)
+        self._dbsTable.horizontalHeader().setStretchLastSection(True)
+        self._dbsTable.verticalHeader().setVisible(False)
+        self._dbsTable.setSelectionBehavior(QTableWidget.SelectRows)
+        self._dbsTable.setSelectionMode(QTableWidget.SingleSelection)
+        self._dbsTable.itemClicked.connect(self._dbClicked)
+        minSZ = self._dbsTable.minimumSize()
+        self._dbsTable.setMinimumSize(300, minSZ.height())
+        maxSZ = self._dbsTable.maximumSize()
+        self._dbsTable.setMaximumSize(300, maxSZ.height())
+        layout.addWidget(self._dbsTable)
 
         rightSide = QWidget(self)
         rightLayout = QVBoxLayout(rightSide)
-        detailsGroup = QGroupBox("Details", rightSide)
-        detailsLayout = QFormLayout(detailsGroup)
-        self._nameEdit = QLineEdit()
-        self._nameEdit.setReadOnly(True)
-        detailsLayout.addRow(QLabel("Name:"), self._nameEdit)
-        self._hashEdit = QLineEdit()
-        self._hashEdit.setReadOnly(True)
-        detailsLayout.addRow(QLabel("Hash:"), self._hashEdit)
-        rightLayout.addWidget(detailsGroup)
-        rightLayout.addStretch()
+        infoGroup = QGroupBox("Information", rightSide)
+        infoLayout = QGridLayout(infoGroup)
+        self._nameLabel = QLabel('<b>Name:</b>')
+        infoLayout.addWidget(self._nameLabel, 0, 0)
+        self._hashLabel = QLabel('<b>Hash:</b>')
+        infoLayout.addWidget(self._hashLabel, 1, 0)
+        infoLayout.setColumnStretch(0, 1)
+        self._typeLabel = QLabel('<b>Type:</b>')
+        infoLayout.addWidget(self._typeLabel, 0, 1)
+        self._dateLabel = QLabel('<b>Date:</b>')
+        infoLayout.addWidget(self._dateLabel, 1, 1)
+        infoLayout.setColumnStretch(1, 1)
+        rightLayout.addWidget(infoGroup)
+
+        revsGroup = QGroupBox("Revisions", rightSide)
+        revsLayout = QGridLayout(revsGroup)
+        self._revsTable = QTableWidget(0, 2, revsGroup)
+        self._revsTable.setHorizontalHeaderLabels(('Name', 'Date'))
+        horizontalHeader = self._revsTable.horizontalHeader()
+        horizontalHeader.setSectionsClickable(False)
+        horizontalHeader.setSectionResizeMode(0, horizontalHeader.Stretch)
+        self._revsTable.verticalHeader().setVisible(False)
+        self._revsTable.setSelectionBehavior(QTableWidget.SelectRows)
+        self._revsTable.setSelectionMode(QTableWidget.SingleSelection)
+        self._revsTable.itemClicked.connect(self._revClicked)
+        revsLayout.addWidget(self._revsTable, 0, 0)
+        rightLayout.addWidget(revsGroup)
 
         buttonsWidget = QWidget(rightSide)
         buttonsLayout = QHBoxLayout(buttonsWidget)
@@ -67,19 +89,32 @@ class OpenDialog(QDialog):
         rightLayout.addWidget(buttonsWidget)
         layout.addWidget(rightSide)
 
-    def _itemClicked(self, item):
+    def _dbClicked(self, item):
         db = item.data(Qt.UserRole)
-        self._nameEdit.setText(db[0])
-        self._hashEdit.setText(db[1])
+        self._nameLabel.setText('<b>Name:</b> %s' % str(db.getName()))
+        self._hashLabel.setText('<b>Hash:</b> %s' % str(db.getHash()))
+        self._typeLabel.setText('<b>Type:</b> %s' % str(db.getType()))
+        self._dateLabel.setText('<b>Date:</b> %s' % str(db.getDate()))
+        self._revsTable.setRowCount(len(db.getRevs()))
+        for i, rev in enumerate(db.getRevs()):
+            item = QTableWidgetItem(str(rev.getName()))
+            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+            self._revsTable.setItem(i, 0, item)
+            item = QTableWidgetItem(str(rev.getDate()))
+            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+            self._revsTable.setItem(i, 1, item)
+
+    def _revClicked(self, item):
         self._openButton.setEnabled(True)
 
-    def getDatabase(self):
-        return self._leftSide.currentItem().data(Qt.UserRole)
+    def getResult(self):
+        db = self._dbsTable.currentItem().data(Qt.UserRole)
+        return db, db.getRevs()[self._revsTable.currentRow()]
 
 
 class SaveDialog(QDialog):
 
-    def __init__(self, plugin, dbs, db):
+    def __init__(self, plugin, dbs):
         super(SaveDialog, self).__init__()
         self._plugin = plugin
         self._db = None
@@ -88,77 +123,110 @@ class SaveDialog(QDialog):
         self.setWindowTitle("Save to Remote Server")
         iconPath = self._plugin.getResource('save.png')
         self.setWindowIcon(QIcon(iconPath))
-        self.resize(600, 300)
+        self.resize(900, 450)
 
         layout = QHBoxLayout(self)
-        self._leftSide = QTableWidget(3, 1, self)
-        self._leftSide.setHorizontalHeaderLabels(('Remote Databases',))
-        for i, db_ in enumerate(dbs):
-            item = QTableWidgetItem(db_[0])
-            item.setData(Qt.UserRole, db_)
+        self._dbsTable = QTableWidget(len(dbs) + 1, 1, self)
+        self._dbsTable.setHorizontalHeaderLabels(('Remote Databases',))
+        for i, db in enumerate(dbs):
+            item = QTableWidgetItem("%s (%s)" % (str(db.getName()),
+                                                 str(db.getHash())))
+            item.setData(Qt.UserRole, db)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self._leftSide.setItem(i, 0, item)
-        self._leftSide.horizontalHeader().setSectionsClickable(False)
-        self._leftSide.horizontalHeader().setStretchLastSection(True)
-        self._leftSide.verticalHeader().setVisible(False)
-        self._leftSide.setSelectionBehavior(QTableWidget.SelectItems)
-        self._leftSide.setSelectionMode(QTableWidget.SingleSelection)
-        self._leftSide.itemClicked.connect(self._itemClicked)
-        layout.addWidget(self._leftSide)
+            self._dbsTable.setItem(i, 0, item)
+        newItem = QTableWidgetItem("<new database>")
+        newItem.setData(Qt.UserRole, None)
+        newItem.setFlags(newItem.flags() & ~Qt.ItemIsEditable)
+        self._dbsTable.setItem(len(dbs), 0, newItem)
+        self._dbsTable.horizontalHeader().setSectionsClickable(False)
+        self._dbsTable.horizontalHeader().setStretchLastSection(True)
+        self._dbsTable.verticalHeader().setVisible(False)
+        self._dbsTable.setSelectionBehavior(QTableWidget.SelectRows)
+        self._dbsTable.setSelectionMode(QTableWidget.SingleSelection)
+        self._dbsTable.itemClicked.connect(self._dbClicked)
+        minSZ = self._dbsTable.minimumSize()
+        self._dbsTable.setMinimumSize(300, minSZ.height())
+        maxSZ = self._dbsTable.maximumSize()
+        self._dbsTable.setMaximumSize(300, maxSZ.height())
+        layout.addWidget(self._dbsTable)
 
         rightSide = QWidget(self)
         rightLayout = QVBoxLayout(rightSide)
-        newGroup = QGroupBox("Create a new database", rightSide)
-        newLayout = QHBoxLayout(newGroup)
-        newRight = QWidget(newGroup)
-        newRightLayout = QFormLayout(newRight)
-        self._newNameEdit = QLineEdit(db[0])
-        newRightLayout.addRow(QLabel("Name:"), self._newNameEdit)
-        self._newHashEdit = QLineEdit(db[1])
-        self._newHashEdit.setReadOnly(True)
-        newRightLayout.addRow(QLabel("Hash:"), self._newHashEdit)
-        newLayout.addWidget(newRight)
-        self._newButton = QPushButton("New")
-        self._newButton.clicked.connect(self._newClicked)
-        newLayout.addWidget(self._newButton)
-        rightLayout.addWidget(newGroup)
-        rightLayout.addStretch()
+        infoGroup = QGroupBox("Information", rightSide)
+        infoLayout = QGridLayout(infoGroup)
+        self._nameLabel = QLabel('<b>Name:</b>')
+        infoLayout.addWidget(self._nameLabel, 0, 0)
+        self._hashLabel = QLabel('<b>Hash:</b>')
+        infoLayout.addWidget(self._hashLabel, 1, 0)
+        infoLayout.setColumnStretch(0, 1)
+        self._typeLabel = QLabel('<b>Type:</b>')
+        infoLayout.addWidget(self._typeLabel, 0, 1)
+        self._dateLabel = QLabel('<b>Date:</b>')
+        infoLayout.addWidget(self._dateLabel, 1, 1)
+        infoLayout.setColumnStretch(1, 1)
+        rightLayout.addWidget(infoGroup)
 
-        useGroup = QGroupBox("Use existing database", rightSide)
-        useLayout = QFormLayout(useGroup)
-        self._useNameEdit = QLineEdit()
-        self._useNameEdit.setReadOnly(True)
-        useLayout.addRow(QLabel("Name:"), self._useNameEdit)
-        self._useHashEdit = QLineEdit()
-        self._useHashEdit.setReadOnly(True)
-        useLayout.addRow(QLabel("Hash:"), self._useHashEdit)
-        rightLayout.addWidget(useGroup)
-        rightLayout.addStretch()
+        revsGroup = QGroupBox("Revisions", rightSide)
+        revsLayout = QGridLayout(revsGroup)
+        self._revsTable = QTableWidget(0, 2, revsGroup)
+        self._revsTable.setHorizontalHeaderLabels(('Name', 'Date'))
+        horizontalHeader = self._revsTable.horizontalHeader()
+        horizontalHeader.setSectionsClickable(False)
+        horizontalHeader.setSectionResizeMode(0, horizontalHeader.Stretch)
+        self._revsTable.verticalHeader().setVisible(False)
+        self._revsTable.setSelectionBehavior(QTableWidget.SelectRows)
+        self._revsTable.setSelectionMode(QTableWidget.SingleSelection)
+        revsLayout.addWidget(self._revsTable, 0, 0)
+        rightLayout.addWidget(revsGroup)
 
         buttonsWidget = QWidget(rightSide)
         buttonsLayout = QHBoxLayout(buttonsWidget)
         buttonsLayout.addStretch()
-        self._openButton = QPushButton("Save")
-        self._openButton.setEnabled(False)
-        self._openButton.clicked.connect(self.accept)
-        buttonsLayout.addWidget(self._openButton)
+        self._saveButton = QPushButton("Save")
+        self._saveButton.setEnabled(False)
+        self._saveButton.clicked.connect(self.accept)
+        buttonsLayout.addWidget(self._saveButton)
         cancelButton = QPushButton("Cancel")
         cancelButton.clicked.connect(self.reject)
         buttonsLayout.addWidget(cancelButton)
         rightLayout.addWidget(buttonsWidget)
         layout.addWidget(rightSide)
 
-    def _itemClicked(self, item):
+    def _dbClicked(self, item):
         db = item.data(Qt.UserRole)
-        self._useNameEdit.setText(db[0])
-        self._useHashEdit.setText(db[1])
-        self._openButton.setEnabled(True)
+        self._saveButton.setEnabled(True)
+        dbName = str(db.getName()) if db else ''
+        self._nameLabel.setText('<b>Name:</b> %s' % dbName)
+        dbHash = str(db.getHash()) if db else ''
+        self._hashLabel.setText('<b>Hash:</b> %s' % dbHash)
+        dbType = str(db.getType()) if db else ''
+        self._typeLabel.setText('<b>Type:</b> %s' % dbType)
+        dbDate = str(db.getDate()) if db else ''
+        self._dateLabel.setText('<b>Date:</b> %s' % dbDate)
+        dbRevs = db.getRevs() if db else []
+        self._revsTable.setRowCount(len(dbRevs) + 1)
+        for i, rev in enumerate(dbRevs):
+            item = QTableWidgetItem(str(rev.getName()))
+            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+            self._revsTable.setItem(i, 0, item)
+            item = QTableWidgetItem(str(rev.getDate()))
+            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+            self._revsTable.setItem(i, 1, item)
+        newItem = QTableWidgetItem("<new revision>")
+        newItem.setFlags(newItem.flags() & ~Qt.ItemIsEditable)
+        self._revsTable.setItem(len(dbRevs), 0, newItem)
+        newItem = QTableWidgetItem()
+        newItem.setFlags(newItem.flags() & ~Qt.ItemIsEditable)
+        self._revsTable.setItem(len(dbRevs), 1, newItem)
 
-    def _newClicked(self):
-        self._db = (self._newNameEdit.text(), self._newHashEdit.text())
-        self.accept()
+    def _revClicked(self, item):
+        self._saveButton.setEnabled(True)
 
-    def getDatabase(self):
-        if self._db:
-            return self._db
-        return self._leftSide.currentItem().data(Qt.UserRole)
+    def getResult(self):
+        db = self._dbsTable.currentItem().data(Qt.UserRole)
+        if db is None:
+            return None, None
+        revId = self._revsTable.currentRow()
+        if revId >= len(db.getRevs()):
+            return db, None
+        return db, db.getRevs()[revId]

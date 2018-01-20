@@ -5,6 +5,7 @@ import idaapi
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel
 
 from idaconnect.hooks import Hooks
+from idaconnect.models import Database, Revision
 from idaconnect.network import Network
 from idaconnect.ui.dialogs import OpenDialog, SaveDialog
 from idaconnect.ui.widgets import StatusWidget
@@ -108,18 +109,14 @@ class IDAConnect(idaapi.plugin_t):
         class OpenActionHandler(idaapi.action_handler_t):
 
             def activate(self, ctx):
-                dbs = [
-                    ('Sample Database 1', 'ba9991fb4f68b5bcf54f4448b3a01e6b'),
-                    ('Sample Database 2', '5f42921db216a6408b840bfdcf28c9d2'),
-                    ('Sample Database 3', 'e934d89939136e8fa69bfde2f2033504')
-                ]
-                dialog = OpenDialog(plugin, dbs)
+                dialog = OpenDialog(plugin, [])
 
                 def dialogAccepted():
-                    db = dialog.getDatabase()
-                    print 'Opening database %s' % db[0]
+                    db, rev = dialog.getResult()
+                    print 'Opening from database %s' % db.getName()
+                    print 'and from revision %s' % rev.getName()
                 dialog.accepted.connect(dialogAccepted)
-                dialog.open()
+                dialog.exec_()
                 return 1
 
             def update(self, ctx):
@@ -175,19 +172,14 @@ class IDAConnect(idaapi.plugin_t):
         class SaveActionHandler(idaapi.action_handler_t):
 
             def activate(self, ctx):
-                dbs = [
-                    ('Sample Database 1', 'ba9991fb4f68b5bcf54f4448b3a01e6b'),
-                    ('Sample Database 2', '5f42921db216a6408b840bfdcf28c9d2'),
-                    ('Sample Database 3', 'e934d89939136e8fa69bfde2f2033504')
-                ]
-                db = ('Sample Database', '0123456789abcdef0123456789abcdef')
-                dialog = SaveDialog(plugin, dbs, db)
+                dialog = SaveDialog(plugin, [])
 
                 def dialogAccepted():
-                    db = dialog.getDatabase()
-                    print 'Saving database %s' % db[0]
+                    db, rev = dialog.getResult()
+                    print 'Saving to database %s' % db.getName()
+                    print 'and to revision %s' % rev.getName()
                 dialog.accepted.connect(dialogAccepted)
-                dialog.open()
+                dialog.exec_()
                 return 1
 
             def update(self, ctx):
