@@ -1,7 +1,7 @@
 import idc
 import ida_funcs
 
-from events import Event
+from events_abc import Event
 
 
 class MakeCodeEvent(Event):

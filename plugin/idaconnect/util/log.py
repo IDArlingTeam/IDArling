@@ -5,23 +5,6 @@ import logging
 import idaapi
 
 
-def log(message):
-    prefix_message = "[IDAConnect] %s" % message
-
-    if idaapi.is_msg_inited():
-        print prefix_message
-    else:
-        logger.info(message)
-
-
-def getLogDir():
-    return os.path.join(idaapi.get_user_idadir(), '.idaconnect', 'logs')
-
-
-def loggingStarted():
-    return 'logger' in globals()
-
-
 class LoggerProxy(object):
     def __init__(self, logger, stream, logLevel=logging.INFO):
         self._logger = logger
@@ -40,11 +23,15 @@ class LoggerProxy(object):
         pass
 
 
+def loggingStarted():
+    return 'logger' in globals()
+
+
 def startLogging():
     global logger
     logger = logging.getLogger('IDAConnect')
 
-    logDir = getLogDir()
+    logDir = os.path.join(idaapi.get_user_idadir(), '.idaconnect', 'logs')
     if not os.path.exists(logDir):
         os.makedirs(logDir)
     logPath = os.path.join(logDir, 'idaconnect.%s.log' % os.getpid())

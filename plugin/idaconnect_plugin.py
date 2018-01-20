@@ -5,8 +5,7 @@ import ida_kernwin
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel
 
-from idaconnect.hooks import Hooks
-from idaconnect.models import Database, Revision
+from idaconnect.hooks import HooksCore
 from idaconnect.network import Network
 from idaconnect.ui.dialogs import OpenDialog, SaveDialog
 from idaconnect.ui.widgets import StatusWidget
@@ -32,7 +31,7 @@ class IDAConnect(idaapi.plugin_t):
     wanted_hotkey = ""
 
     def __init__(self):
-        self.hooks = Hooks(self)
+        self.hooks = HooksCore(self)
         self.network = Network(self)
 
         self._window = None
@@ -125,7 +124,7 @@ class IDAConnect(idaapi.plugin_t):
                     return idaapi.AST_ENABLE
                 return idaapi.AST_DISABLE
 
-        iconPath = getPluginResource('open.png')
+        iconPath = pluginResource('open.png')
         iconData = str(open(iconPath, 'rb').read())
         self._openIconId = idaapi.load_custom_icon(data=iconData)
 
@@ -195,7 +194,7 @@ class IDAConnect(idaapi.plugin_t):
                     return idaapi.AST_ENABLE
                 return idaapi.AST_DISABLE
 
-        iconPath = getPluginResource('save.png')
+        iconPath = pluginResource('save.png')
         iconData = str(open(iconPath, 'rb').read())
         self._saveIconId = idaapi.load_custom_icon(data=iconData)
 
@@ -252,12 +251,13 @@ class IDAConnect(idaapi.plugin_t):
         parameters = self.PLUGIN_NAME, self.PLUGIN_VERSION, self.PLUGIN_AUTHORS
         bannerText = "%s v%s - (c) %s" % parameters
 
-        log("-" * 75)
-        log(bannerText)
-        log("-" * 75)
+        prefix = '[IDAConnect] '
+        print prefix + ("-" * 75)
+        print prefix + bannerText
+        print prefix + ("-" * 75)
 
     def getResource(self, resource):
-        return getPluginResource(resource)
+        return pluginResource(resource)
 
     def whenDisconnected(self):
         self._statusWidget.setState(StatusWidget.DISCONNECTED)

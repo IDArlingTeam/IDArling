@@ -1,21 +1,17 @@
-class MetaRegistry(type):
-    REGISTRY = {}
+from ..util.misc import makeMetaClass
 
-    def __new__(cls, name, bases, attrs):
-        eventCls = type.__new__(cls, name, bases, attrs)
-        MetaRegistry.REGISTRY[eventCls._type] = eventCls
-        return eventCls
+REGISTRY = {}
 
 
 class Event(dict):
-    __metaclass__ = MetaRegistry
+    __metaclass__ = makeMetaClass(REGISTRY)
 
     _type = None
 
     @staticmethod
     def new(dct):
         del dct['type']
-        eventCls = MetaRegistry.REGISTRY[dct['event_type']]
+        eventCls = REGISTRY[dct['event_type']]
         del dct['event_type']
         event = eventCls(**dct)
         return event

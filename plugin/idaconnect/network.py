@@ -9,7 +9,8 @@ from twisted.internet import reactor, protocol, defer
 from twisted.internet.protocol import ClientFactory
 from twisted.protocols import basic
 
-from events.events import Event
+from core import Core
+from event.events_abc import Event
 from util.misc import byteify
 
 
@@ -24,9 +25,6 @@ class ClientProtocol(basic.LineReceiver, object):
         self._connected = False
         self._incoming = defer.DeferredQueue()
         self._outgoing = defer.DeferredQueue()
-
-    def isConnected(self):
-        return self._connected
 
     def connectionMade(self):
         logger.debug("Connected to server")
@@ -45,6 +43,9 @@ class ClientProtocol(basic.LineReceiver, object):
         logger.debug("Disconnected from server: %s" % reason)
         self._connected = False
         self._plugin.whenDisconnected()
+
+    def isConnected(self):
+        return self._connected
 
     def sendPacket(self, pkt):
         self._outgoing.put(pkt)
@@ -88,13 +89,10 @@ class ClientFactory_(ClientFactory, object):
             self._protocol.sendPacket(pkt)
 
 
-class Network(object):
+class Network(Core):
 
     def __init__(self, plugin):
-        super(Network, self).__init__()
-        self._plugin = plugin
-        self._installed = False
-
+        super(Network, self).__init__(plugin)
         self._host = ''
         self._port = 0
 
@@ -104,21 +102,12 @@ class Network(object):
     def getPort(self):
         return self._port
 
-    def isConnected(self):
-        return self._installed and self._factory.isConnected()
-
-    def install(self):
-        if self._installed:
-            return
+    def _install(self):
         self._factory = ClientFactory_(self._plugin)
-        self._installed = True
         reactor.runReturn()
 
-    def uninstall(self):
-        if not self._installed:
-            return
+    def _uninstall(self):
         self.disconnect()
-        self._installed = False
         reactor.stop()
 
     def connect(self, host, port):
@@ -138,6 +127,9 @@ class Network(object):
         logger.debug("Disconnecting")
         self._connector.disconnect()
         self._plugin.whenDisconnected()
+
+    def isConnected(self):
+        return self._installed and self._factory.isConnected()
 
     def sendEvent(self, event):
         pkt = json.dumps(event)

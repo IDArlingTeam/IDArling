@@ -1,6 +1,6 @@
 import idc
 
-from events import Event
+from events_abc import Event
 
 
 class UndefinedEvent(Event):

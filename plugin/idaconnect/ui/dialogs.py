@@ -7,8 +7,6 @@ from PyQt5.QtWidgets import (
     QWidget, QTableWidget, QTableWidgetItem,
     QGroupBox, QLabel, QPushButton)
 
-from idaconnect.util import *
-
 
 logger = logging.getLogger('IDAConnect.Dialogs')
 
