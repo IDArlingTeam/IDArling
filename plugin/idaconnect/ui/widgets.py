@@ -1,11 +1,13 @@
-import sys   # noqa
-sys.path.append('../..')  # noqa
+import logging
 
 from PyQt5.QtCore import Qt, QPoint, QSize
 from PyQt5.QtGui import QPixmap, QIcon, QPainter
 from PyQt5.QtWidgets import QWidget, QLabel, QMenu, QAction
 
 from idaconnect.util import *
+
+
+logger = logging.getLogger('IDAConnect.Widgets')
 
 
 class StatusWidget(QWidget):
@@ -26,6 +28,7 @@ class StatusWidget(QWidget):
         self._update()
 
     def _update(self):
+        logger.debug("Updating widget state")
         byState = {
             self.DISCONNECTED: ('red', 'Disconnected', 'disconnected.png'),
             self.CONNECTING: ('orange', 'Connecting', 'connecting.png'),
@@ -37,7 +40,7 @@ class StatusWidget(QWidget):
         self._textWidget = QLabel(textFmt % (self._server, color, text))
 
         self._iconWidget = QLabel()
-        pixmap = QPixmap(getPluginResource(icon))
+        pixmap = QPixmap(self._plugin.getResource(icon))
         pixmapHeight = self._textWidget.sizeHint().height()
         self._iconWidget.setPixmap(pixmap.scaled(pixmapHeight, pixmapHeight,
                                                  Qt.KeepAspectRatio,
@@ -50,9 +53,10 @@ class StatusWidget(QWidget):
         self.repaint()
 
     def _contextMenu(self, point):
+        logger.debug("Opening widget context menu")
         menu = QMenu(self)
         settings = QAction('Network Settings', menu)
-        iconPath = getPluginResource('settings.png')
+        iconPath = self._plugin.getResource('settings.png')
         settings.setIcon(QIcon(iconPath))
         menu.addAction(settings)
 

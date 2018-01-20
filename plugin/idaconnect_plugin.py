@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel
 
 from idaconnect.hooks import Hooks
 from idaconnect.network import Network
-from idaconnect.ui.dialogs import OpenDatabase
+from idaconnect.ui.dialogs import OpenDialog, SaveDialog
 from idaconnect.ui.widgets import StatusWidget
 from idaconnect.util import *
 
@@ -103,15 +103,17 @@ class IDAConnect(idaapi.plugin_t):
     ACTION_SAVE = 'idaconnect:save'
 
     def _installOpenAction(self):
+        plugin = self
+
         class OpenActionHandler(idaapi.action_handler_t):
 
             def activate(self, ctx):
-                databases = [
+                dbs = [
                     ('Sample Database 1', 'ba9991fb4f68b5bcf54f4448b3a01e6b'),
                     ('Sample Database 2', '5f42921db216a6408b840bfdcf28c9d2'),
                     ('Sample Database 3', 'e934d89939136e8fa69bfde2f2033504')
                 ]
-                dialog = OpenDatabase(databases)
+                dialog = OpenDialog(plugin, dbs)
 
                 def dialogAccepted():
                     db = dialog.getDatabase()
@@ -168,9 +170,24 @@ class IDAConnect(idaapi.plugin_t):
         logger.info("Uninstalled the 'Open from server' menu entry")
 
     def _installSaveAction(self):
+        plugin = self
+
         class SaveActionHandler(idaapi.action_handler_t):
 
             def activate(self, ctx):
+                dbs = [
+                    ('Sample Database 1', 'ba9991fb4f68b5bcf54f4448b3a01e6b'),
+                    ('Sample Database 2', '5f42921db216a6408b840bfdcf28c9d2'),
+                    ('Sample Database 3', 'e934d89939136e8fa69bfde2f2033504')
+                ]
+                db = ('Sample Database', '0123456789abcdef0123456789abcdef')
+                dialog = SaveDialog(plugin, dbs, db)
+
+                def dialogAccepted():
+                    db = dialog.getDatabase()
+                    print 'Saving database %s' % db[0]
+                dialog.accepted.connect(dialogAccepted)
+                dialog.open()
                 return 1
 
             def update(self, ctx):
@@ -227,6 +244,9 @@ class IDAConnect(idaapi.plugin_t):
         log("-" * 75)
         log(bannerText)
         log("-" * 75)
+
+    def getResource(self, resource):
+        return getPluginResource(resource)
 
     def whenDisconnected(self):
         self._statusWidget.setState(StatusWidget.DISCONNECTED)
