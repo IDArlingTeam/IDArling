@@ -130,6 +130,8 @@ class Network(object):
     def disconnect(self):
         if not self._factory.isConnected():
             return
+        self._host = ''
+        self._port = 0
         logger.debug("Disconnecting")
         self._connector.disconnect()
         self._plugin.whenDisconnected()

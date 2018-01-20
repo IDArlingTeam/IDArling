@@ -19,7 +19,7 @@ class StatusWidget(QWidget):
 
         self._state = self.DISCONNECTED
         self._server = '&lt;no server&gt;'
-        self._servers = []
+        self._servers = ['127.0.0.1']
 
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self._contextMenu)
@@ -52,8 +52,6 @@ class StatusWidget(QWidget):
     def _contextMenu(self, point):
         menu = QMenu(self)
         settings = QAction('Network Settings', menu)
-        settings.triggered.connect(  # FIXME: show network settings form
-            lambda checked: self._plugin.network.connect('127.0.0.1', 31013))
         iconPath = getPluginResource('settings.png')
         settings.setIcon(QIcon(iconPath))
         menu.addAction(settings)
@@ -61,7 +59,17 @@ class StatusWidget(QWidget):
         if self._servers:
             menu.addSeparator()
             for server in self._servers:
-                menu.addAction(server)
+                isConnected = server == self._plugin.network.getHost()
+                serverAction = QAction(server, menu, checkable=True)
+                serverAction.setChecked(isConnected)
+
+                def serverActionToggled(checked=False):
+                    if checked:
+                        self._plugin.network.connect(server, 31013)
+                    else:
+                        self._plugin.network.disconnect()
+                serverAction.toggled.connect(serverActionToggled)
+                menu.addAction(serverAction)
         menu.exec_(self.mapToGlobal(point))
 
     def paintEvent(self, event):
