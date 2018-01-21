@@ -8,7 +8,11 @@ from PyQt5.QtWidgets import (
     QGroupBox, QLabel, QPushButton)
 
 
-logger = logging.getLogger('IDAConnect.Dialogs')
+logger = logging.getLogger('IDAConnect.Interface')
+
+# -----------------------------------------------------------------------------
+# Dialogs
+# -----------------------------------------------------------------------------
 
 
 class OpenDialog(QDialog):
@@ -17,12 +21,14 @@ class OpenDialog(QDialog):
         super(OpenDialog, self).__init__()
         self._plugin = plugin
 
+        # General setup
         logger.debug("Showing open database dialog")
         self.setWindowTitle("Open from Remote Server")
         iconPath = self._plugin.getResource('open.png')
         self.setWindowIcon(QIcon(iconPath))
         self.resize(900, 450)
 
+        # Setup layout and widgets
         layout = QHBoxLayout(self)
         self._dbsTable = QTableWidget(len(dbs), 1, self)
         self._dbsTable.setHorizontalHeaderLabels(('Remote Databases',))
@@ -87,12 +93,19 @@ class OpenDialog(QDialog):
         rightLayout.addWidget(buttonsWidget)
         layout.addWidget(rightSide)
 
+    # -------------------------------------------------------------------------
+    # Internal Events
+    # -------------------------------------------------------------------------
+
     def _dbClicked(self, item):
+        # When a database is clicked, update display
         db = item.data(Qt.UserRole)
         self._nameLabel.setText('<b>Name:</b> %s' % str(db.getName()))
         self._hashLabel.setText('<b>Hash:</b> %s' % str(db.getHash()))
         self._typeLabel.setText('<b>Type:</b> %s' % str(db.getType()))
         self._dateLabel.setText('<b>Date:</b> %s' % str(db.getDate()))
+
+        # Including its list of revisions
         self._revsTable.setRowCount(len(db.getRevs()))
         for i, rev in enumerate(db.getRevs()):
             item = QTableWidgetItem(str(rev.getName()))
@@ -103,9 +116,15 @@ class OpenDialog(QDialog):
             self._revsTable.setItem(i, 1, item)
 
     def _revClicked(self, item):
+        # When a revision is clicked, we're all set
         self._openButton.setEnabled(True)
 
+    # -------------------------------------------------------------------------
+    # Getters/Setters
+    # -------------------------------------------------------------------------
+
     def getResult(self):
+        # Used to get the database and revision
         db = self._dbsTable.currentItem().data(Qt.UserRole)
         return db, db.getRevs()[self._revsTable.currentRow()]
 
@@ -117,12 +136,14 @@ class SaveDialog(QDialog):
         self._plugin = plugin
         self._db = None
 
+        # General setup
         logger.debug("Showing save database dialog")
         self.setWindowTitle("Save to Remote Server")
         iconPath = self._plugin.getResource('save.png')
         self.setWindowIcon(QIcon(iconPath))
         self.resize(900, 450)
 
+        # Setup layout and widgets
         layout = QHBoxLayout(self)
         self._dbsTable = QTableWidget(len(dbs) + 1, 1, self)
         self._dbsTable.setHorizontalHeaderLabels(('Remote Databases',))
@@ -190,7 +211,12 @@ class SaveDialog(QDialog):
         rightLayout.addWidget(buttonsWidget)
         layout.addWidget(rightSide)
 
+    # -------------------------------------------------------------------------
+    # Internal Events
+    # -------------------------------------------------------------------------
+
     def _dbClicked(self, item):
+        # When a database is clicked, update display
         db = item.data(Qt.UserRole)
         self._saveButton.setEnabled(True)
         dbName = str(db.getName()) if db else ''
@@ -201,6 +227,8 @@ class SaveDialog(QDialog):
         self._typeLabel.setText('<b>Type:</b> %s' % dbType)
         dbDate = str(db.getDate()) if db else ''
         self._dateLabel.setText('<b>Date:</b> %s' % dbDate)
+
+        # Including its list of revisions
         dbRevs = db.getRevs() if db else []
         self._revsTable.setRowCount(len(dbRevs) + 1)
         for i, rev in enumerate(dbRevs):
@@ -218,9 +246,15 @@ class SaveDialog(QDialog):
         self._revsTable.setItem(len(dbRevs), 1, newItem)
 
     def _revClicked(self, item):
+        # When a revision is clicked, we're all set
         self._saveButton.setEnabled(True)
 
+    # -------------------------------------------------------------------------
+    # Getters/Setters
+    # -------------------------------------------------------------------------
+
     def getResult(self):
+        # Used to get the database and revision
         db = self._dbsTable.currentItem().data(Qt.UserRole)
         if db is None:
             return None, None

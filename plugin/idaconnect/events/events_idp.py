@@ -1,6 +1,15 @@
+import logging
+
 import idc
 
 from events_abc import Event
+
+
+logger = logging.getLogger('IDAConnect.Events')
+
+# -----------------------------------------------------------------------------
+# IDP Events
+# -----------------------------------------------------------------------------
 
 
 class UndefinedEvent(Event):

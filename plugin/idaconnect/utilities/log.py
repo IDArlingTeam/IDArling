@@ -4,8 +4,13 @@ import logging
 
 import idaapi
 
+# -----------------------------------------------------------------------------
+# Logging Utilities
+# -----------------------------------------------------------------------------
+
 
 class LoggerProxy(object):
+
     def __init__(self, logger, stream, logLevel=logging.INFO):
         self._logger = logger
         self._logLevel = logLevel
@@ -31,11 +36,13 @@ def startLogging():
     global logger
     logger = logging.getLogger('IDAConnect')
 
+    # Get path to the log file
     logDir = os.path.join(idaapi.get_user_idadir(), '.idaconnect', 'logs')
     if not os.path.exists(logDir):
         os.makedirs(logDir)
     logPath = os.path.join(logDir, 'idaconnect.%s.log' % os.getpid())
 
+    # Configure the logger
     logging.basicConfig(
         filename=logPath,
         format='%(asctime)s | %(name)20s | %(levelname)7s: %(message)s',
@@ -43,9 +50,11 @@ def startLogging():
         level=logging.DEBUG
     )
 
+    # Redirect standard output
     stdoutLogger = logging.getLogger('IDAConnect.STDOUT')
     sys.stdout = LoggerProxy(stdoutLogger, sys.stdout, logging.INFO)
 
+    # Redirect standard error output
     stderrLogger = logging.getLogger('IDAConnect.STDERR')
     sys.stderr = LoggerProxy(stderrLogger, sys.stderr, logging.ERROR)
 

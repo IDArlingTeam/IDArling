@@ -1,16 +1,25 @@
+import logging
+
 import idc
 import ida_idp
 
+# Import ABC and events
 from hooks_abc import Hooks
-from ..event.events_idp import *
-from ..event.events_idb import *
+from ..events.events_idb import *
+
+
+logger = logging.getLogger('IDAConnect.Core')
+
+# -----------------------------------------------------------------------------
+# IDB Hooks
+# -----------------------------------------------------------------------------
 
 
 class IDBHooks(ida_idp.IDB_Hooks, Hooks):
 
-    def __init__(self, network):
+    def __init__(self, plugin):
         ida_idp.IDB_Hooks.__init__(self)
-        Hooks.__init__(self, network)
+        Hooks.__init__(self, plugin)
 
     def make_code(self, insn):
         self._sendEvent(MakeCodeEvent(insn.ea))

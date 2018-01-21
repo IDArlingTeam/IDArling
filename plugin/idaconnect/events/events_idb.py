@@ -1,7 +1,16 @@
+import logging
+
 import idc
 import ida_funcs
 
 from events_abc import Event
+
+
+logger = logging.getLogger('IDAConnect.Events')
+
+# -----------------------------------------------------------------------------
+# IDB Events
+# -----------------------------------------------------------------------------
 
 
 class MakeCodeEvent(Event):

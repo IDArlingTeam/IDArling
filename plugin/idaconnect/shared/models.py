@@ -1,3 +1,8 @@
+# -----------------------------------------------------------------------------
+# Models
+# -----------------------------------------------------------------------------
+
+
 class Database(dict):
 
     def __init__(self, db_hash, db_name, db_type, db_date, db_revs):
@@ -26,13 +31,17 @@ class Database(dict):
 
 class Revision(dict):
 
-    def __init__(self, rev_name, rev_date):
+    def __init__(self, rev_name, rev_auth, rev_date):
         super(Revision, self).__init__()
         self['rev_name'] = rev_name
+        self['rev_auth'] = rev_auth
         self['rev_date'] = rev_date
 
     def getName(self):
         return self['rev_name']
+
+    def getAuth(self):
+        return self['rev_auth']
 
     def getDate(self):
         return self['rev_date']
