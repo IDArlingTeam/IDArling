@@ -26,7 +26,7 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
         return 0
 
     def make_data(self, ea, flags, tid, size):
-        self._sendEvent(MakeDataEvent(ea, flags, tid, size))
+        self._sendEvent(MakeDataEvent(ea, flags, size, tid))
         return 0
 
     def renamed(self, ea, new_name, local_name):
@@ -41,49 +41,48 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
         self._sendEvent(DeletingFuncEvent(func.startEA))
         return 0
 
-    def set_func_start(self, func, new_ea):
-        self._sendEvent(SetFuncStartEvent(func.startEA, new_ea))
+    def set_func_start(self, func, new_start):
+        self._sendEvent(SetFuncStartEvent(func.startEA, new_start))
         return 0
 
-    def set_func_end(self, func, new_ea):
-        self._sendEvent(SetFuncEndEvent(func.startEA, new_ea))
+    def set_func_end(self, func, new_end):
+        self._sendEvent(SetFuncEndEvent(func.startEA, new_end))
         return 0
 
     def cmt_changed(self, ea, repeatable_cmt):
         cmt = idc.get_cmt(ea, repeatable_cmt)
-        if not cmt:
-            cmt = ""
-        self._sendEvent(CmtChangedEvent(ea, repeatable_cmt, cmt))
+        cmt = '' if not cmt else cmt
+        self._sendEvent(CmtChangedEvent(ea, cmt, repeatable_cmt))
         return 0
 
-    def ti_changed(self, ea, t, fname):
-        t = idc.GetTinfo(ea)
-        self._sendEvent(TiChangedEvent(ea, t))
+    def ti_changed(self, ea, type_, fname):
+        py_type = idc.GetTinfo(ea)
+        self._sendEvent(TiChangedEvent(ea, py_type))
         return 0
 
     def op_type_changed(self, ea, n):
         flags = idc.get_full_flags(ea)
         if n == 0:
             if idc.isHex0(flags):
-                op = "hex"
+                op = 'hex'
             if idc.isBin0(flags):
-                op = "bin"
+                op = 'bin'
             if idc.isDec0(flags):
-                op = "dec"
+                op = 'dec'
             if idc.isChar0(flags):
-                op = "chr"
+                op = 'chr'
             if idc.isOct0(flags):
-                op = "oct"
+                op = 'oct'
         else:
             if idc.isHex1(flags):
-                op = "hex"
+                op = 'hex'
             if idc.isBin1(flags):
-                op = "bin"
+                op = 'bin'
             if idc.isDec1(flags):
-                op = "dec"
+                op = 'dec'
             if idc.isChar1(flags):
-                op = "chr"
+                op = 'chr'
             if idc.isOct1(flags):
-                op = "oct"
-        self._sendEvent(OpTypeChangedEvent(ea, n, flags, op))
+                op = 'oct'
+        self._sendEvent(OpTypeChangedEvent(ea, n, op))
         return 0
