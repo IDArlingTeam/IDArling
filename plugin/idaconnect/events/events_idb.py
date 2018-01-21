@@ -126,7 +126,7 @@ class TiChangedEvent(Event):
 
 
 class OpTypeChangedEvent(Event):
-    TYPE = 'op_ti_changed'
+    TYPE = 'op_type_changed'
 
     def __init__(self, ea, n, op):
         super(OpTypeChangedEvent, self).__init__()
@@ -145,3 +145,15 @@ class OpTypeChangedEvent(Event):
             idc.op_chr(self['ea'], self['n'])
         if self['op'] == 'oct':
             idc.op_oct(self['ea'], self['n'])
+
+
+class EnumCreatedEvent(Event):
+    TYPE = 'enum_created'
+
+    def __init__(self, enum, name):
+        super(EnumCreatedEvent, self).__init__()
+        self['enum'] = enum
+        self['name'] = name
+
+    def __call__(self):
+        idc.add_enum(self['enum'], self['name'], 0)

@@ -74,7 +74,8 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
             elif idc.isOct0(flags):
                 op = 'oct'
             else:
-                raise NotImplementedError("type not supported")
+                # FIXME: Find a better way
+                pass
         else:
             if idc.isHex1(flags):
                 op = 'hex'
@@ -87,6 +88,12 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
             elif idc.isOct1(flags):
                 op = 'oct'
             else:
-                raise NotImplementedError("type not supported")
+                # FIXME: Find a better way
+                pass
         self._sendEvent(OpTypeChangedEvent(ea, n, op))
+        return 0
+
+    def enum_created(self, enum):
+        name = idc.get_enum_name(enum)
+        self._sendEvent(EnumCreatedEvent(enum, name))
         return 0
