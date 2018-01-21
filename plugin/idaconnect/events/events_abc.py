@@ -1,4 +1,4 @@
-from ..shared.packets import Packet
+from ..shared.packets import Packet, EventBase
 
 # -----------------------------------------------------------------------------
 # Events
@@ -18,7 +18,7 @@ class EventMeta(type):
         return newCls
 
 
-class Event(Packet):
+class Event(EventBase):
     __metaclass__ = EventMeta
 
     TYPE = None
@@ -32,10 +32,10 @@ class Event(Packet):
 
     @staticmethod
     def isEvent(dct):
-        return Packet.isPacket(dct) and dct['type'] == 'event'
+        return EventBase.isEvent(dct)
 
     def __init__(self):
-        super(Event, self).__init__('event')
+        super(Event, self).__init__()
         self['event_type'] = self.TYPE
 
     def __call__(self):

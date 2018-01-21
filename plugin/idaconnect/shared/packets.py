@@ -16,6 +16,21 @@ class Packet(dict):
         self['type'] = type
 
 # -----------------------------------------------------------------------------
+# Events
+# -----------------------------------------------------------------------------
+
+
+class EventBase(Packet):
+
+    @staticmethod
+    def isEvent(dct):
+        return Packet.isPacket(dct) and dct['type'] == 'event'
+
+    def __init__(self, **kwargs):
+        super(EventBase, self).__init__('event')
+        self.update(kwargs)
+
+# -----------------------------------------------------------------------------
 # Commands
 # -----------------------------------------------------------------------------
 

@@ -7,7 +7,8 @@ from twisted.internet import reactor, protocol
 from twisted.python import log
 
 from shared.models import Database, Revision
-from shared.packets import Command, ListDatabases, ListDatabasesReply
+from shared.packets import (EventBase, Command,
+                            ListDatabases, ListDatabasesReply)
 from shared.protocol import Protocol
 
 # -----------------------------------------------------------------------------
@@ -82,9 +83,11 @@ class ServerProtocol(Protocol):
             # Call the handler
             self._handlers[cmd.__class__](cmd)
 
-        elif packet['type'] == 'event':  # FIXME: Find a better way
+        elif EventBase.isEvent(packet):
+            # Parse the event
+            event = EventBase(**packet)
             # Send the event to all clients
-            self._factory.sendLineToAll(line, self)
+            self._factory.sendPacketToAll(event, self)
 
         else:
             return False

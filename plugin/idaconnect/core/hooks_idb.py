@@ -65,24 +65,28 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
         if n == 0:
             if idc.isHex0(flags):
                 op = 'hex'
-            if idc.isBin0(flags):
+            elif idc.isBin0(flags):
                 op = 'bin'
-            if idc.isDec0(flags):
+            elif idc.isDec0(flags):
                 op = 'dec'
-            if idc.isChar0(flags):
+            elif idc.isChar0(flags):
                 op = 'chr'
-            if idc.isOct0(flags):
+            elif idc.isOct0(flags):
                 op = 'oct'
+            else:
+                raise NotImplementedError("type not supported")
         else:
             if idc.isHex1(flags):
                 op = 'hex'
-            if idc.isBin1(flags):
+            elif idc.isBin1(flags):
                 op = 'bin'
-            if idc.isDec1(flags):
+            elif idc.isDec1(flags):
                 op = 'dec'
-            if idc.isChar1(flags):
+            elif idc.isChar1(flags):
                 op = 'chr'
-            if idc.isOct1(flags):
+            elif idc.isOct1(flags):
                 op = 'oct'
+            else:
+                raise NotImplementedError("type not supported")
         self._sendEvent(OpTypeChangedEvent(ea, n, op))
         return 0
