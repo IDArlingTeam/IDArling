@@ -2,11 +2,12 @@ import json
 import logging
 
 # Twisted imports
-from twisted.internet import reactor, protocol, defer
+from twisted.internet import defer
 from twisted.internet.protocol import ClientFactory as ClientFactory_
-from twisted.protocols import basic
 
 from ..events.events_abc import Event
+from ..shared.packets import Command
+from ..shared.protocol import Protocol
 from ..utilities.misc import byteify
 
 
@@ -17,87 +18,48 @@ logger = logging.getLogger('IDAConnect.Network')
 # -----------------------------------------------------------------------------
 
 
-class ClientProtocol(basic.LineReceiver, object):
+class ClientProtocol(Protocol):
 
     def __init__(self, plugin):
-        super(ClientProtocol, self).__init__()
+        super(ClientProtocol, self).__init__(logger)
         self._plugin = plugin
-
-        # Variables initialization
-        self._connected = False
-        self._incoming = defer.DeferredQueue()
-        self._outgoing = defer.DeferredQueue()
 
     # -------------------------------------------------------------------------
     # Twisted Events
     # -------------------------------------------------------------------------
 
     def connectionMade(self):
-        logger.debug("Connected to server")
-        self._connected = True
+        super(ClientProtocol, self).connectionMade()
 
         # Notify the plugin
         self._plugin.notifyConnected()
 
-        # Add callback to outgoing queue
-        d = self._outgoing.get()
-        d.addCallback(self.sendLine)
-        d.addErrback(logger.exception)
-
-        # Add callback to incoming queue
-        d = self._incoming.get()
-        d.addCallback(self.recvPacket)
-        d.addErrback(logger.exception)
-
     def connectionLost(self, reason):
-        logger.debug("Disconnected from server: %s" % reason)
-        self._connected = False
+        super(ClientProtocol, self).connectionLost(reason)
 
         # Notify the plugin
         self._plugin.notifyDisconnected()
 
     # -------------------------------------------------------------------------
-    # Twisted Methods
+    # Internal Events
     # -------------------------------------------------------------------------
 
-    def sendLine(self, pkt):
-        # Pass on the parent class
-        logger.debug("Sent packet: %s" % pkt)
-        super(ClientProtocol, self).sendLine(pkt)
+    def _recvPacket(self, packet):
+        if Command.isCommand(packet):
+            # Parse the command
+            cmd = Command.new(packet)
+            # Call the handler
+            self._handlers[cmd.__class__](cmd)
 
-        # Re-add callback to the outgoing queue
-        if self._connected:
-            d = self._outgoing.get()
-            d.addCallback(self.sendLine)
-            d.addErrback(logger.exception)
+        elif Event.isEvent(packet):
+            # Call the event
+            self._plugin.getCore().unhookAll()
+            Event.new(byteify(packet))()
+            self._plugin.getCore().hookAll()
 
-    def lineReceived(self, pkt):
-        # Put packet into incoming queue
-        logger.debug("Received packet: %s" % pkt)
-        self._incoming.put(pkt)
-
-    # -------------------------------------------------------------------------
-    # Getters/Setters
-    # -------------------------------------------------------------------------
-
-    def isConnected(self):
-        return self._connected
-
-    def sendPacket(self, pkt):
-        # Put packet into outgoing queue
-        self._outgoing.put(pkt)
-
-    def recvPacket(self, pkt):
-        # Trigger the event
-        self._plugin.getCore().unhookAll()
-        Event.new(byteify(json.loads(pkt)))()
-        self._plugin.getCore().hookAll()
-
-        # Re-add callback to the incoming queue
-        if self._connected:
-            d = self._incoming.get()
-            d.addCallback(self.recvPacket)
-            d.addErrback(logger.exception)
+        else:
+            return False
+        return True
 
 # -----------------------------------------------------------------------------
 # Client Factory
@@ -112,18 +74,18 @@ class ClientFactory(ClientFactory_, object):
         # Variables initialization
         self._protocol = ClientProtocol(plugin)
 
+    def buildProtocol(self, addr):
+        return self._protocol
+
     # -------------------------------------------------------------------------
     # Getters/Setters
     # -------------------------------------------------------------------------
-
-    def buildProtocol(self, addr):
-        return self._protocol
 
     def isConnected(self):
         # Pass on to the protocol
         return self._protocol.isConnected()
 
-    def sendPacket(self, pkt):
+    def sendPacket(self, packet):
         # Pass on to the protocol
         if self.isConnected():
-            self._protocol.sendPacket(pkt)
+            return self._protocol.sendPacket(packet)

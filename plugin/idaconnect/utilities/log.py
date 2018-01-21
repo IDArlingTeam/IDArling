@@ -34,7 +34,7 @@ def loggingStarted():
 
 def startLogging():
     global logger
-    logger = logging.getLogger('IDAConnect')
+    logger = logging.getLogger('IDAConnect.Plugin')
 
     # Get path to the log file
     logDir = os.path.join(idaapi.get_user_idadir(), '.idaconnect', 'logs')
@@ -47,8 +47,7 @@ def startLogging():
         filename=logPath,
         format='%(asctime)s | %(name)20s | %(levelname)7s: %(message)s',
         datefmt='%m-%d-%Y %H:%M:%S',
-        level=logging.DEBUG
-    )
+        level=logging.DEBUG)
 
     # Redirect standard output
     stdoutLogger = logging.getLogger('IDAConnect.STDOUT')

@@ -6,22 +6,22 @@ from ..shared.packets import Packet
 
 
 class EventMeta(type):
-    REGISTRY = {}
-
-    def __new__(cls, name, bases, attrs):
-        newCls = type.__new__(cls, name, bases, attrs)
-        EventMeta.REGISTRY[newCls._type] = newCls
-        return newCls
+    _REGISTRY = {}
 
     @staticmethod
     def newCls(newType):
-        return EventMeta.REGISTRY[newType]
+        return EventMeta._REGISTRY[newType]
+
+    def __new__(cls, name, bases, attrs):
+        newCls = type.__new__(cls, name, bases, attrs)
+        EventMeta._REGISTRY[newCls.TYPE] = newCls
+        return newCls
 
 
 class Event(Packet):
     __metaclass__ = EventMeta
 
-    _type = None
+    TYPE = None
 
     @staticmethod
     def new(dct):
@@ -30,9 +30,13 @@ class Event(Packet):
         del dct['event_type']
         return eventCls(**dct)
 
+    @staticmethod
+    def isEvent(dct):
+        return Packet.isPacket(dct) and dct['type'] == 'event'
+
     def __init__(self):
         super(Event, self).__init__('event')
-        self['event_type'] = self._type
+        self['event_type'] = self.TYPE
 
     def __call__(self):
         # Events must implement this method

@@ -11,6 +11,5 @@ class Hooks(object):
         self._network = plugin.getNetwork()
 
     def _sendEvent(self, event):
-        # Serialize the event
-        pkt = json.dumps(event)
-        self._network.sendPacket(pkt)
+        # Forward packet to network
+        self._network.sendPacket(event)

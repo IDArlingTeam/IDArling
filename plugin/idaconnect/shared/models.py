@@ -11,7 +11,11 @@ class Database(dict):
         self['db_name'] = db_name
         self['db_type'] = db_type
         self['db_date'] = db_date
-        self['db_revs'] = db_revs
+        self['db_revs'] = []
+        for db_rev in db_revs:
+            if not isinstance(db_rev, Revision):
+                db_rev = Revision(**db_rev)
+            self['db_revs'].append(db_rev)
 
     def getHash(self):
         return self['db_hash']

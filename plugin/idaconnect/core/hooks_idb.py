@@ -60,7 +60,7 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
         t = idc.GetTinfo(ea)
         self._sendEvent(TiChangedEvent(ea, t))
         return 0
-    
+
     def op_type_changed(self, ea, n):
         flags = idc.get_full_flags(ea)
         if n == 0:

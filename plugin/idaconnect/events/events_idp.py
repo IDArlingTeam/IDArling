@@ -13,7 +13,7 @@ logger = logging.getLogger('IDAConnect.Events')
 
 
 class UndefinedEvent(Event):
-    _type = 'undefined'
+    TYPE = 'undefined'
 
     def __init__(self, ea):
         super(UndefinedEvent, self).__init__()

@@ -82,7 +82,8 @@ class StatusWidget(QWidget):
         if self._servers:
             menu.addSeparator()
             for server in self._servers:
-                isConnected = server == self._plugin.getNetwork().getHost()
+                isConnected = self._plugin.getNetwork().isConnected() \
+                    and server == self._plugin.getNetwork().getHost()
                 serverAction = QAction(server, menu, checkable=True)
                 serverAction.setChecked(isConnected)
 

@@ -4,6 +4,7 @@ import idaapi
 import ida_kernwin
 
 from dialogs import OpenDialog, SaveDialog
+from ..shared.packets import ListDatabases
 
 
 logger = logging.getLogger('IDAConnect.Interface')
@@ -120,15 +121,21 @@ class OpenAction(Action):
 class OpenActionHandler(ActionHandler):
 
     def activate(self, ctx):
-        # Open the dialog
-        dialog = OpenDialog(self._plugin, [])
+        def onListDatabasesReply(reply):
+            # Open the dialog
+            dialog = OpenDialog(self._plugin, reply['dbs'])
 
-        def dialogAccepted():
-            db, rev = dialog.getResult()  # FIXME: Do something useful
+            def dialogAccepted():
+                db, rev = dialog.getResult()  # FIXME: Do something useful
 
-        dialog.accepted.connect(dialogAccepted)
-        dialog.exec_()
-        return 1
+            dialog.accepted.connect(dialogAccepted)
+            dialog.exec_()
+            return 1
+
+        # Ask the server for the list of dbs
+        d = self._plugin.getNetwork().sendPacket(ListDatabases())
+        d.addCallback(onListDatabasesReply)
+        d.addErrback(logger.exception)
 
 
 class SaveAction(Action):
@@ -146,12 +153,18 @@ class SaveAction(Action):
 class SaveActionHandler(ActionHandler):
 
     def activate(self, ctx):
-        # Open the dialog
-        dialog = SaveDialog(self._plugin, [])
+        def onListDatabasesReply(reply):
+            # Open the dialog
+            dialog = SaveDialog(self._plugin, reply['dbs'])
 
-        def dialogAccepted():
-            db, rev = dialog.getResult()  # FIXME: Do something useful
+            def dialogAccepted():
+                db, rev = dialog.getResult()  # FIXME: Do something useful
 
-        dialog.accepted.connect(dialogAccepted)
-        dialog.exec_()
-        return 1
+            dialog.accepted.connect(dialogAccepted)
+            dialog.exec_()
+            return 1
+
+        # Ask the server for the list of dbs
+        d = self._plugin.getNetwork().sendPacket(ListDatabases())
+        d.addCallback(onListDatabasesReply)
+        d.addErrback(logger.exception)

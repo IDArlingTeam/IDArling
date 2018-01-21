@@ -68,8 +68,8 @@ class OpenDialog(QDialog):
 
         revsGroup = QGroupBox("Revisions", rightSide)
         revsLayout = QGridLayout(revsGroup)
-        self._revsTable = QTableWidget(0, 2, revsGroup)
-        self._revsTable.setHorizontalHeaderLabels(('Name', 'Date'))
+        self._revsTable = QTableWidget(0, 3, revsGroup)
+        self._revsTable.setHorizontalHeaderLabels(('Name', 'Author', 'Date'))
         horizontalHeader = self._revsTable.horizontalHeader()
         horizontalHeader.setSectionsClickable(False)
         horizontalHeader.setSectionResizeMode(0, horizontalHeader.Stretch)
@@ -111,9 +111,12 @@ class OpenDialog(QDialog):
             item = QTableWidgetItem(str(rev.getName()))
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             self._revsTable.setItem(i, 0, item)
-            item = QTableWidgetItem(str(rev.getDate()))
+            item = QTableWidgetItem(str(rev.getAuth()))
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             self._revsTable.setItem(i, 1, item)
+            item = QTableWidgetItem(str(rev.getDate()))
+            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+            self._revsTable.setItem(i, 2, item)
 
     def _revClicked(self, item):
         # When a revision is clicked, we're all set
@@ -187,8 +190,8 @@ class SaveDialog(QDialog):
 
         revsGroup = QGroupBox("Revisions", rightSide)
         revsLayout = QGridLayout(revsGroup)
-        self._revsTable = QTableWidget(0, 2, revsGroup)
-        self._revsTable.setHorizontalHeaderLabels(('Name', 'Date'))
+        self._revsTable = QTableWidget(0, 3, revsGroup)
+        self._revsTable.setHorizontalHeaderLabels(('Name', 'Author', 'Date'))
         horizontalHeader = self._revsTable.horizontalHeader()
         horizontalHeader.setSectionsClickable(False)
         horizontalHeader.setSectionResizeMode(0, horizontalHeader.Stretch)
@@ -235,15 +238,21 @@ class SaveDialog(QDialog):
             item = QTableWidgetItem(str(rev.getName()))
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             self._revsTable.setItem(i, 0, item)
-            item = QTableWidgetItem(str(rev.getDate()))
+            item = QTableWidgetItem(str(rev.getAuth()))
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             self._revsTable.setItem(i, 1, item)
+            item = QTableWidgetItem(str(rev.getDate()))
+            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+            self._revsTable.setItem(i, 2, item)
         newItem = QTableWidgetItem("<new revision>")
         newItem.setFlags(newItem.flags() & ~Qt.ItemIsEditable)
         self._revsTable.setItem(len(dbRevs), 0, newItem)
         newItem = QTableWidgetItem()
         newItem.setFlags(newItem.flags() & ~Qt.ItemIsEditable)
         self._revsTable.setItem(len(dbRevs), 1, newItem)
+        newItem = QTableWidgetItem()
+        newItem.setFlags(newItem.flags() & ~Qt.ItemIsEditable)
+        self._revsTable.setItem(len(dbRevs), 2, newItem)
 
     def _revClicked(self, item):
         # When a revision is clicked, we're all set

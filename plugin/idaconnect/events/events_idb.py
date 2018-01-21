@@ -14,7 +14,7 @@ logger = logging.getLogger('IDAConnect.Events')
 
 
 class MakeCodeEvent(Event):
-    _type = 'make_code'
+    TYPE = 'make_code'
 
     def __init__(self, ea):
         super(MakeCodeEvent, self).__init__()
@@ -25,7 +25,7 @@ class MakeCodeEvent(Event):
 
 
 class MakeDataEvent(Event):
-    _type = 'make_data'
+    TYPE = 'make_data'
 
     def __init__(self, ea, flags, tid, size):
         super(MakeDataEvent, self).__init__()
@@ -39,7 +39,7 @@ class MakeDataEvent(Event):
 
 
 class RenamedEvent(Event):
-    _type = 'renamed'
+    TYPE = 'renamed'
 
     def __init__(self, ea, new_name, local_name):
         super(RenamedEvent, self).__init__()
@@ -52,7 +52,7 @@ class RenamedEvent(Event):
 
 
 class FuncAddedEvent(Event):
-    _type = 'func_added'
+    TYPE = 'func_added'
 
     def __init__(self, start_ea, end_ea):
         super(FuncAddedEvent, self).__init__()
@@ -64,7 +64,7 @@ class FuncAddedEvent(Event):
 
 
 class DeletingFuncEvent(Event):
-    _type = 'deleting_func'
+    TYPE = 'deleting_func'
 
     def __init__(self, start_ea):
         super(DeletingFuncEvent, self).__init__()
@@ -75,7 +75,7 @@ class DeletingFuncEvent(Event):
 
 
 class SetFuncStartEvent(Event):
-    _type = 'set_func_start'
+    TYPE = 'set_func_start'
 
     def __init__(self, ea, new_ea):
         super(SetFuncStartEvent, self).__init__()
@@ -87,7 +87,7 @@ class SetFuncStartEvent(Event):
 
 
 class SetFuncEndEvent(Event):
-    _type = 'set_func_end'
+    TYPE = 'set_func_end'
 
     def __init__(self, ea, new_ea):
         super(SetFuncEndEvent, self).__init__()
@@ -99,7 +99,7 @@ class SetFuncEndEvent(Event):
 
 
 class CmtChangedEvent(Event):
-    _type = 'cmt_changed'
+    TYPE = 'cmt_changed'
 
     def __init__(self, ea, repeatable_cmt, cmt):
         super(CmtChangedEvent, self).__init__()
@@ -112,7 +112,7 @@ class CmtChangedEvent(Event):
 
 
 class TiChangedEvent(Event):
-    _type = 'ti_changed'
+    TYPE = 'ti_changed'
 
     def __init__(self, ea, t):
         super(TiChangedEvent, self).__init__()
