@@ -5,47 +5,39 @@
 
 class Database(dict):
 
-    def __init__(self, db_hash, db_name, db_type, db_date, db_revs):
+    def __init__(self, hash, file, type, date):
         super(Database, self).__init__()
-        self['db_hash'] = db_hash
-        self['db_name'] = db_name
-        self['db_type'] = db_type
-        self['db_date'] = db_date
-        self['db_revs'] = []
-        for db_rev in db_revs:
-            if not isinstance(db_rev, Revision):
-                db_rev = Revision(**db_rev)
-            self['db_revs'].append(db_rev)
+        self['hash'] = hash
+        self['file'] = file
+        self['type'] = type
+        self['date'] = date
 
     def getHash(self):
-        return self['db_hash']
+        return self['hash']
 
-    def getName(self):
-        return self['db_name']
+    def getFile(self):
+        return self['file']
 
     def getType(self):
-        return self['db_type']
+        return self['type']
 
     def getDate(self):
-        return self['db_date']
-
-    def getRevs(self):
-        return self['db_revs']
+        return self['date']
 
 
 class Revision(dict):
 
-    def __init__(self, rev_name, rev_auth, rev_date):
+    def __init__(self, hash, uuid, date):
         super(Revision, self).__init__()
-        self['rev_name'] = rev_name
-        self['rev_auth'] = rev_auth
-        self['rev_date'] = rev_date
+        self['hash'] = hash
+        self['uuid'] = uuid
+        self['date'] = date
 
-    def getName(self):
-        return self['rev_name']
+    def getHash(self):
+        return self['hash']
 
-    def getAuth(self):
-        return self['rev_auth']
+    def getUUID(self):
+        return self['uuid']
 
     def getDate(self):
-        return self['rev_date']
+        return self['date']

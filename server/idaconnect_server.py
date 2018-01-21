@@ -8,7 +8,9 @@ from twisted.python import log
 
 from shared.models import Database, Revision
 from shared.packets import (EventBase, Command,
-                            ListDatabases, ListDatabasesReply)
+                            GetDatabases, GetDatabasesReply,
+                            GetRevisions, GetRevisionsReply,
+                            NewDatabase, NewRevision)
 from shared.protocol import Protocol
 
 # -----------------------------------------------------------------------------
@@ -27,7 +29,7 @@ def startLogging():
     logger = logging.getLogger(LOGGER_NAME)
 
     # Get path to the log file
-    logDir = os.path.abspath(os.path.dirname(__file__))
+    logDir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'logs'))
     if not os.path.exists(logDir):
         os.makedirs(logDir)
     logPath = os.path.join(logDir, 'idaconnect.%s.log' % os.getpid())
@@ -58,7 +60,10 @@ class ServerProtocol(Protocol):
         self._factory = factory
 
         # Setup handlers
-        self._handlers[ListDatabases] = self._handleListDatabases
+        self._handlers[GetDatabases] = self._handleGetDatabases
+        self._handlers[GetRevisions] = self._handleGetRevisions
+        self._handlers[NewDatabase] = self._handleNewDatabase
+        self._handlers[NewRevision] = self._handleNewRevision
 
     # -------------------------------------------------------------------------
     # Twisted Events
@@ -97,10 +102,32 @@ class ServerProtocol(Protocol):
     # Command Handlers
     # -------------------------------------------------------------------------
 
-    def _handleListDatabases(self, packet):
+    def _handleGetDatabases(self, packet):
         dbs = self._factory.getDatabases()
-        reply = ListDatabasesReply(dbs)
-        self.sendPacket(reply)
+        # Filter by hash if requested
+        if 'hash' in packet and packet['hash']:
+            dbs = [db for db in dbs if db.getHash() == packet['hash']]
+        self.sendPacket(GetDatabasesReply(dbs))
+
+    def _handleGetRevisions(self, packet):
+        revs = self._factory.getRevisions()
+        # Filter by hash if requested
+        if 'hash' in packet and packet['hash']:
+            revs = [rev for rev in revs if rev.getHash() == packet['hash']]
+        # Filter by uuid if requested
+        if 'uuid' in packet and packet['uuid']:
+            revs = [rev for rev in revs if rev.getUUID() == packet['uuid']]
+        self.sendPacket(GetRevisionsReply(revs))
+
+    def _handleNewDatabase(self, packet):
+        # FIXME: Make sure no db exists
+        self._factory.getDatabases().append(packet['db'])
+
+    def _handleNewRevision(self, packet):
+        # FIXME: Make sure the db exists
+        # FIXME: Make sure no rev exists
+        self._factory.getRevisions().append(packet['rev'])
+
 
 # -----------------------------------------------------------------------------
 # Server Factory
@@ -115,10 +142,9 @@ class ServerFactory(protocol.Factory, object):
         # Variables initialization
         self._clients = []
 
-        # FIXME: Don't hardcode databases
-        self._databases = [
-            Database('A', 'B', 'C', 'D', [
-                Revision('A', 'B', 'C')])]
+        # FIXME: Use SQL database for storage
+        self._databases = []
+        self._revisions = []
 
     def buildProtocol(self, addr):
         return ServerProtocol(self)
@@ -137,6 +163,9 @@ class ServerFactory(protocol.Factory, object):
 
     def getDatabases(self):
         return self._databases
+
+    def getRevisions(self):
+        return self._revisions
 
     def sendPacketToAll(self, packet, ignore=None):
         # Send line to all client but ignore

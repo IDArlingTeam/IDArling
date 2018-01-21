@@ -1,10 +1,16 @@
+import uuid
+import datetime
 import logging
 
+import idc
 import idaapi
+import idautils
 import ida_kernwin
 
 from dialogs import OpenDialog, SaveDialog
-from ..shared.packets import ListDatabases
+from ..shared.models import Database, Revision
+from ..shared.packets import (
+    GetDatabases, GetRevisions, NewDatabase, NewRevision)
 
 
 logger = logging.getLogger('IDAConnect.Interface')
@@ -121,21 +127,33 @@ class OpenAction(Action):
 class OpenActionHandler(ActionHandler):
 
     def activate(self, ctx):
-        def onListDatabasesReply(reply):
-            # Open the dialog
-            dialog = OpenDialog(self._plugin, reply['dbs'])
+        def onGetDatabasesReply(reply):
+            dbs = reply['dbs']
 
-            def dialogAccepted():
-                db, rev = dialog.getResult()  # FIXME: Do something useful
+            def onGetRevisionsReply(reply):
+                revs = reply['revs']
 
-            dialog.accepted.connect(dialogAccepted)
-            dialog.exec_()
-            return 1
+                # Open the dialog
+                dialog = OpenDialog(self._plugin, dbs, revs)
+
+                # Catch acceptation
+                def dialogAccepted():
+                    db, rev = dialog.getResult()
+                    # FIXME: Download the file
+
+                dialog.accepted.connect(dialogAccepted)
+                dialog.exec_()
+
+            # Ask the server for the list of revs
+            d = self._plugin.getNetwork().sendPacket(GetRevisions())
+            d.addCallback(onGetRevisionsReply)
+            d.addErrback(logger.exception)
 
         # Ask the server for the list of dbs
-        d = self._plugin.getNetwork().sendPacket(ListDatabases())
-        d.addCallback(onListDatabasesReply)
+        d = self._plugin.getNetwork().sendPacket(GetDatabases())
+        d.addCallback(onGetDatabasesReply)
         d.addErrback(logger.exception)
+        return 1
 
 
 class SaveAction(Action):
@@ -153,18 +171,46 @@ class SaveAction(Action):
 class SaveActionHandler(ActionHandler):
 
     def activate(self, ctx):
-        def onListDatabasesReply(reply):
-            # Open the dialog
-            dialog = SaveDialog(self._plugin, reply['dbs'])
+        def onGetDatabasesReply(reply):
+            dbs = reply['dbs']
 
-            def dialogAccepted():
-                db, rev = dialog.getResult()  # FIXME: Do something useful
+            def onGetRevisionsReply(reply):
+                revs = reply['revs']
 
-            dialog.accepted.connect(dialogAccepted)
-            dialog.exec_()
-            return 1
+                # Open the dialog
+                dialog = SaveDialog(self._plugin, dbs, revs)
+
+                # Catch acceptation
+                def dialogAccepted():
+                    db, rev = dialog.getResult()
+                    if not db:
+                        hash = idautils.GetInputFileMD5()
+                        file = idc.GetInputFile()
+                        type = idaapi.get_file_type_name()
+                        dateFormat = "%Y/%m/%d %H:%M"
+                        date = datetime.datetime.now().strftime(dateFormat)
+                        db = Database(hash, file, type, date)
+                        self._plugin.getNetwork().sendPacket(NewDatabase(db))
+
+                    if not rev:
+                        uuid_ = str(uuid.uuid4())
+                        dateFormat = "%Y/%m/%d %H:%M"
+                        date = datetime.datetime.now().strftime(dateFormat)
+                        rev = Revision(db.getHash(), uuid_, date)
+                        self._plugin.getNetwork().sendPacket(NewRevision(rev))
+
+                    # FIXME: Upload the file
+
+                dialog.accepted.connect(dialogAccepted)
+                dialog.exec_()
+
+            # Ask the server for the list of revs
+            d = self._plugin.getNetwork().sendPacket(GetRevisions())
+            d.addCallback(onGetRevisionsReply)
+            d.addErrback(logger.exception)
 
         # Ask the server for the list of dbs
-        d = self._plugin.getNetwork().sendPacket(ListDatabases())
-        d.addCallback(onListDatabasesReply)
+        d = self._plugin.getNetwork().sendPacket(GetDatabases())
+        d.addCallback(onGetDatabasesReply)
         d.addErrback(logger.exception)
+        return 1

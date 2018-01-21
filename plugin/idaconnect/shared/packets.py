@@ -1,4 +1,4 @@
-from models import Database
+from models import Database, Revision
 
 # -----------------------------------------------------------------------------
 # Packets
@@ -116,18 +116,60 @@ class Reply(Command):
 # -----------------------------------------------------------------------------
 
 
-class ListDatabases(Query):
-    TYPE = 'list_dbs'
+class GetDatabases(Query):
+    TYPE = 'get_dbs'
+
+    def ___init__(self, hash=None):
+        super(GetDatabases, self).__init__()
+        self['hash'] = hash
 
 
-class ListDatabasesReply(Reply):
-    TYPE = 'list_dbs_reply'
-    QUERY = ListDatabases
+class GetDatabasesReply(Reply):
+    TYPE = 'get_dbs_reply'
+    QUERY = GetDatabases
 
     def __init__(self, dbs):
-        super(ListDatabasesReply, self).__init__()
+        super(GetDatabasesReply, self).__init__()
         self['dbs'] = []
         for db in dbs:
-            if not isinstance(db, Database):
+            if isinstance(db, dict):
                 db = Database(**db)
             self['dbs'].append(db)
+
+
+class GetRevisions(Query):
+    TYPE = 'get_revs'
+
+    def __init__(self, hash=None, uuid=None):
+        super(GetRevisions, self).__init__()
+        self['hash'] = hash
+        self['uuid'] = uuid
+
+
+class GetRevisionsReply(Reply):
+    TYPE = 'get_revs_reply'
+    QUERY = GetRevisions
+
+    def __init__(self, revs):
+        super(GetRevisionsReply, self).__init__()
+        self['revs'] = []
+        for rev in revs:
+            if isinstance(rev, dict):
+                rev = Revision(**rev)
+            self['revs'].append(rev)
+
+
+class NewDatabase(Command):
+    TYPE = 'new_db'
+
+    def __init__(self, db):
+        super(NewDatabase, self).__init__()
+        self['db'] = Database(**db) if isinstance(db, dict) else db
+
+
+class NewRevision(Command):
+    TYPE = 'new_rev'
+
+    def __init__(self, rev):
+        super(NewRevision, self).__init__()
+        self['rev'] = Revision(**rev) if isinstance(rev, dict) else rev
