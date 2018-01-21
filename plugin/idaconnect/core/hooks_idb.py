@@ -75,7 +75,7 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
                 op = 'oct'
             else:
                 # FIXME: Find a better way
-                pass
+                return 0
         else:
             if idc.isHex1(flags):
                 op = 'hex'
@@ -89,7 +89,7 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
                 op = 'oct'
             else:
                 # FIXME: Find a better way
-                pass
+                return 0
         self._sendEvent(OpTypeChangedEvent(ea, n, op))
         return 0
 
