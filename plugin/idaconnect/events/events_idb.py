@@ -121,3 +121,26 @@ class TiChangedEvent(Event):
 
     def __call__(self):
         idc.ApplyType(self['ea'], self['t'])
+
+
+class OpTypeChangedEvent(Event):
+    _type = 'op_ti_changed'
+
+    def __init__(self, ea, n, flags, op):
+        super(OpTypeChangedEvent, self).__init__()
+        self['ea'] = ea
+        self['n'] = n
+        self['flags'] = flags
+        self['op'] = op
+
+    def __call__(self):
+        if self['op'] == "hex":
+            idc.op_hex(self['ea'], self['n'])
+        if self['op'] == "bin":
+            idc.op_bin(self['ea'], self['n'])
+        if self['op'] == "dec":
+            idc.op_dec(self['ea'], self['n'])
+        if self['op'] == "chr":
+            idc.op_chr(self['ea'], self['n'])
+        if self['op'] == "oct":
+            idc.op_oct(self['ea'], self['n'])

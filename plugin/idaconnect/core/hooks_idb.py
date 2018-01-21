@@ -60,3 +60,30 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
         t = idc.GetTinfo(ea)
         self._sendEvent(TiChangedEvent(ea, t))
         return 0
+    
+    def op_type_changed(self, ea, n):
+        flags = idc.get_full_flags(ea)
+        if n == 0:
+            if idc.isHex0(flags):
+                op = "hex"
+            if idc.isBin0(flags):
+                op = "bin"
+            if idc.isDec0(flags):
+                op = "dec"
+            if idc.isChar0(flags):
+                op = "chr"
+            if idc.isOct0(flags):
+                op = "oct"
+        else:
+            if idc.isHex1(flags):
+                op = "hex"
+            if idc.isBin1(flags):
+                op = "bin"
+            if idc.isDec1(flags):
+                op = "dec"
+            if idc.isChar1(flags):
+                op = "chr"
+            if idc.isOct1(flags):
+                op = "oct"
+        self._sendEvent(OpTypeChangedEvent(ea, n, flags, op))
+        return 0
