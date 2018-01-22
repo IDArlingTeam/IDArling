@@ -44,7 +44,7 @@ class ClientProtocol(Protocol):
     # Internal Events
     # -------------------------------------------------------------------------
 
-    def _recvPacket(self, packet):
+    def recvPacket(self, packet):
         if Command.isCommand(packet):
             # Parse the command
             cmd = Command.new(packet)

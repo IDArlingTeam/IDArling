@@ -39,8 +39,8 @@ def startLogging():
         handlers=[
             logging.StreamHandler(),
             logging.FileHandler(logPath)],
-        format='%(asctime)s | %(name)20s | %(levelname)7s: %(message)s',
-        datefmt='%m-%d-%Y %H:%M:%S',
+        format='[%(asctime)s][%(levelname)s] %(message)s',
+        datefmt='%H:%M:%S',
         level=logging.DEBUG)
 
     return logger
@@ -70,6 +70,16 @@ class ServerProtocol(Protocol):
     # -------------------------------------------------------------------------
 
     def connectionMade(self):
+        # Add host and port as a prefix to our logger
+        peer = self.transport.getPeer()
+        prefix = '%s:%s' % (peer.host, peer.port)
+
+        class CustomAdapter(logging.LoggerAdapter):
+            def process(self, msg, kwargs):
+                return '(%s) %s' % (prefix, msg), kwargs
+
+        self._logger = CustomAdapter(self._logger, {})
+
         super(ServerProtocol, self).connectionMade()
         self._factory.addClient(self)
 
@@ -81,7 +91,7 @@ class ServerProtocol(Protocol):
     # Internal Events
     # -------------------------------------------------------------------------
 
-    def _recvPacket(self, packet):
+    def recvPacket(self, packet):
         if Command.isCommand(packet):
             # Parse the command
             cmd = Command.new(packet)

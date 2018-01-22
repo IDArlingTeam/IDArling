@@ -45,8 +45,8 @@ def startLogging():
     # Configure the logger
     logging.basicConfig(
         filename=logPath,
-        format='%(asctime)s | %(name)20s | %(levelname)7s: %(message)s',
-        datefmt='%m-%d-%Y %H:%M:%S',
+        format='[%(asctime)s][%(levelname)s] %(message)s',
+        datefmt='%H:%M:%S',
         level=logging.DEBUG)
 
     # Redirect standard output

@@ -214,3 +214,8 @@ class SaveActionHandler(ActionHandler):
         d.addCallback(onGetDatabasesReply)
         d.addErrback(logger.exception)
         return 1
+
+    def update(self, ctx):
+        if not idc.GetIdbPath():
+            return idaapi.AST_DISABLE
+        return super(SaveActionHandler, self).update(ctx)
