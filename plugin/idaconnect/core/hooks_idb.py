@@ -97,3 +97,12 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
         name = idc.get_enum_name(enum)
         self._sendEvent(EnumCreatedEvent(enum, name))
         return 0
+
+    def enum_deleted(self, enum):
+        self._sendEvent(EnumDeletedEvent(enum))
+        return 0
+
+    def enum_renamed(self, tid):
+        new_name = idaapi.get_enum_name(tid)
+        self._sendEvent(EnumRenamedEvent(tid, new_name))
+        return 0

@@ -1,6 +1,7 @@
 import logging
 
 import idc
+import idaapi
 import ida_funcs
 import ida_name
 
@@ -157,3 +158,26 @@ class EnumCreatedEvent(Event):
 
     def __call__(self):
         idc.add_enum(self['enum'], self['name'], 0)
+
+
+class EnumDeletedEvent(Event):
+    TYPE = 'enum_deleted'
+
+    def __init__(self, enum):
+        super(EnumDeletedEvent, self).__init__()
+        self['enum'] = enum
+
+    def __call__(self):
+        idc.del_enum(self['enum'])
+
+
+class EnumRenamedEvent(Event):
+    TYPE = 'enum_renamed'
+
+    def __init__(self, tid, new_name):
+        super(EnumRenamedEvent, self).__init__()
+        self['tid'] = tid
+        self['new_name'] = new_name
+
+    def __call__(self):
+        idaapi.set_enum_name(self['tid'], self['new_name'])
