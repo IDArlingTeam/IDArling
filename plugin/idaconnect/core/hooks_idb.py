@@ -106,3 +106,8 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
         new_name = idaapi.get_enum_name(tid)
         self._sendEvent(EnumRenamedEvent(tid, new_name))
         return 0
+
+    def enum_bf_changed(self, tid):
+        bf_flag = 1 if idc.IsBitfield(tid) else 0
+        self._sendEvent(EnumBfChangedEvent(tid, bf_flag))
+        return 0

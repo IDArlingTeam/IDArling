@@ -4,6 +4,7 @@ import idc
 import idaapi
 import ida_funcs
 import ida_name
+import ida_enum
 
 from events_abc import Event
 
@@ -181,3 +182,15 @@ class EnumRenamedEvent(Event):
 
     def __call__(self):
         idaapi.set_enum_name(self['tid'], self['new_name'])
+
+
+class EnumBfChangedEvent(Event):
+    TYPE = 'enum_bf_changed'
+
+    def __init__(self, tid, bf_flag):
+        super(EnumBfChangedEvent, self).__init__()
+        self['tid'] = tid
+        self['bf_flag'] = bf_flag
+
+    def __call__(self):
+        ida_enum.set_enum_bf(self['tid'], self['bf_flag'])
