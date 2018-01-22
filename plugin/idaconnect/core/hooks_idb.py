@@ -61,6 +61,14 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
         return 0
 
     def op_type_changed(self, ea, n):
+
+        extra = {}
+
+        def gather_enum_info(ea, n):
+            id_ = idaapi.get_enum_id(ea, n)[0]
+            serial = idaapi.get_enum_idx(id_)
+            return id_, serial
+
         flags = idc.get_full_flags(ea)
         if n == 0:
             if idc.isHex0(flags):
@@ -73,6 +81,11 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
                 op = 'chr'
             elif idc.isOct0(flags):
                 op = 'oct'
+            elif idc.isEnum0(flags):
+                op = 'enum'
+                id_, serial = gather_enum_info(ea, n)
+                extra['id_'] = id_
+                extra['serial'] = serial
             else:
                 # FIXME: Find a better way
                 return 0
@@ -87,10 +100,15 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
                 op = 'chr'
             elif idc.isOct1(flags):
                 op = 'oct'
+            elif idc.isEnum1(flags):
+                op = 'enum'
+                id_, serial = gather_enum_info(ea, n)
+                extra['id_'] = id_
+                extra['serial'] = serial
             else:
                 # FIXME: Find a better way
                 return 0
-        self._sendEvent(OpTypeChangedEvent(ea, n, op))
+        self._sendEvent(OpTypeChangedEvent(ea, n, op, extra))
         return 0
 
     def enum_created(self, enum):

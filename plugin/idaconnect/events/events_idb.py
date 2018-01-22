@@ -130,23 +130,27 @@ class TiChangedEvent(Event):
 class OpTypeChangedEvent(Event):
     TYPE = 'op_type_changed'
 
-    def __init__(self, ea, n, op):
+    def __init__(self, ea, n, op, extra):
         super(OpTypeChangedEvent, self).__init__()
         self['ea'] = ea
         self['n'] = n
         self['op'] = op
+        self['extra'] = extra
 
     def __call__(self):
         if self['op'] == 'hex':
-            idc.op_hex(self['ea'], self['n'])
+            idc.OpHex(self['ea'], self['n'])
         if self['op'] == 'bin':
-            idc.op_bin(self['ea'], self['n'])
+            idc.OpBinary(self['ea'], self['n'])
         if self['op'] == 'dec':
-            idc.op_dec(self['ea'], self['n'])
+            idc.OpDecimal(self['ea'], self['n'])
         if self['op'] == 'chr':
-            idc.op_chr(self['ea'], self['n'])
+            idc.OpChr(self['ea'], self['n'])
         if self['op'] == 'oct':
-            idc.op_oct(self['ea'], self['n'])
+            idc.OpOctal(self['ea'], self['n'])
+        if self['op'] == 'enum':
+            idc.OpEnumEx(self['ea'], self['n'], self['extra']['id_'],
+                         self['extra']['serial'])
 
 
 class EnumCreatedEvent(Event):
