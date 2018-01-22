@@ -207,3 +207,18 @@ class EnumCmtChangedEvent(Event):
 
     def __call__(self):
         idaapi.set_enum_cmt(self['tid'], self['cmt'], self['repeatable_cmt'])
+
+
+class EnumMemberCreatedEvent(Event):
+    TYPE = 'enum_member_created'
+
+    def __init__(self, id_, name, value, bmask):
+        super(EnumMemberCreatedEvent, self).__init__()
+        self['id_'] = id_
+        self['name'] = name
+        self['value'] = value
+        self['bmask'] = bmask
+
+    def __call__(self):
+        idaapi.add_enum_member(self['id_'], self['name'], self['value'],
+                               self['bmask'])
