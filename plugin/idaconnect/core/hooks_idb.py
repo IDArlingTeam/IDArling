@@ -123,3 +123,10 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
         bmask = idaapi.get_enum_member_bmask(cid)
         self._sendEvent(EnumMemberCreatedEvent(id_, name, value, bmask))
         return 0
+
+    def enum_member_deleted(self, id_, cid):
+        value = idaapi.get_enum_member_value(cid)
+        serial = idaapi.get_enum_member_serial(cid)
+        bmask = idaapi.get_enum_member_bmask(cid)
+        self._sendEvent(EnumMemberDeletedEvent(id_, value, serial, bmask))
+        return 0

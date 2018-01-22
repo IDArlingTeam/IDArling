@@ -222,3 +222,18 @@ class EnumMemberCreatedEvent(Event):
     def __call__(self):
         idaapi.add_enum_member(self['id_'], self['name'], self['value'],
                                self['bmask'])
+
+
+class EnumMemberDeletedEvent(Event):
+    TYPE = 'enum_member_deleted'
+
+    def __init__(self, id_, value, serial, bmask):
+        super(EnumMemberDeletedEvent, self).__init__()
+        self['id_'] = id_
+        self['value'] = value
+        self['serial'] = serial
+        self['bmask'] = bmask
+
+    def __call__(self):
+        idaapi.del_enum_member(self['id_'], self['value'], self['serial'],
+                               self['bmask'])
