@@ -194,3 +194,16 @@ class EnumBfChangedEvent(Event):
 
     def __call__(self):
         ida_enum.set_enum_bf(self['tid'], self['bf_flag'])
+
+
+class EnumCmtChangedEvent(Event):
+    TYPE = 'enum_cmt_changed'
+
+    def __init__(self, tid, cmt, repeatable_cmt):
+        super(EnumCmtChangedEvent, self).__init__()
+        self['tid'] = tid
+        self['cmt'] = cmt
+        self['repeatable_cmt'] = repeatable_cmt
+
+    def __call__(self):
+        idaapi.set_enum_cmt(self['tid'], self['cmt'], self['repeatable_cmt'])

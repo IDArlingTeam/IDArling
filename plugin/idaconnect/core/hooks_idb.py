@@ -111,3 +111,8 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
         bf_flag = 1 if idc.IsBitfield(tid) else 0
         self._sendEvent(EnumBfChangedEvent(tid, bf_flag))
         return 0
+
+    def enum_cmt_changed(self, tid, repeatable_cmt):
+        cmt = idaapi.get_enum_cmt(tid, repeatable_cmt)
+        self._sendEvent(EnumCmtChangedEvent(tid, cmt, repeatable_cmt))
+        return 0
