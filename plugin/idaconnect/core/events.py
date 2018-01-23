@@ -158,13 +158,13 @@ class OpTypeChangedEvent(SimpleEvent):
         if self.op == 'hex':
             idc.OpHex(self.ea, self.n)
         if self.op == 'bin':
-            idc.OpBin(self.ea, self.n)
+            idc.OpBinary(self.ea, self.n)
         if self.op == 'dec':
-            idc.OpDec(self.ea, self.n)
+            idc.OpDecimal(self.ea, self.n)
         if self.op == 'chr':
             idc.OpChr(self.ea, self.n)
         if self.op == 'oct':
-            idc.OpOct(self.ea, self.n)
+            idc.OpOctal(self.ea, self.n)
         if self.op == 'enum':
             idc.OpEnumEx(self.ea, self.n, self.extra.id, self.extra.serial)
 
@@ -257,7 +257,7 @@ class EnumMemberDeletedEvent(Event):
         idaapi.del_enum_member(self.id, self.value, self.serial, self.bmask)
 
 
-class StrucCreatedEvent(Event):
+class StrucCreatedEvent(SimpleEvent):
     EVT_TYPE = 'struc_created'
 
     def __init__(self, struc, name):
@@ -269,7 +269,7 @@ class StrucCreatedEvent(Event):
         idc.add_struc(self.struc, self.name, 0)
 
 
-class StrucDeletedEvent(Event):
+class StrucDeletedEvent(SimpleEvent):
     EVT_TYPE = 'struc_deleted'
 
     def __init__(self, struc):
@@ -280,7 +280,7 @@ class StrucDeletedEvent(Event):
         idc.del_struc(self.struc)
 
 
-class StrucRenamedEvent(Event):
+class StrucRenamedEvent(SimpleEvent):
     EVT_TYPE = 'struc_renamed'
 
     def __init__(self, sid, new_name):
@@ -290,6 +290,19 @@ class StrucRenamedEvent(Event):
 
     def __call__(self):
         idaapi.set_struc_name(self.sid, self.new_name)
+
+
+class StrucCmtChangedEvent(SimpleEvent):
+    EVT_TYPE = 'struc_cmt_changed'
+
+    def __init__(self, tid, cmt, repeatable_cmt):
+        super(StrucCmtChangedEvent, self).__init__()
+        self.tid = tid
+        self.cmt = cmt
+        self.repeatable_cmt = repeatable_cmt
+
+    def __call__(self):
+        idaapi.set_struc_cmt(self.tid, self.cmt, self.repeatable_cmt)
 
 
 # -----------------------------------------------------------------------------

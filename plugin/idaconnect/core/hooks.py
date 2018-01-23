@@ -175,6 +175,12 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
     def struc_renamed(self, sptr):
         new_name = idaapi.get_struc_name(sptr.id)
         self._sendEvent(StrucRenamedEvent(sptr.id, new_name))
+        return 0
+
+    def struc_cmt_changed(self, tid, repeatable_cmt):
+        cmt = idaapi.get_struc_cmt(tid, repeatable_cmt)
+        self._sendEvent(StrucCmtChangedEvent(tid, cmt, repeatable_cmt))
+        return 0
 
 # -----------------------------------------------------------------------------
 # IDP Hooks
