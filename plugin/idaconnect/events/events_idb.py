@@ -115,6 +115,23 @@ class CmtChangedEvent(Event):
         idc.set_cmt(self['ea'], self['comment'], self['rptble'])
 
 
+class ExtraCmtChangedEvent(Event):
+    TYPE = 'extra_cmt_changed'
+
+    def __init__(self, ea, line_idx, cmt):
+        super(ExtraCmtChangedEvent, self).__init__()
+        self['ea'] = ea
+        self['line_idx'] = line_idx
+        self['cmt'] = cmt
+
+    def __call__(self):
+        idaapi.del_extra_cmt(self['ea'], self['line_idx'])
+        isprev = 1 if self['line_idx'] - 1000 < 1000 else 0
+        if not self['cmt']:
+            return 0
+        idaapi.add_extra_cmt(self['ea'], isprev, self['cmt'])
+
+
 class TiChangedEvent(Event):
     TYPE = 'ti_changed'
 
