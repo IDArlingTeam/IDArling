@@ -69,9 +69,6 @@ class Network(Module):
         self._host, self._port = '', 0
         self._connector.disconnect()
 
-        # Notify plugin
-        self._plugin.notifyDisconnected()
-
     # -------------------------------------------------------------------------
     # Getters/Setters
     # -------------------------------------------------------------------------

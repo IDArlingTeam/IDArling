@@ -32,12 +32,6 @@ class ClientProtocol(Protocol):
         # Notify the plugin
         self._plugin.notifyConnected()
 
-    def connectionLost(self, reason):
-        super(ClientProtocol, self).connectionLost(reason)
-
-        # Notify the plugin
-        self._plugin.notifyDisconnected()
-
     # -------------------------------------------------------------------------
     # Internal Events
     # -------------------------------------------------------------------------
@@ -66,6 +60,7 @@ class ClientFactory(Factory, object):
 
     def __init__(self, plugin):
         super(ClientFactory, self).__init__()
+        self._plugin = plugin
 
         self._protocol = ClientProtocol(plugin)
         self.isConnected = self._protocol.isConnected
@@ -73,3 +68,27 @@ class ClientFactory(Factory, object):
 
     def buildProtocol(self, addr):
         return self._protocol
+
+    # -------------------------------------------------------------------------
+    # Twisted Events
+    # -------------------------------------------------------------------------
+
+    def startedConnecting(self, connector):
+        super(ClientFactory, self).startedConnecting(connector)
+
+        # Notify the plugin
+        self._plugin.notifyConnecting()
+
+    def clientConnectionFailed(self, connector, reason):
+        super(ClientFactory, self).clientConnectionFailed(connector, reason)
+        logger.info("Connection failed: %s" % reason)
+
+        # Notify the plugin
+        self._plugin.notifyDisconnected()
+
+    def clientConnectionLost(self, connector, reason):
+        super(ClientFactory, self).clientConnectionLost(connector, reason)
+        logger.info("Connection lost: %s" % reason)
+
+        # Notify the plugin
+        self._plugin.notifyDisconnected()
