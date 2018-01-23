@@ -124,6 +124,6 @@ class Protocol(basic.LineReceiver, object):
                     for key, value in data.iteritems()}
         return data
 
-    def _makeChunks(lst, n=1024):
+    def _makeChunks(self, lst, n=1024):
         for i in range(0, len(lst), n):
             yield lst[i:i + n]

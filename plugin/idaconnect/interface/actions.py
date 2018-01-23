@@ -1,6 +1,7 @@
 import uuid
 import datetime
 import logging
+from functools import partial
 
 import idc
 import idaapi
@@ -9,7 +10,7 @@ import ida_kernwin
 
 from dialogs import OpenDialog, SaveDialog
 from ..shared.commands import (
-    GetDatabases, GetRevisions, NewDatabase, NewRevision)
+    GetDatabases, GetRevisions, NewDatabase, NewRevision, UploadFile)
 from ..shared.models import Database, Revision
 
 
@@ -126,33 +127,28 @@ class OpenAction(Action):
 class OpenActionHandler(ActionHandler):
 
     def activate(self, ctx):
-        def onGetDatabasesReply(reply):
-            dbs = reply.dbs
-
-            def onGetRevisionsReply(reply):
-                revs = reply.revs
-
-                # Open the dialog
-                dialog = OpenDialog(self._plugin, dbs, revs)
-
-                # Catch acceptation
-                def dialogAccepted():
-                    db, rev = dialog.getResult()
-                    # FIXME: Download the file
-
-                dialog.accepted.connect(dialogAccepted)
-                dialog.exec_()
-
-            # Ask the server for the list of revs
-            d = self._plugin.getNetwork().sendPacket(GetRevisions())
-            d.addCallback(onGetRevisionsReply)
-            d.addErrback(logger.exception)
-
         # Ask the server for the list of dbs
         d = self._plugin.getNetwork().sendPacket(GetDatabases())
-        d.addCallback(onGetDatabasesReply)
+        d.addCallback(self._onGetDatabasesReply)
         d.addErrback(logger.exception)
         return 1
+
+    def _onGetDatabasesReply(self, reply):
+        # Ask the server for the list of revs
+        d = self._plugin.getNetwork().sendPacket(GetRevisions())
+        d.addCallback(partial(self._onGetRevisionsReply, reply.dbs))
+        d.addErrback(logger.exception)
+
+    def _onGetRevisionsReply(self, dbs, reply):
+        # Open the open dialog
+        dialog = OpenDialog(self._plugin, dbs, reply.revs)
+        # Catch acceptation
+        dialog.accepted.connect(partial(self._dialogAccepted, dialog))
+        dialog.exec_()
+
+    def _dialogAccepted(self, dialog):
+        db, rev = dialog.getResult()
+        # FIXME: Download the file
 
 
 class SaveAction(Action):
@@ -169,52 +165,58 @@ class SaveAction(Action):
 
 class SaveActionHandler(ActionHandler):
 
-    def activate(self, ctx):
-        def onGetDatabasesReply(reply):
-            dbs = reply.dbs
-
-            def onGetRevisionsReply(reply):
-                revs = reply.revs
-
-                # Open the dialog
-                dialog = SaveDialog(self._plugin, dbs, revs)
-
-                # Catch acceptation
-                def dialogAccepted():
-                    db, rev = dialog.getResult()
-                    if not db:
-                        hash = idautils.GetInputFileMD5()
-                        file = idc.GetInputFile()
-                        type = idaapi.get_file_type_name()
-                        dateFormat = "%Y/%m/%d %H:%M"
-                        date = datetime.datetime.now().strftime(dateFormat)
-                        db = Database(hash, file, type, date)
-                        self._plugin.getNetwork().sendPacket(NewDatabase(db))
-
-                    if not rev:
-                        uuid_ = str(uuid.uuid4())
-                        dateFormat = "%Y/%m/%d %H:%M"
-                        date = datetime.datetime.now().strftime(dateFormat)
-                        rev = Revision(db.getHash(), uuid_, date)
-                        self._plugin.getNetwork().sendPacket(NewRevision(rev))
-
-                    # FIXME: Upload file
-
-                dialog.accepted.connect(dialogAccepted)
-                dialog.exec_()
-
-            # Ask the server for the list of revs
-            d = self._plugin.getNetwork().sendPacket(GetRevisions())
-            d.addCallback(onGetRevisionsReply)
-            d.addErrback(logger.exception)
-
-        # Ask the server for the list of dbs
-        d = self._plugin.getNetwork().sendPacket(GetDatabases())
-        d.addCallback(onGetDatabasesReply)
-        d.addErrback(logger.exception)
-        return 1
-
     def update(self, ctx):
         if not idc.GetIdbPath():
             return idaapi.AST_DISABLE
         return super(SaveActionHandler, self).update(ctx)
+
+    def activate(self, ctx):
+        # Ask the server for the list of dbs
+        d = self._plugin.getNetwork().sendPacket(GetDatabases())
+        d.addCallback(self._onGetDatabasesReply)
+        d.addErrback(logger.exception)
+        return 1
+
+    def _onGetDatabasesReply(self, reply):
+        # Ask the server for the list of revs
+        d = self._plugin.getNetwork().sendPacket(GetRevisions())
+        d.addCallback(partial(self._onGetRevisionsReply, reply.dbs))
+        d.addErrback(logger.exception)
+
+    def _onGetRevisionsReply(self, dbs, reply):
+        # Open the save dialog
+        dialog = SaveDialog(self._plugin, dbs, reply.revs)
+        # Catch acceptation
+        dialog.accepted.connect(partial(self._dialogAccepted, dialog))
+        dialog.exec_()
+
+    def _dialogAccepted(self, dialog):
+        db, rev = dialog.getResult()
+
+        # Create new db if necessary
+        if not db:
+            hash = idautils.GetInputFileMD5()
+            file = idc.GetInputFile()
+            type = idaapi.get_file_type_name()
+            dateFormat = "%Y/%m/%d %H:%M"
+            date = datetime.datetime.now().strftime(dateFormat)
+            db = Database(hash, file, type, date)
+            self._plugin.getNetwork().sendPacket(NewDatabase(db))
+
+        # Create new rev if ncessarry
+        if not rev:
+            uuid_ = str(uuid.uuid4())
+            dateFormat = "%Y/%m/%d %H:%M"
+            date = datetime.datetime.now().strftime(dateFormat)
+            rev = Revision(db.getHash(), uuid_, date)
+            self._plugin.getNetwork().sendPacket(NewRevision(rev))
+
+        # Upload the file to the server
+        packet = UploadFile(db.getHash(), rev.getUUID())
+        inputPath = idc.GetIdbPath()
+        with open(inputPath, 'rb') as inputFile:
+            packet.setContent(inputFile.read())
+        self._plugin.getNetwork().sendPacket(packet, self._uploadProgress)
+
+    def _uploadProgress(self, count, total):
+        print 'count:', count, 'total:', total  # FIXME: Show a dialog instead

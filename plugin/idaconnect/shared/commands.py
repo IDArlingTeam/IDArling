@@ -79,3 +79,12 @@ class NewRevision(Command):
 
     def parseCommand(self, dct):
         self.rev = Revision.new(dct['rev'])
+
+
+class UploadFile(Container, SimpleCommand):
+    CMD_TYPE = 'upload_file'
+
+    def __init__(self, hash, uuid):
+        Command.__init__(self)
+        self.hash = hash
+        self.uuid = uuid

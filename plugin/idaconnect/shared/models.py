@@ -15,25 +15,34 @@ class Model(object):
         return obj
 
     def build(self, dct):
-        raise NotImplementedError("build() not implemented")
+        pass  # raise NotImplementedError("build() not implemented")
 
     def parse(self, dct):
-        raise NotImplementedError("parse() not implemented")
+        pass  # raise NotImplementedError("parse() not implemented")
 
     def __repr__(self):
         items = ', '.join(['%s=%s' % (key, repr(value))
-                           for key, value in self.__dict__.items()])
+                           for key, value in self.__dict__.iteritems()])
         return '%s(%s)' % (self.__class__.__name__, items)
 
 
-class SimpleModel(Model):
+class Simple(object):
 
     def build(self, dct):
-        dct.update(self.__dict__)
+        super(Simple, self).build(dct)
+        dct.update({key: value for key, value in self.__dict__.iteritems()
+                    if not key.startswith('_')})
         return dct
 
     def parse(self, dct):
-        self.__dict__.update(dct)
+        super(Simple, self).build(dct)
+        self.__dict__.update({key: value for key, value in dct.iteritems()
+                              if not key.startswith('_')})
+        return self
+
+
+class SimpleModel(Simple, Model):
+    pass
 
 
 class Database(SimpleModel):

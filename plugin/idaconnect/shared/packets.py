@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from models import Model
+from models import Model, Simple
 
 # -----------------------------------------------------------------------------
 # Packets
@@ -87,12 +87,13 @@ class Event(Packet):
 
     def parse(self, dct):
         self.parseEvent(dct)
+        return self
 
     def buildEvent(self, dct):
-        raise NotImplementedError("buildEvent() not implemented")
+        pass  # raise NotImplementedError("buildEvent() not implemented")
 
     def parseEvent(self, dct):
-        raise NotImplementedError("parseEvent() not implemented")
+        pass  # raise NotImplementedError("parseEvent() not implemented")
 
     def __repr__(self):
         items = ['%s=%s' % item for item in self.__dict__.items()]
@@ -102,13 +103,8 @@ class Event(Packet):
         raise NotImplementedError("__call__() not implemented")
 
 
-class SimpleEvent(Event):
-
-    def buildEvent(self, dct):
-        dct.update(self.__dict__)
-
-    def parseEvent(self, dct):
-        self.__dict__.update(dct)
+class SimpleEvent(Simple, Event):
+    pass
 
 
 class GenericEvent(Event):
@@ -118,6 +114,10 @@ class GenericEvent(Event):
 
     def parseEvent(self, dct):
         self.__dict__.update(dct)
+
+    def __repr__(self):
+        items = ['%s=%s' % item for item in self.__dict__.items()]
+        return 'GenericEvent(%s)' % ', '.join(items)
 
 
 # -----------------------------------------------------------------------------
@@ -161,25 +161,21 @@ class Command(Packet):
 
     def parse(self, dct):
         self.parseCommand(dct)
+        return self
 
     def buildCommand(self, dct):
-        raise NotImplementedError("buildCommand() not implemented")
+        pass  # raise NotImplementedError("buildCommand() not implemented")
 
     def parseCommand(self, dct):
-        raise NotImplementedError("parseCommand() not implemented")
+        pass  # raise NotImplementedError("parseCommand() not implemented")
 
     def __repr__(self):
         items = ['%s=%s' % item for item in self.__dict__.items()]
         return 'Command(type=%s, %s)' % (self.CMD_TYPE, ', '.join(items))
 
 
-class SimpleCommand(Command):
-
-    def buildCommand(self, dct):
-        dct.update(self.__dict__)
-
-    def parseCommand(self, dct):
-        self.__dict__.update(dct)
+class SimpleCommand(Simple, Command):
+    pass
 
 # -----------------------------------------------------------------------------
 # Queries
