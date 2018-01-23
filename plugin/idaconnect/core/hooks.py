@@ -3,19 +3,31 @@ import logging
 import idc
 import ida_idp
 
-# Import ABC and events
-from hooks_abc import Hooks
-from ..events.events_idb import *
+from events import *
 
 
 logger = logging.getLogger('IDAConnect.Core')
+
+# -----------------------------------------------------------------------------
+# Hooks
+# -----------------------------------------------------------------------------
+
+
+class Hooks(object):
+
+    def __init__(self, plugin):
+        self._network = plugin.getNetwork()
+
+    def _sendEvent(self, event):
+        # Forward packet to network
+        self._network.sendPacket(event)
 
 # -----------------------------------------------------------------------------
 # IDB Hooks
 # -----------------------------------------------------------------------------
 
 
-class IDBHooks(ida_idp.IDB_Hooks, Hooks):
+class IDBHooks(Hooks, ida_idp.IDB_Hooks):
 
     def __init__(self, plugin):
         ida_idp.IDB_Hooks.__init__(self)
@@ -65,14 +77,12 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
         return 0
 
     def op_type_changed(self, ea, n):
+        def gather_enum_info(ea, n):
+            id = idaapi.get_enum_id(ea, n)[0]
+            serial = idaapi.get_enum_idx(id)
+            return id, serial
 
         extra = {}
-
-        def gather_enum_info(ea, n):
-            id_ = idaapi.get_enum_id(ea, n)[0]
-            serial = idaapi.get_enum_idx(id_)
-            return id_, serial
-
         flags = idc.get_full_flags(ea)
         if n == 0:
             if idc.isHex0(flags):
@@ -87,8 +97,8 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
                 op = 'oct'
             elif idc.isEnum0(flags):
                 op = 'enum'
-                id_, serial = gather_enum_info(ea, n)
-                extra['id_'] = id_
+                id, serial = gather_enum_info(ea, n)
+                extra['id'] = id
                 extra['serial'] = serial
             else:
                 # FIXME: Find a better way
@@ -106,8 +116,8 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
                 op = 'oct'
             elif idc.isEnum1(flags):
                 op = 'enum'
-                id_, serial = gather_enum_info(ea, n)
-                extra['id_'] = id_
+                id, serial = gather_enum_info(ea, n)
+                extra['id'] = id
                 extra['serial'] = serial
             else:
                 # FIXME: Find a better way
@@ -139,18 +149,18 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
         self._sendEvent(EnumCmtChangedEvent(tid, cmt, repeatable_cmt))
         return 0
 
-    def enum_member_created(self, id_, cid):
+    def enum_member_created(self, id, cid):
         name = idaapi.get_enum_member_name(cid)
         value = idaapi.get_enum_member_value(cid)
         bmask = idaapi.get_enum_member_bmask(cid)
-        self._sendEvent(EnumMemberCreatedEvent(id_, name, value, bmask))
+        self._sendEvent(EnumMemberCreatedEvent(id, name, value, bmask))
         return 0
 
-    def enum_member_deleted(self, id_, cid):
+    def enum_member_deleted(self, id, cid):
         value = idaapi.get_enum_member_value(cid)
         serial = idaapi.get_enum_member_serial(cid)
         bmask = idaapi.get_enum_member_bmask(cid)
-        self._sendEvent(EnumMemberDeletedEvent(id_, value, serial, bmask))
+        self._sendEvent(EnumMemberDeletedEvent(id, value, serial, bmask))
         return 0
 
     def struc_created(self, tid):
@@ -165,4 +175,18 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
     def struc_renamed(self, sptr):
         new_name = idaapi.get_struc_name(sptr.id)
         self._sendEvent(StrucRenamedEvent(sptr.id, new_name))
+
+# -----------------------------------------------------------------------------
+# IDP Hooks
+# -----------------------------------------------------------------------------
+
+
+class IDPHooks(Hooks, ida_idp.IDP_Hooks):
+
+    def __init__(self, plugin):
+        ida_idp.IDP_Hooks.__init__(self)
+        Hooks.__init__(self, plugin)
+
+    def ev_undefine(self, ea):
+        self._sendEvent(UndefinedEvent(ea))
         return 0

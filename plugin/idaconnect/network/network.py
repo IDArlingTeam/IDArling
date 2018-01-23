@@ -10,6 +10,7 @@ from twisted.internet import reactor
 from ..module import Module
 from client import ClientFactory
 
+
 logger = logging.getLogger('IDAConnect.Network')
 
 # -----------------------------------------------------------------------------
@@ -22,8 +23,8 @@ class Network(Module):
     def __init__(self, plugin):
         super(Network, self).__init__(plugin)
 
-        # Variables initialization
-        self._host, self._port = '', 0
+        self._host = ''
+        self._port = 0
         self._factory = None
 
     # -------------------------------------------------------------------------
@@ -81,11 +82,15 @@ class Network(Module):
     def getPort(self):
         return self._port
 
+    # -------------------------------------------------------------------------
+    # Network
+    # -------------------------------------------------------------------------
+
     def isConnected(self):
         # Pass on to the factory
         return self._installed and self._factory.isConnected()
 
-    def sendPacket(self, packet):
+    def sendPacket(self, packet, chunkback=None):
         # Pass on to the factory
         if self.isConnected():
-            return self._factory.sendPacket(packet)
+            return self._factory.sendPacket(packet, chunkback)

@@ -8,9 +8,9 @@ import idautils
 import ida_kernwin
 
 from dialogs import OpenDialog, SaveDialog
-from ..shared.models import Database, Revision
-from ..shared.packets import (
+from ..shared.commands import (
     GetDatabases, GetRevisions, NewDatabase, NewRevision)
+from ..shared.models import Database, Revision
 
 
 logger = logging.getLogger('IDAConnect.Interface')
@@ -31,7 +31,6 @@ class Action(object):
         self._icon = icon
         self._handler = handler
 
-        # Variables intialization
         self._iconId = idaapi.BADADDR
 
     # -------------------------------------------------------------------------
@@ -92,7 +91,7 @@ class Action(object):
         return True
 
     # -------------------------------------------------------------------------
-    # Getters/Setters
+    # Actions
     # -------------------------------------------------------------------------
 
     def update(self):
@@ -128,10 +127,10 @@ class OpenActionHandler(ActionHandler):
 
     def activate(self, ctx):
         def onGetDatabasesReply(reply):
-            dbs = reply['dbs']
+            dbs = reply.dbs
 
             def onGetRevisionsReply(reply):
-                revs = reply['revs']
+                revs = reply.revs
 
                 # Open the dialog
                 dialog = OpenDialog(self._plugin, dbs, revs)
@@ -172,10 +171,10 @@ class SaveActionHandler(ActionHandler):
 
     def activate(self, ctx):
         def onGetDatabasesReply(reply):
-            dbs = reply['dbs']
+            dbs = reply.dbs
 
             def onGetRevisionsReply(reply):
-                revs = reply['revs']
+                revs = reply.revs
 
                 # Open the dialog
                 dialog = SaveDialog(self._plugin, dbs, revs)
@@ -199,7 +198,7 @@ class SaveActionHandler(ActionHandler):
                         rev = Revision(db.getHash(), uuid_, date)
                         self._plugin.getNetwork().sendPacket(NewRevision(rev))
 
-                    # FIXME: Upload the file
+                    # FIXME: Upload file
 
                 dialog.accepted.connect(dialogAccepted)
                 dialog.exec_()

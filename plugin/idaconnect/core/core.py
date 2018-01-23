@@ -1,10 +1,7 @@
 import logging
 
 from ..module import Module
-
-# Import hooks
-from hooks_idb import IDBHooks
-from hooks_idp import IDPHooks
+from hooks import IDBHooks, IDPHooks
 
 
 logger = logging.getLogger('IDAConnect.Core')
@@ -19,7 +16,6 @@ class Core(Module):
     def __init__(self, plugin):
         super(Core, self).__init__(plugin)
 
-        # Variable initialization
         self._idbHooks = None
         self._idpHooks = None
 
@@ -28,9 +24,10 @@ class Core(Module):
     # -------------------------------------------------------------------------
 
     def _install(self):
-        logger.debug("Installing hooks")
         self._idbHooks = IDBHooks(self._plugin)
         self._idpHooks = IDPHooks(self._plugin)
+
+        logger.debug("Installing hooks")
         self.hookAll()
 
     # -------------------------------------------------------------------------
@@ -42,7 +39,7 @@ class Core(Module):
         self.unhookAll()
 
     # -------------------------------------------------------------------------
-    # Getters/Setters
+    # Hooks
     # -------------------------------------------------------------------------
 
     def hookAll(self):

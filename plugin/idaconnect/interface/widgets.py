@@ -23,7 +23,6 @@ class StatusWidget(QWidget):
         super(StatusWidget, self).__init__()
         self._plugin = plugin
 
-        # Variable initialisation
         self._state = self.STATE_DISCONNECTED
         self._server = self.SERVER_DISCONNECTED
         self._servers = ['127.0.0.1']

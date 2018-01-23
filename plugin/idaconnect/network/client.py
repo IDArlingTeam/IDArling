@@ -3,12 +3,10 @@ import logging
 
 # Twisted imports
 from twisted.internet import defer
-from twisted.internet.protocol import ClientFactory as ClientFactory_
+from twisted.internet.protocol import ClientFactory as Factory
 
-from ..events.events_abc import Event
-from ..shared.packets import Command
+from ..shared.packets import Command, Event
 from ..shared.protocol import Protocol
-from ..utilities.misc import byteify
 
 
 logger = logging.getLogger('IDAConnect.Network')
@@ -45,16 +43,14 @@ class ClientProtocol(Protocol):
     # -------------------------------------------------------------------------
 
     def recvPacket(self, packet):
-        if Command.isCommand(packet):
-            # Parse the command
-            cmd = Command.new(packet)
-            # Call the handler
-            self._handlers[cmd.__class__](cmd)
+        if isinstance(packet, Command):
+            # Call the command handler
+            self._handlers[packet.__class__](packet)
 
-        elif Event.isEvent(packet):
+        elif isinstance(packet, Event):
             # Call the event
             self._plugin.getCore().unhookAll()
-            Event.new(byteify(packet))()
+            packet()
             self._plugin.getCore().hookAll()
 
         else:
@@ -66,26 +62,14 @@ class ClientProtocol(Protocol):
 # -----------------------------------------------------------------------------
 
 
-class ClientFactory(ClientFactory_, object):
+class ClientFactory(Factory, object):
 
     def __init__(self, plugin):
         super(ClientFactory, self).__init__()
 
-        # Variables initialization
         self._protocol = ClientProtocol(plugin)
+        self.isConnected = self._protocol.isConnected
+        self.sendPacket = self._protocol.sendPacket
 
     def buildProtocol(self, addr):
         return self._protocol
-
-    # -------------------------------------------------------------------------
-    # Getters/Setters
-    # -------------------------------------------------------------------------
-
-    def isConnected(self):
-        # Pass on to the protocol
-        return self._protocol.isConnected()
-
-    def sendPacket(self, packet):
-        # Pass on to the protocol
-        if self.isConnected():
-            return self._protocol.sendPacket(packet)

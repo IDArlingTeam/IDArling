@@ -10,6 +10,10 @@ class Module(object):
         self._plugin = plugin
         self._installed = False
 
+    # -------------------------------------------------------------------------
+    # Initialization
+    # -------------------------------------------------------------------------
+
     def install(self):
         # Do not install twice
         if self._installed:
@@ -20,6 +24,10 @@ class Module(object):
     def _install(self):
         # Modules should implement this method
         raise NotImplementedError()
+
+    # -------------------------------------------------------------------------
+    # Termination
+    # -------------------------------------------------------------------------
 
     def uninstall(self):
         # Do not uninstall twice

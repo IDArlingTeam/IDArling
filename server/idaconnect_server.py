@@ -6,11 +6,11 @@ import logging
 from twisted.internet import reactor, protocol
 from twisted.python import log
 
+from shared.commands import (GetDatabases, GetDatabasesReply,
+                             GetRevisions, GetRevisionsReply,
+                             NewDatabase, NewRevision)
 from shared.models import Database, Revision
-from shared.packets import (EventBase, Command,
-                            GetDatabases, GetDatabasesReply,
-                            GetRevisions, GetRevisionsReply,
-                            NewDatabase, NewRevision)
+from shared.packets import Command, GenericEvent
 from shared.protocol import Protocol
 
 # -----------------------------------------------------------------------------
@@ -92,17 +92,13 @@ class ServerProtocol(Protocol):
     # -------------------------------------------------------------------------
 
     def recvPacket(self, packet):
-        if Command.isCommand(packet):
-            # Parse the command
-            cmd = Command.new(packet)
+        if isinstance(packet, Command):
             # Call the handler
-            self._handlers[cmd.__class__](cmd)
+            self._handlers[packet.__class__](packet)
 
-        elif EventBase.isEvent(packet):
-            # Parse the event
-            event = EventBase(**packet)
+        elif isinstance(packet, GenericEvent):
             # Send the event to all clients
-            self._factory.sendPacketToAll(event, self)
+            self._factory.sendPacketToAll(packet, self)
 
         else:
             return False
@@ -115,28 +111,28 @@ class ServerProtocol(Protocol):
     def _handleGetDatabases(self, packet):
         dbs = self._factory.getDatabases()
         # Filter by hash if requested
-        if 'hash' in packet and packet['hash']:
-            dbs = [db for db in dbs if db.getHash() == packet['hash']]
+        if packet.hash:
+            dbs = [db for db in dbs if db.getHash() == packet.hash]
         self.sendPacket(GetDatabasesReply(dbs))
 
     def _handleGetRevisions(self, packet):
         revs = self._factory.getRevisions()
         # Filter by hash if requested
-        if 'hash' in packet and packet['hash']:
-            revs = [rev for rev in revs if rev.getHash() == packet['hash']]
+        if packet.hash:
+            revs = [rev for rev in revs if rev.getHash() == packet.hash]
         # Filter by uuid if requested
-        if 'uuid' in packet and packet['uuid']:
-            revs = [rev for rev in revs if rev.getUUID() == packet['uuid']]
+        if packet.uuid:
+            revs = [rev for rev in revs if rev.getUUID() == pacjet.uuid]
         self.sendPacket(GetRevisionsReply(revs))
 
     def _handleNewDatabase(self, packet):
         # FIXME: Make sure no db exists
-        self._factory.getDatabases().append(packet['db'])
+        self._factory.getDatabases().append(packet.db)
 
     def _handleNewRevision(self, packet):
         # FIXME: Make sure the db exists
         # FIXME: Make sure no rev exists
-        self._factory.getRevisions().append(packet['rev'])
+        self._factory.getRevisions().append(packet.rev)
 
 
 # -----------------------------------------------------------------------------
@@ -149,10 +145,9 @@ class ServerFactory(protocol.Factory, object):
     def __init__(self):
         super(ServerFactory, self).__init__()
 
-        # Variables initialization
         self._clients = []
 
-        # FIXME: Use SQL database for storage
+        # FIXME: Use SQL database as storage
         self._databases = []
         self._revisions = []
 
@@ -160,7 +155,7 @@ class ServerFactory(protocol.Factory, object):
         return ServerProtocol(self)
 
     # -------------------------------------------------------------------------
-    # Getters/Setters
+    # Clients
     # -------------------------------------------------------------------------
 
     def addClient(self, client):
@@ -171,11 +166,19 @@ class ServerFactory(protocol.Factory, object):
         # Remove a client from the list
         self._clients.remove(client)
 
+    # -------------------------------------------------------------------------
+    # Storage
+    # -------------------------------------------------------------------------
+
     def getDatabases(self):
         return self._databases
 
     def getRevisions(self):
         return self._revisions
+
+    # -------------------------------------------------------------------------
+    # Network
+    # -------------------------------------------------------------------------
 
     def sendPacketToAll(self, packet, ignore=None):
         # Send line to all client but ignore

@@ -1,175 +1,232 @@
-from models import Database, Revision
+from collections import defaultdict
+
+from models import Model
 
 # -----------------------------------------------------------------------------
 # Packets
 # -----------------------------------------------------------------------------
 
 
-class Packet(dict):
+class PacketMeta(type):
+    _CLASSES = {}
+
+    @classmethod
+    def getClass(cls, dct):
+        typeCls = cls._CLASSES[dct['type']]
+        if typeCls.__metaclass__ != cls:
+            typeCls = typeCls.__metaclass__.getClass(dct)
+        return typeCls
+
+    def __new__(cls, name, bases, attrs):
+        cls = super(PacketMeta, cls).__new__(cls, name, bases, attrs)
+        if cls.TYPE is not None and cls.TYPE not in PacketMeta._CLASSES:
+            PacketMeta._CLASSES[cls.TYPE] = cls
+        return cls
+
+
+class Packet(Model):
+    __metaclass__ = PacketMeta
+
+    TYPE = None
 
     @staticmethod
-    def isPacket(dct):
-        return 'type' in dct
+    def parsePacket(dct):
+        cls = PacketMeta.getClass(dct)
+        packet = cls.new(dct)
+        return packet
 
-    def __init__(self, type):
-        super(Packet, self).__init__()
-        self['type'] = type
+    def buildPacket(self):
+        dct = defaultdict(defaultdict)
+        self.build(dct)
+        return dct
+
+    def __repr__(self):
+        items = ['%s=%s' % item for item in self.__dict__.items()]
+        return 'Packet(type=%s, %s)' % (self.TYPE, ', '.join(items))
 
 # -----------------------------------------------------------------------------
 # Events
 # -----------------------------------------------------------------------------
 
 
-class EventBase(Packet):
+class EventMeta(PacketMeta):
+    _CLASSES = {}
 
-    @staticmethod
-    def isEvent(dct):
-        return Packet.isPacket(dct) and dct['type'] == 'event'
+    @classmethod
+    def getClass(cls, dct):
+        try:
+            typeCls = cls._CLASSES[dct['evt_type']]
+        except KeyError as e:
+            typeCls = GenericEvent
+        if typeCls.__metaclass__ != cls:
+            typeCls = typeCls.__metaclass__.getClass(dct)
+        return typeCls
 
-    def __init__(self, **kwargs):
-        super(EventBase, self).__init__('event')
-        self.update(kwargs)
+    def __new__(cls, name, bases, attrs):
+        cls = super(EventMeta, cls).__new__(cls, name, bases, attrs)
+        if cls.EVT_TYPE is not None and cls.EVT_TYPE not in EventMeta._CLASSES:
+            EventMeta._CLASSES[cls.EVT_TYPE] = cls
+        return cls
+
+
+class Event(Packet):
+    __metaclass__ = EventMeta
+
+    TYPE = 'event'
+    EVT_TYPE = None
+
+    def __init__(self):
+        super(Event, self).__init__()
+        assert self.EVT_TYPE is not None, "EVT_TYPE not implemented"
+
+    def build(self, dct):
+        dct['type'] = self.TYPE
+        dct['evt_type'] = self.EVT_TYPE
+        self.buildEvent(dct)
+        return dct
+
+    def parse(self, dct):
+        self.parseEvent(dct)
+
+    def buildEvent(self, dct):
+        raise NotImplementedError("buildEvent() not implemented")
+
+    def parseEvent(self, dct):
+        raise NotImplementedError("parseEvent() not implemented")
+
+    def __repr__(self):
+        items = ['%s=%s' % item for item in self.__dict__.items()]
+        return 'Event(type=%s, %s)' % (self.EVT_TYPE, ', '.join(items))
+
+    def __call__(self):
+        raise NotImplementedError("__call__() not implemented")
+
+
+class SimpleEvent(Event):
+
+    def buildEvent(self, dct):
+        dct.update(self.__dict__)
+
+    def parseEvent(self, dct):
+        self.__dict__.update(dct)
+
+
+class GenericEvent(Event):
+
+    def buildEvent(self, dct):
+        dct.update(self.__dict__)
+
+    def parseEvent(self, dct):
+        self.__dict__.update(dct)
+
 
 # -----------------------------------------------------------------------------
 # Commands
 # -----------------------------------------------------------------------------
 
 
-class CommandMeta(type):
-    _REGISTRY = {}
+class CommandMeta(PacketMeta):
+    _CLASSES = {}
 
-    @staticmethod
-    def newCls(newType):
-        return CommandMeta._REGISTRY[newType]
+    @classmethod
+    def getClass(cls, dct):
+        typeCls = cls._CLASSES[dct['cmd_type']]
+        if typeCls.__metaclass__ != cls:
+            typeCls = typeCls.__metaclass__.getClass(dct)
+        return typeCls
 
     def __new__(cls, name, bases, attrs):
-        newCls = type.__new__(cls, name, bases, attrs)
-        CommandMeta._REGISTRY[newCls.TYPE] = newCls
-        return newCls
+        cls = super(CommandMeta, cls).__new__(cls, name, bases, attrs)
+        if cls.CMD_TYPE is not None \
+                and cls.CMD_TYPE not in CommandMeta._CLASSES:
+            CommandMeta._CLASSES[cls.CMD_TYPE] = cls
+        return cls
 
 
 class Command(Packet):
     __metaclass__ = CommandMeta
 
-    TYPE = None
+    TYPE = 'cmd'
+    CMD_TYPE = None
 
-    @staticmethod
-    def new(dct):
-        cmdCls = CommandMeta.newCls(dct['cmd_type'])
-        del dct['type']
-        del dct['cmd_type']
-        return cmdCls(**dct)
+    def __init__(self):
+        super(Command, self).__init__()
+        assert self.CMD_TYPE is not None, "CMD_TYPE not implemented"
 
-    @staticmethod
-    def isCommand(dct):
-        return Packet.isPacket(dct) \
-            and dct['type'] in ['cmd', 'cmd_query', 'cmd_reply']
+    def build(self, dct):
+        dct['type'] = self.TYPE
+        dct['cmd_type'] = self.CMD_TYPE
+        self.buildCommand(dct)
+        return dct
 
-    def __init__(self, type_='cmd'):
-        super(Command, self).__init__(type_)
-        self['cmd_type'] = self.TYPE
+    def parse(self, dct):
+        self.parseCommand(dct)
+
+    def buildCommand(self, dct):
+        raise NotImplementedError("buildCommand() not implemented")
+
+    def parseCommand(self, dct):
+        raise NotImplementedError("parseCommand() not implemented")
+
+    def __repr__(self):
+        items = ['%s=%s' % item for item in self.__dict__.items()]
+        return 'Command(type=%s, %s)' % (self.CMD_TYPE, ', '.join(items))
+
+
+class SimpleCommand(Command):
+
+    def buildCommand(self, dct):
+        dct.update(self.__dict__)
+
+    def parseCommand(self, dct):
+        self.__dict__.update(dct)
 
 # -----------------------------------------------------------------------------
 # Queries
 # -----------------------------------------------------------------------------
 
 
-class Query(Command):
-    _CALLBACKS = []
-
-    @staticmethod
-    def isQuery(dct):
-        return Command.isCommand(dct) and dct['type'] == 'cmd_query'
+class Query(object):
+    CALLBACKS = []
 
     @classmethod
     def registerCallback(cls, d):
-        cls._CALLBACKS.append(d)
-
-    @classmethod
-    def triggerCallback(cls, reply):
-        d = cls._CALLBACKS.pop()
-        d.callback(reply)
-
-    def __init__(self):
-        super(Query, self).__init__('cmd_query')
+        cls.CALLBACKS.append(d)
 
 # -----------------------------------------------------------------------------
 # Replies
 # -----------------------------------------------------------------------------
 
 
-class Reply(Command):
+class Reply(object):
     QUERY = None
 
-    @staticmethod
-    def isReply(dct):
-        return Command.isCommand(dct) and dct['type'] == 'cmd_reply'
-
     def __init__(self):
-        super(Reply, self).__init__('cmd_reply')
+        super(Reply, self).__init__()
+        assert self.QUERY is not None, "QUERY not implemented"
 
-    def notify(self):
-        self.QUERY.triggerCallback(self)
+    def triggerCallback(self):
+        d = self.QUERY.CALLBACKS.pop()
+        d.callback(self)
 
 # -----------------------------------------------------------------------------
-# All Packets
+# Container
 # -----------------------------------------------------------------------------
 
 
-class GetDatabases(Query):
-    TYPE = 'get_dbs'
+class Container(Model):
 
-    def ___init__(self, hash=None):
-        super(GetDatabases, self).__init__()
-        self['hash'] = hash
+    def build(self, dct):
+        super(Container, self).build(dct)
+        dct['__size__'] = len(self._content)
+        return dct
 
+    def parse(self, dct):
+        self.size = dct['__size__']
+        super(Container, self).parse(dct)
 
-class GetDatabasesReply(Reply):
-    TYPE = 'get_dbs_reply'
-    QUERY = GetDatabases
+    def getContent(self):
+        return self._content
 
-    def __init__(self, dbs):
-        super(GetDatabasesReply, self).__init__()
-        self['dbs'] = []
-        for db in dbs:
-            if isinstance(db, dict):
-                db = Database(**db)
-            self['dbs'].append(db)
-
-
-class GetRevisions(Query):
-    TYPE = 'get_revs'
-
-    def __init__(self, hash=None, uuid=None):
-        super(GetRevisions, self).__init__()
-        self['hash'] = hash
-        self['uuid'] = uuid
-
-
-class GetRevisionsReply(Reply):
-    TYPE = 'get_revs_reply'
-    QUERY = GetRevisions
-
-    def __init__(self, revs):
-        super(GetRevisionsReply, self).__init__()
-        self['revs'] = []
-        for rev in revs:
-            if isinstance(rev, dict):
-                rev = Revision(**rev)
-            self['revs'].append(rev)
-
-
-class NewDatabase(Command):
-    TYPE = 'new_db'
-
-    def __init__(self, db):
-        super(NewDatabase, self).__init__()
-        self['db'] = Database(**db) if isinstance(db, dict) else db
-
-
-class NewRevision(Command):
-    TYPE = 'new_rev'
-
-    def __init__(self, rev):
-        super(NewRevision, self).__init__()
-        self['rev'] = Revision(**rev) if isinstance(rev, dict) else rev
+    def setContent(self, content):
+        self._content = content
