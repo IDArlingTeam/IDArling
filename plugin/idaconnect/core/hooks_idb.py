@@ -161,3 +161,8 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
     def struc_deleted(self, tid):
         self._sendEvent(StrucDeletedEvent(tid))
         return 0
+
+    def struc_renamed(self, sptr):
+        new_name = idaapi.get_struc_name(sptr.id)
+        self._sendEvent(StrucRenamedEvent(sptr.id, new_name))
+        return 0

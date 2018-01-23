@@ -281,3 +281,15 @@ class StrucDeletedEvent(Event):
 
     def __call__(self):
         idc.del_struc(self['struc'])
+
+
+class StrucRenamedEvent(Event):
+    TYPE = 'struc_renamed'
+
+    def __init__(self, sid, new_name):
+        super(StrucRenamedEvent, self).__init__()
+        self['sid'] = sid
+        self['new_name'] = new_name
+
+    def __call__(self):
+        idaapi.set_struc_name(self['sid'], self['new_name'])
