@@ -275,7 +275,7 @@ class StrucCreatedEvent(Event):
 class StrucDeletedEvent(Event):
     TYPE = 'struc_deleted'
 
-    def __init__(self, enum):
+    def __init__(self, struc):
         super(StrucDeletedEvent, self).__init__()
         self['struc'] = struc
 
