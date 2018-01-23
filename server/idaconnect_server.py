@@ -8,7 +8,8 @@ from twisted.python import log
 
 from shared.commands import (GetDatabases, GetDatabasesReply,
                              GetRevisions, GetRevisionsReply,
-                             NewDatabase, NewRevision)
+                             NewDatabase, NewRevision,
+                             UploadFile)
 from shared.models import Database, Revision
 from shared.packets import Command, GenericEvent
 from shared.protocol import Protocol
@@ -64,6 +65,7 @@ class ServerProtocol(Protocol):
         self._handlers[GetRevisions] = self._handleGetRevisions
         self._handlers[NewDatabase] = self._handleNewDatabase
         self._handlers[NewRevision] = self._handleNewRevision
+        self._handlers[UploadFile] = self._handleUploadFile
 
     # -------------------------------------------------------------------------
     # Twisted Events
@@ -134,6 +136,17 @@ class ServerProtocol(Protocol):
         # FIXME: Make sure no rev exists
         self._factory.getRevisions().append(packet.rev)
 
+    def _handleUploadFile(self, packet):
+        # FIXME: Make sure the user can do that
+        filesDir = os.path.join(os.path.dirname(__file__), 'files')
+        filesDir = os.path.abspath(filesDir)
+        if not os.path.exists(filesDir):
+            os.makedirs(filesDir)
+        filePath = os.path.join(filesDir, packet.uuid)
+
+        with open(filePath, 'wb') as file:
+            file.write(packet.getContent())
+        logger.info("Saved file %s to your ./files/ folder!" % packet.uuid)
 
 # -----------------------------------------------------------------------------
 # Server Factory

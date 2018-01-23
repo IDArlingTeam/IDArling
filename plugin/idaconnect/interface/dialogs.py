@@ -28,7 +28,7 @@ class OpenDialog(QDialog):
         # General setup
         logger.debug("Showing open database dialog")
         self.setWindowTitle("Open from Remote Server")
-        iconPath = self._plugin.getResource('open.png')
+        iconPath = self._plugin.getResource('download.png')
         self.setWindowIcon(QIcon(iconPath))
         self.resize(900, 450)
 
@@ -147,7 +147,7 @@ class SaveDialog(QDialog):
         # General setup
         logger.debug("Showing save database dialog")
         self.setWindowTitle("Save to Remote Server")
-        iconPath = self._plugin.getResource('save.png')
+        iconPath = self._plugin.getResource('upload.png')
         self.setWindowIcon(QIcon(iconPath))
         self.resize(900, 450)
 

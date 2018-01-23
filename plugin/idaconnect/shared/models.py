@@ -20,10 +20,12 @@ class Model(object):
     def parse(self, dct):
         pass  # raise NotImplementedError("parse() not implemented")
 
+    def _dictRepr(self):
+        return ', '.join(['%s=%s' % (key, repr(value)) for key, value in self
+                          .__dict__.iteritems() if not key.startswith('_')])
+
     def __repr__(self):
-        items = ', '.join(['%s=%s' % (key, repr(value))
-                           for key, value in self.__dict__.iteritems()])
-        return '%s(%s)' % (self.__class__.__name__, items)
+        return '%s(%s)' % (self.__class__.__name__, self._dictRepr())
 
 
 class Simple(object):

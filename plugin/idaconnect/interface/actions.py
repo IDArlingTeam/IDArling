@@ -8,6 +8,10 @@ import idaapi
 import idautils
 import ida_kernwin
 
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QProgressDialog, QMessageBox
+
 from dialogs import OpenDialog, SaveDialog
 from ..shared.commands import (
     GetDatabases, GetRevisions, NewDatabase, NewRevision, UploadFile)
@@ -120,7 +124,7 @@ class OpenAction(Action):
             'File/Open',
             'Open from server...',
             'Load a database from server',
-            plugin.getResource('open.png'),
+            plugin.getResource('download.png'),
             OpenActionHandler(plugin))
 
 
@@ -159,7 +163,7 @@ class SaveAction(Action):
             'File/Save',
             'Save to server...',
             'Save a database to server',
-            plugin.getResource('save.png'),
+            plugin.getResource('upload.png'),
             SaveActionHandler(plugin))
 
 
@@ -211,12 +215,35 @@ class SaveActionHandler(ActionHandler):
             rev = Revision(db.getHash(), uuid_, date)
             self._plugin.getNetwork().sendPacket(NewRevision(rev))
 
-        # Upload the file to the server
+        # Create the packet holding the file
         packet = UploadFile(db.getHash(), rev.getUUID())
         inputPath = idc.GetIdbPath()
         with open(inputPath, 'rb') as inputFile:
             packet.setContent(inputFile.read())
-        self._plugin.getNetwork().sendPacket(packet, self._uploadProgress)
 
-    def _uploadProgress(self, count, total):
-        print 'count:', count, 'total:', total  # FIXME: Show a dialog instead
+        # Show progress dialog
+        text = "Uploading database to server, please wait..."
+        progress = QProgressDialog(text, "Cancel", 0, len(packet.getContent()))
+        progress.setCancelButton(None)  # Remove cancel button
+        progress.setModal(True)  # Set as a modal dialog
+        windowFlags = progress.windowFlags()  # Disable close button
+        progress.setWindowFlags(windowFlags & ~Qt.WindowCloseButtonHint)
+        progress.setWindowTitle("Save to server")
+        iconPath = self._plugin.getResource('upload.png')
+        progress.setWindowIcon(QIcon(iconPath))
+        callback = partial(self._uploadProgress, progress)
+        self._plugin.getNetwork().sendPacket(packet, callback)
+        progress.show()
+
+        # Show success dialog
+        success = QMessageBox()
+        success.setIcon(QMessageBox.Information)
+        success.setStandardButtons(QMessageBox.Ok)
+        success.setText("Database successfully uploaded!")
+        success.setWindowTitle("Save to server")
+        iconPath = self._plugin.getResource('upload.png')
+        success.setWindowIcon(QIcon(iconPath))
+        success.exec_()
+
+    def _uploadProgress(self, progress, count, total):
+        progress.setValue(count)  # Update progress bar

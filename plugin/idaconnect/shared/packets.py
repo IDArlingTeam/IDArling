@@ -41,8 +41,7 @@ class Packet(Model):
         return dct
 
     def __repr__(self):
-        items = ['%s=%s' % item for item in self.__dict__.items()]
-        return 'Packet(type=%s, %s)' % (self.TYPE, ', '.join(items))
+        return 'Packet(type=%s, %s)' % (self.TYPE, self._dictRepr())
 
 # -----------------------------------------------------------------------------
 # Events
@@ -96,8 +95,7 @@ class Event(Packet):
         pass  # raise NotImplementedError("parseEvent() not implemented")
 
     def __repr__(self):
-        items = ['%s=%s' % item for item in self.__dict__.items()]
-        return 'Event(type=%s, %s)' % (self.EVT_TYPE, ', '.join(items))
+        return 'Event(type=%s, %s)' % (self.EVT_TYPE, self._dictRepr())
 
     def __call__(self):
         raise NotImplementedError("__call__() not implemented")
@@ -116,8 +114,7 @@ class GenericEvent(Event):
         self.__dict__.update(dct)
 
     def __repr__(self):
-        items = ['%s=%s' % item for item in self.__dict__.items()]
-        return 'GenericEvent(%s)' % ', '.join(items)
+        return 'GenericEvent(%s)' % self._dictRepr()
 
 
 # -----------------------------------------------------------------------------
@@ -170,8 +167,7 @@ class Command(Packet):
         pass  # raise NotImplementedError("parseCommand() not implemented")
 
     def __repr__(self):
-        items = ['%s=%s' % item for item in self.__dict__.items()]
-        return 'Command(type=%s, %s)' % (self.CMD_TYPE, ', '.join(items))
+        return 'Command(type=%s, %s)' % (self.CMD_TYPE, self._dictRepr())
 
 
 class SimpleCommand(Simple, Command):

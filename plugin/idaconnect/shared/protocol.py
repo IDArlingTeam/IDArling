@@ -80,7 +80,7 @@ class Protocol(basic.LineReceiver, object):
     def isConnected(self):
         return self._connected
 
-    def sendPacket(self, packet, chunkback=None):
+    def sendPacket(self, packet, callback=None):
         if not self._connected:
             self._logger.warning("Sending packet while disconnected")
             return
@@ -97,8 +97,8 @@ class Protocol(basic.LineReceiver, object):
             for chunk in self._makeChunks(data):
                 self.transport.write(chunk)
                 count += len(chunk)
-                if chunkback:  # call chunk sent callback
-                    chunkback(count, total)
+                if callback:  # trigger progress callback
+                    callback(count, total)
 
         # Queries return deferred
         if isinstance(packet, Query):
@@ -124,6 +124,6 @@ class Protocol(basic.LineReceiver, object):
                     for key, value in data.iteritems()}
         return data
 
-    def _makeChunks(self, lst, n=1024):
+    def _makeChunks(self, lst, n=65535):
         for i in range(0, len(lst), n):
             yield lst[i:i + n]
