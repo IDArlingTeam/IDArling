@@ -28,11 +28,9 @@ class Protocol(basic.LineReceiver, object):
     # -------------------------------------------------------------------------
 
     def connectionMade(self):
-        self._logger.info("Connected")
         self._connected = True
 
     def connectionLost(self, reason):
-        self._logger.info("Disconnected: %s" % reason)
         self._connected = False
 
     def lineReceived(self, line):

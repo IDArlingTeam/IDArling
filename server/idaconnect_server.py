@@ -36,13 +36,19 @@ def startLogging():
     logPath = os.path.join(logDir, 'idaconnect.%s.log' % os.getpid())
 
     # Configure the logger
-    logging.basicConfig(
-        handlers=[
-            logging.StreamHandler(),
-            logging.FileHandler(logPath)],
-        format='[%(asctime)s][%(levelname)s] %(message)s',
-        datefmt='%H:%M:%S',
-        level=logging.DEBUG)
+    logger.setLevel(logging.DEBUG)
+    logFormat = '[%(asctime)s][%(levelname)s] %(message)s'
+    formatter = logging.Formatter(fmt=logFormat, datefmt='%H:%M:%S')
+
+    # Log to the console
+    streamHandler = logging.StreamHandler()
+    streamHandler.setFormatter(formatter)
+    logger.addHandler(streamHandler)
+
+    # Log to the log file
+    fileHandler = logging.FileHandler(logPath)
+    fileHandler.setFormatter(formatter)
+    logger.addHandler(fileHandler)
 
     return logger
 
@@ -72,6 +78,9 @@ class ServerProtocol(Protocol):
     # -------------------------------------------------------------------------
 
     def connectionMade(self):
+        super(ServerProtocol, self).connectionMade()
+        self._factory.addClient(self)
+
         # Add host and port as a prefix to our logger
         peer = self.transport.getPeer()
         prefix = '%s:%s' % (peer.host, peer.port)
@@ -81,13 +90,12 @@ class ServerProtocol(Protocol):
                 return '(%s) %s' % (prefix, msg), kwargs
 
         self._logger = CustomAdapter(self._logger, {})
-
-        super(ServerProtocol, self).connectionMade()
-        self._factory.addClient(self)
+        self._logger.info("Connected")
 
     def connectionLost(self, reason):
         super(ServerProtocol, self).connectionLost(reason)
         self._factory.removeClient(self)
+        self._logger.info("Disconnected: %s" % reason)
 
     # -------------------------------------------------------------------------
     # Internal Events

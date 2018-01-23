@@ -28,6 +28,7 @@ class ClientProtocol(Protocol):
 
     def connectionMade(self):
         super(ClientProtocol, self).connectionMade()
+        logger.info("Connected")
 
         # Notify the plugin
         self._plugin.notifyConnected()

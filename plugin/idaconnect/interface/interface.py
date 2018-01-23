@@ -57,7 +57,7 @@ class Interface(Module):
             self._statusWidget = StatusWidget(self._plugin)
             self._window.statusBar().addPermanentWidget(self._statusWidget)
 
-        logger.info("Installed widgets in status bar")
+        logger.debug("Installed widgets in status bar")
 
     # -------------------------------------------------------------------------
     # Termination
@@ -81,7 +81,7 @@ class Interface(Module):
         if self._statusWidget:
             self._window.statusBar().removeWidget(self._statusWidget)
 
-        logger.info("Uninstalled widgets from status bar")
+        logger.debug("Uninstalled widgets from status bar")
 
     # -------------------------------------------------------------------------
     # Utilities

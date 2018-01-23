@@ -69,7 +69,7 @@ class Action(object):
         if not result:
             raise RuntimeError("Failed to attach action")
 
-        logger.info("Installed the action")
+        logger.debug("Installed the action")
 
     # -------------------------------------------------------------------------
     # Termination
@@ -92,7 +92,7 @@ class Action(object):
         idaapi.free_custom_icon(self._iconId)
         self._iconId = idaapi.BADADDR
 
-        logger.info("Uninstalled the action")
+        logger.debug("Uninstalled the action")
         return True
 
     # -------------------------------------------------------------------------

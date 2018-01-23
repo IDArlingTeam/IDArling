@@ -42,7 +42,7 @@ class Network(Module):
             return
 
         # Do the actual connection process
-        logger.debug("Connecting to %s:%d" % (host, port))
+        logger.info("Connecting to %s:%d..." % (host, port))
         self._host, self._port = host, port
         self._connector = reactor.connectTCP(host, port, self._factory)
 
@@ -65,7 +65,7 @@ class Network(Module):
             return
 
         # Do the actual disconnection process
-        logger.debug("Disconnecting")
+        logger.info("Disconnecting...")
         self._host, self._port = '', 0
         self._connector.disconnect()
 
