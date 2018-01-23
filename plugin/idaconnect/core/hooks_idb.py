@@ -152,3 +152,8 @@ class IDBHooks(ida_idp.IDB_Hooks, Hooks):
         bmask = idaapi.get_enum_member_bmask(cid)
         self._sendEvent(EnumMemberDeletedEvent(id_, value, serial, bmask))
         return 0
+
+    def struc_created(self, tid):
+        name = idaapi.get_struc_name(tid)
+        self._sendEvent(StrucCreatedEvent(tid, name))
+        return 0

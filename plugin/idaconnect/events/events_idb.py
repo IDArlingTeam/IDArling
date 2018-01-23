@@ -258,3 +258,26 @@ class EnumMemberDeletedEvent(Event):
     def __call__(self):
         idaapi.del_enum_member(self['id_'], self['value'], self['serial'],
                                self['bmask'])
+
+
+class StrucCreatedEvent(Event):
+    TYPE = 'struc_created'
+
+    def __init__(self, struc, name):
+        super(StrucCreatedEvent, self).__init__()
+        self['struc'] = struc
+        self['name'] = name
+
+    def __call__(self):
+        idc.add_struc(self['struc'], self['name'], 0)
+
+
+class StrucDeletedEvent(Event):
+    TYPE = 'struc_deleted'
+
+    def __init__(self, enum):
+        super(StrucDeletedEvent, self).__init__()
+        self['struc'] = struc
+
+    def __call__(self):
+        idc.del_struc(self['struc'])
