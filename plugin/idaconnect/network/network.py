@@ -87,7 +87,7 @@ class Network(Module):
         # Pass on to the factory
         return self._installed and self._factory.isConnected()
 
-    def sendPacket(self, packet, callback=None):
+    def sendPacket(self, packet):
         # Pass on to the factory
         if self.isConnected():
-            return self._factory.sendPacket(packet, callback)
+            return self._factory.sendPacket(packet)

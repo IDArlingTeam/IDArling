@@ -1,3 +1,4 @@
+import os
 import uuid
 import datetime
 import logging
@@ -14,7 +15,9 @@ from PyQt5.QtWidgets import QProgressDialog, QMessageBox
 
 from dialogs import OpenDialog, SaveDialog
 from ..shared.commands import (
-    GetDatabases, GetRevisions, NewDatabase, NewRevision, UploadFile)
+    GetDatabases, GetRevisions,
+    NewDatabase, NewRevision,
+    UploadFile, DownloadFile)
 from ..shared.models import Database, Revision
 
 
@@ -152,7 +155,56 @@ class OpenActionHandler(ActionHandler):
 
     def _dialogAccepted(self, dialog):
         db, rev = dialog.getResult()
-        # FIXME: Download the file
+
+        # Create progress dialog
+        text = "Download database from server, please wait..."
+        progress = QProgressDialog(text, "Cancel", 0, 1)
+        progress.setCancelButton(None)  # Remove cancel button
+        progress.setModal(True)  # Set as a modal dialog
+        windowFlags = progress.windowFlags()  # Disable close button
+        progress.setWindowFlags(windowFlags & ~Qt.WindowCloseButtonHint)
+        progress.setWindowTitle("Open from server")
+        iconPath = self._plugin.getResource('download.png')
+        progress.setWindowIcon(QIcon(iconPath))
+
+        # Sent packet and show progress
+        packet = DownloadFile(db.getHash(), rev.getUUID())
+        d = self._plugin.getNetwork().sendPacket(packet)
+        callback = partial(self._progressCallback, progress)
+        d.addInitback(lambda reply: reply.addDownback(callback))
+        d.addCallback(partial(self._fileDownloaded, db, rev, progress))
+        d.addErrback(logger.exception)
+        progress.show()
+
+    def _fileDownloaded(self, db, rev, progress, reply):
+        # Close progress dialog
+        self._progressCallback(progress, 1, 1)
+
+        # FIXME: Make utility for accessing user directory
+        filesDir = os.path.join(idaapi.get_user_idadir(),
+                                '.idaconnect', 'files')
+        if not os.path.exists(filesDir):
+            os.makedirs(filesDir)
+        filePath = os.path.join(filesDir, rev.getUUID())
+
+        # Write the file to disk
+        with open(filePath, 'wb') as file:
+            file.write(reply.getContent())
+        logger.info("Save file %s for your ./files/ folder!" % rev.getUUID())
+
+        # Show success dialog
+        success = QMessageBox()
+        success.setIcon(QMessageBox.Information)
+        success.setStandardButtons(QMessageBox.Ok)
+        success.setText("Database successfully donwloaded!")
+        success.setWindowTitle("Open from server")
+        iconPath = self._plugin.getResource('download.png')
+        success.setWindowIcon(QIcon(iconPath))
+        success.exec_()
+
+    def _progressCallback(self, progress, count, total):
+        progress.setRange(0, total)  # Update range
+        progress.setValue(count)  # Update progress bar
 
 
 class SaveAction(Action):
@@ -221,7 +273,7 @@ class SaveActionHandler(ActionHandler):
         with open(inputPath, 'rb') as inputFile:
             packet.setContent(inputFile.read())
 
-        # Show progress dialog
+        # Create the progress dialog
         text = "Uploading database to server, please wait..."
         progress = QProgressDialog(text, "Cancel", 0, len(packet.getContent()))
         progress.setCancelButton(None)  # Remove cancel button
@@ -231,8 +283,10 @@ class SaveActionHandler(ActionHandler):
         progress.setWindowTitle("Save to server")
         iconPath = self._plugin.getResource('upload.png')
         progress.setWindowIcon(QIcon(iconPath))
-        callback = partial(self._uploadProgress, progress)
-        self._plugin.getNetwork().sendPacket(packet, callback)
+
+        # Send packet and show dialog
+        packet.addUpback(partial(self._progressCallback, progress))
+        self._plugin.getNetwork().sendPacket(packet)
         progress.show()
 
         # Show success dialog
@@ -245,5 +299,6 @@ class SaveActionHandler(ActionHandler):
         success.setWindowIcon(QIcon(iconPath))
         success.exec_()
 
-    def _uploadProgress(self, progress, count, total):
+    def _progressCallback(self, progress, count, total):
+        progress.setRange(0, total)  # Update range
         progress.setValue(count)  # Update progress bar

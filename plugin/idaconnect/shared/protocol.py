@@ -1,10 +1,8 @@
 import json
 
-# Twisted imports
-from twisted.internet import defer
 from twisted.protocols import basic
 
-from packets import Packet, Command, Query, Reply, Container
+from packets import Packet, PacketDeferred, Command, Query, Reply, Container
 
 # -----------------------------------------------------------------------------
 # Protocol
@@ -55,6 +53,8 @@ class Protocol(basic.LineReceiver, object):
     def rawDataReceived(self, data):
         # Append raw data to container
         self._content += data
+        if self._container._downback:  # trigger download callback
+            self._container._downback(len(self._content), self._container.size)
         if len(self._content) >= self._container.size:
             self.setLineMode()
             self._container.setContent(self._content)
@@ -78,7 +78,7 @@ class Protocol(basic.LineReceiver, object):
     def isConnected(self):
         return self._connected
 
-    def sendPacket(self, packet, callback=None):
+    def sendPacket(self, packet):
         if not self._connected:
             self._logger.warning("Sending packet while disconnected")
             return
@@ -95,12 +95,12 @@ class Protocol(basic.LineReceiver, object):
             for chunk in self._makeChunks(data):
                 self.transport.write(chunk)
                 count += len(chunk)
-                if callback:  # trigger progress callback
-                    callback(count, total)
+                if packet._upback:  # trigger upload callback
+                    packet._upback(count, total)
 
         # Queries return deferred
         if isinstance(packet, Query):
-            d = defer.Deferred()
+            d = PacketDeferred()
             packet.registerCallback(d)
             return d
 

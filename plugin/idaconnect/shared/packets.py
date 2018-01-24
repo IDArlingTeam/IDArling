@@ -1,5 +1,7 @@
 from collections import defaultdict
 
+from twisted.internet import defer
+
 from models import Model, Simple
 
 # -----------------------------------------------------------------------------
@@ -37,6 +39,8 @@ class Packet(Model):
     def parsePacket(dct):
         cls = PacketMeta.getClass(dct)
         packet = cls.new(dct)
+        if isinstance(packet, Reply):
+            packet.triggerInitback()
         return packet
 
     def buildPacket(self):
@@ -46,6 +50,43 @@ class Packet(Model):
 
     def __repr__(self):
         return 'Packet(type=%s, %s)' % (self.TYPE, self._dictRepr())
+
+
+class AlreadyInitedError(Exception):
+    pass
+
+
+class PacketDeferred(defer.Deferred, object):
+
+    def __init__(self, *args, **kwargs):
+        super(PacketDeferred, self).__init__(*args, **kwargs)
+        self._inited = False
+        self._initback = None
+        self._initresult = None
+
+    def addInitback(self, initback, *args, **kwargs):
+        self._initback = (initback, args, kwargs)
+        if self._inited:
+            self._runInitback()
+        return self
+
+    def initback(self, result):
+        assert not isinstance(result, defer.Deferred)
+        self._startRunInitback(result)
+
+    def _startRunInitback(self, result):
+        if self._inited:
+            raise AlreadyInitedError()
+        self._inited = True
+        self._initresult = result
+        self._runInitback()
+
+    def _runInitback(self):
+        try:
+            initback, args, kwargs = self._initback
+            self._initresult = initback(self._initresult, *args, **kwargs)
+        except:  # noqa
+            pass
 
 # -----------------------------------------------------------------------------
 # Events
@@ -201,8 +242,12 @@ class Reply(object):
         super(Reply, self).__init__()
         assert self.QUERY is not None, "QUERY not implemented"
 
+    def triggerInitback(self):
+        d = self.QUERY.CALLBACKS[0]
+        d.initback(self)
+
     def triggerCallback(self):
-        d = self.QUERY.CALLBACKS.pop()
+        d = self.QUERY.CALLBACKS.pop(0)
         d.callback(self)
 
 # -----------------------------------------------------------------------------
@@ -210,7 +255,13 @@ class Reply(object):
 # -----------------------------------------------------------------------------
 
 
-class Container(Model):
+class Container(object):
+
+    def __new__(cls, *args, **kwargs):
+        self = super(Container, cls).__new__(cls, *args, **kwargs)
+        self._upback = None
+        self._downback = None
+        return self
 
     def build(self, dct):
         super(Container, self).build(dct)
@@ -226,3 +277,9 @@ class Container(Model):
 
     def setContent(self, content):
         self._content = content
+
+    def addUpback(self, upback):
+        self._upback = upback
+
+    def addDownback(self, downback):
+        self._downback = downback

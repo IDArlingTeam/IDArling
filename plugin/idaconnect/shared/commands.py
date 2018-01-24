@@ -96,8 +96,9 @@ class DownloadFile(Query, SimpleCommand):
     def __init__(self, hash, uuid):
         super(DownloadFile, self).__init__()
         self.hash = hash
-        self.uuid = uiud
+        self.uuid = uuid
 
 
 class DownloadFileReply(Container, Command, Reply):
+    QUERY = DownloadFile
     CMD_TYPE = 'download_file_reply'
