@@ -85,6 +85,19 @@ class UploadFile(Container, SimpleCommand):
     CMD_TYPE = 'upload_file'
 
     def __init__(self, hash, uuid):
-        Command.__init__(self)
+        super(UploadFile, self).__init__()
         self.hash = hash
         self.uuid = uuid
+
+
+class DownloadFile(Query, SimpleCommand):
+    CMD_TYPE = 'download_file'
+
+    def __init__(self, hash, uuid):
+        super(DownloadFile, self).__init__()
+        self.hash = hash
+        self.uuid = uiud
+
+
+class DownloadFileReply(Container, Command, Reply):
+    CMD_TYPE = 'download_file_reply'

@@ -29,6 +29,10 @@ class Packet(Model):
 
     TYPE = None
 
+    def __init__(self):
+        super(Packet, self).__init__()
+        assert self.TYPE is not None, "TYPE not implemented"
+
     @staticmethod
     def parsePacket(dct):
         cls = PacketMeta.getClass(dct)
