@@ -331,6 +331,18 @@ class StrucMemberCreatedEvent(SimpleEvent):
                                 self.flag, mt, self.nbytes)
 
 
+class StrucMemberDeletedEvent(SimpleEvent):
+    EVT_TYPE = 'struc_member_deleted'
+
+    def __init__(self, sid, offset):
+        self.sid = sid
+        self.offset = offset
+
+    def __call__(self):
+        sptr = idaapi.get_struc(self.sid)
+        idaapi.del_struc_member(sptr, self.offset)
+
+
 # -----------------------------------------------------------------------------
 # IDP Events
 # -----------------------------------------------------------------------------

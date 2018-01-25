@@ -216,6 +216,10 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                                                     extra))
         return 0
 
+    def struc_member_deleted(self, sptr, off1, off2):
+        self._sendEvent(StrucMemberDeletedEvent(sptr.id, off2))
+        return 0
+
     def struc_cmt_changed(self, tid, repeatable_cmt):
         cmt = idaapi.get_struc_cmt(tid, repeatable_cmt)
         self._sendEvent(StrucCmtChangedEvent(tid, cmt, repeatable_cmt))
