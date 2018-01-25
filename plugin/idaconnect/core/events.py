@@ -166,7 +166,8 @@ class OpTypeChangedEvent(SimpleEvent):
         if self.op == 'oct':
             idc.OpOctal(self.ea, self.n)
         if self.op == 'enum':
-            idc.OpEnumEx(self.ea, self.n, self.extra.id, self.extra.serial)
+            idc.OpEnumEx(self.ea, self.n, self.extra['id'],
+                         self.extra['serial'])
 
 
 class EnumCreatedEvent(SimpleEvent):
@@ -303,6 +304,31 @@ class StrucCmtChangedEvent(SimpleEvent):
 
     def __call__(self):
         idaapi.set_struc_cmt(self.tid, self.cmt, self.repeatable_cmt)
+
+
+class StrucMemberCreatedEvent(SimpleEvent):
+    EVT_TYPE = 'struc_member_created'
+
+    def __init__(self, sid, fieldname, offset, flag, nbytes, extra):
+        super(StrucMemberCreatedEvent, self).__init__()
+        self.sid = sid
+        self.fieldname = fieldname
+        self.offset = offset
+        self.flag = flag
+        self.nbytes = nbytes
+        self.extra = extra
+
+    def __call__(self):
+        mt = idaapi.opinfo_t()
+        if idaapi.isStruct(self.flag):
+            mt.tid = self.extra['id']
+        if idaapi.isOff0(self.flag) or idaapi.isOff1(self.flag):
+            mt.ri = self.extra['ri']
+        if idaapi.isASCII(self.flag):
+            mt.strtype = self.extra['strtype']
+        sptr = idaapi.get_struc(self.sid)
+        idaapi.add_struc_member(sptr, self.fieldname, self.offset,
+                                self.flag, mt, self.nbytes)
 
 
 # -----------------------------------------------------------------------------

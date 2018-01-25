@@ -34,6 +34,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         Hooks.__init__(self, plugin)
 
     def make_code(self, insn):
+        print(insn.ea)
         self._sendEvent(MakeCodeEvent(insn.ea))
         return 0
 
@@ -177,6 +178,44 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         self._sendEvent(StrucRenamedEvent(sptr.id, new_name))
         return 0
 
+    def struc_member_created(self, sptr, mptr):
+        extra = {}
+
+        fieldname = idaapi.get_member_name2(mptr.id)
+        offset = 0 if mptr.unimem() else mptr.soff
+        flag = mptr.flag
+        nbytes = mptr.eoff if mptr.unimem() else mptr.eoff - mptr.soff
+        mt = idaapi.opinfo_t()
+        is_not_data = idaapi.retrieve_member_info(mt, mptr)
+        if is_not_data:
+            # Is it really possible to create a offset?
+            if idaapi.isOff0(flag) or idaapi.isOff1(flag):
+                extra['ri'] = mt.ri
+                self._sendEvent(StrucMemberCreatedEvent(sptr.id, fieldname,
+                                                        offset, flag, nbytes,
+                                                        extra))
+            # Is it really possible to create an enum?
+            elif idaapi.isEnum0(flag):
+                extra['serial'] = mt.ec.serial
+                self._sendEvent(StrucMemberCreatedEvent(sptr.id, fieldname,
+                                                        offset, flag, nbytes,
+                                                        extra))
+            elif idaapi.isStruct(flag):
+                extra['id'] = mt.tid
+                self._sendEvent(StrucMemberCreatedEvent(sptr.id, fieldname,
+                                                        offset, flag, nbytes,
+                                                        extra))
+            elif idaapi.isASCII(flag):
+                extra['strtype'] = mt.strtype
+                self._sendEvent(StrucMemberCreatedEvent(sptr.id, fieldname,
+                                                        offset, flag, nbytes,
+                                                        extra))
+        else:
+            self._sendEvent(StrucMemberCreatedEvent(sptr.id, fieldname,
+                                                    offset, flag, nbytes,
+                                                    extra))
+        return 0
+
     def struc_cmt_changed(self, tid, repeatable_cmt):
         cmt = idaapi.get_struc_cmt(tid, repeatable_cmt)
         self._sendEvent(StrucCmtChangedEvent(tid, cmt, repeatable_cmt))
@@ -194,5 +233,6 @@ class IDPHooks(Hooks, ida_idp.IDP_Hooks):
         Hooks.__init__(self, plugin)
 
     def ev_undefine(self, ea):
+        print(ea)
         self._sendEvent(UndefinedEvent(ea))
         return 0
