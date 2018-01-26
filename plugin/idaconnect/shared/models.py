@@ -71,11 +71,12 @@ class Database(SimpleModel):
 
 class Revision(SimpleModel):
 
-    def __init__(self, hash, uuid, date):
+    def __init__(self, hash, uuid, date, bits):
         super(Revision, self).__init__()
         self.hash = hash
         self.uuid = uuid
         self.date = date
+        self.bits = bits
 
     def getHash(self):
         return self.hash
@@ -85,3 +86,6 @@ class Revision(SimpleModel):
 
     def getDate(self):
         return self.date
+
+    def getBits(self):
+        return self.bits

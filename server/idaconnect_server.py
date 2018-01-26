@@ -138,31 +138,35 @@ class ServerProtocol(Protocol):
 
     def _handleNewDatabase(self, packet):
         # FIXME: Make sure no db exists
-        self._factory.getDatabases().append(packet.db)
+        self._factory.addDatabase(packet.db)
 
     def _handleNewRevision(self, packet):
         # FIXME: Make sure the db exists
         # FIXME: Make sure no rev exists
-        self._factory.getRevisions().append(packet.rev)
+        self._factory.addRevision(packet.rev)
 
     def _handleUploadFile(self, packet):
         # FIXME: Make sure the user can do that
+        rev = self._factory.getRevisions(packet.uuid)[0]
         filesDir = os.path.join(os.path.dirname(__file__), 'files')
         filesDir = os.path.abspath(filesDir)
         if not os.path.exists(filesDir):
             os.makedirs(filesDir)
-        filePath = os.path.join(filesDir, packet.uuid)
+        fileName = rev.getUUID() + ('.i64' if rev.getBits() else '.idb')
+        filePath = os.path.join(filesDir, fileName)
 
         # Write the file to disk
         with open(filePath, 'wb') as file:
             file.write(packet.getContent())
-        logger.info("Saved file %s to your ./files/ folder!" % packet.uuid)
+        logger.info("Saved file %s" % fileName)
 
     def _handleDownloadFile(self, packet):
         # FIXME: Make sure the user can do that
+        rev = self._factory.getRevisions(packet.uuid)[0]
         filesDir = os.path.join(os.path.dirname(__file__), 'files')
         filesDir = os.path.abspath(filesDir)
-        filePath = os.path.join(filesDir, packet.uuid)
+        fileName = rev.getUUID() + ('.i64' if rev.getBits() else '.idb')
+        filePath = os.path.join(filesDir, fileName)
 
         # Read file from disk and send
         packet = DownloadFileReply()
@@ -205,11 +209,19 @@ class ServerFactory(protocol.Factory, object):
     # Storage
     # -------------------------------------------------------------------------
 
-    def getDatabases(self):
-        return self._databases
+    def addDatabase(self, db):
+        self._databases.append(db)
 
-    def getRevisions(self):
-        return self._revisions
+    def getDatabases(self, hash=None):
+        return [db for db in self._databases
+                if db.getHash() == hash or hash is None]
+
+    def addRevision(self, rev):
+        self._revisions.append(rev)
+
+    def getRevisions(self, uuid=None):
+        return [rev for rev in self._revisions
+                if rev.getUUID() == uuid or uuid is None]
 
     # -------------------------------------------------------------------------
     # Network

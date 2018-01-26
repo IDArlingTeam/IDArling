@@ -7,11 +7,12 @@ from functools import partial
 import idc
 import idaapi
 import idautils
+import ida_loader
 import ida_kernwin
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QProcess
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QProgressDialog, QMessageBox
+from PyQt5.QtWidgets import qApp, QProgressDialog, QMessageBox
 
 from dialogs import OpenDialog, SaveDialog
 from ..shared.commands import (
@@ -185,22 +186,30 @@ class OpenActionHandler(ActionHandler):
                                 '.idaconnect', 'files')
         if not os.path.exists(filesDir):
             os.makedirs(filesDir)
-        filePath = os.path.join(filesDir, rev.getUUID())
+        fileName = rev.getUUID() + ('.i64' if rev.getBits() else '.idb')
+        filePath = os.path.join(filesDir, fileName)
 
         # Write the file to disk
         with open(filePath, 'wb') as file:
             file.write(reply.getContent())
-        logger.info("Save file %s for your ./files/ folder!" % rev.getUUID())
+        logger.info("Saved file %s" % fileName)
 
         # Show success dialog
-        success = QMessageBox()
-        success.setIcon(QMessageBox.Information)
-        success.setStandardButtons(QMessageBox.Ok)
-        success.setText("Database successfully donwloaded!")
-        success.setWindowTitle("Open from server")
-        iconPath = self._plugin.getResource('download.png')
-        success.setWindowIcon(QIcon(iconPath))
-        success.exec_()
+        # success = QMessageBox()
+        # success.setIcon(QMessageBox.Information)
+        # success.setStandardButtons(QMessageBox.Ok)
+        # success.setText("Database successfully downloaded!")
+        # success.setWindowTitle("Open from server")
+        # iconPath = self._plugin.getResource('download.png')
+        # success.setWindowIcon(QIcon(iconPath))
+        # success.exec_()
+
+        # Save old and open new database
+        idbPath = idc.GetIdbPath()
+        if idbPath:
+            idc.save_database(idbPath, ida_loader.DBFL_KILL)
+        QProcess.startDetached(qApp.applicationFilePath(), [filePath])
+        qApp.quit()  # FIXME: Is there a better way?
 
     def _progressCallback(self, progress, count, total):
         progress.setRange(0, total)  # Update range
@@ -264,7 +273,7 @@ class SaveActionHandler(ActionHandler):
             uuid_ = str(uuid.uuid4())
             dateFormat = "%Y/%m/%d %H:%M"
             date = datetime.datetime.now().strftime(dateFormat)
-            rev = Revision(db.getHash(), uuid_, date)
+            rev = Revision(db.getHash(), uuid_, date, idc.__X64__)
             self._plugin.getNetwork().sendPacket(NewRevision(rev))
 
         # Create the packet holding the file
