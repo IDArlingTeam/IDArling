@@ -32,14 +32,22 @@ class Simple(object):
 
     def build(self, dct):
         super(Simple, self).build(dct)
-        dct.update({key: value for key, value in self.__dict__.iteritems()
-                    if not key.startswith('_')})
+        for key, value in self.__dict__.iteritems():
+            if not key.startswith('_'):
+                if isinstance(value, Model):
+                    value.build(dct[key])
+                else:
+                    dct[key] = value
         return dct
 
     def parse(self, dct):
         super(Simple, self).build(dct)
-        self.__dict__.update({key: value for key, value in dct.iteritems()
-                              if not key.startswith('_')})
+        for key, value in dct.iteritems():
+            if not key.startswith('_'):
+                if isinstance(value, Model):
+                    value.build(self.__dict__[key])
+                else:
+                    self.__dict__[key] = value
         return self
 
 
