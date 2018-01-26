@@ -261,13 +261,14 @@ class EnumMemberDeletedEvent(Event):
 class StrucCreatedEvent(SimpleEvent):
     EVT_TYPE = 'struc_created'
 
-    def __init__(self, struc, name):
+    def __init__(self, struc, name, is_union):
         super(StrucCreatedEvent, self).__init__()
         self.struc = struc
         self.name = name
+        self.is_union = is_union
 
     def __call__(self):
-        idc.add_struc(self.struc, self.name, 0)
+        idc.add_struc(self.struc, self.name, self.is_union)
 
 
 class StrucDeletedEvent(SimpleEvent):
@@ -323,12 +324,40 @@ class StrucMemberCreatedEvent(SimpleEvent):
         if idaapi.isStruct(self.flag):
             mt.tid = self.extra['id']
         if idaapi.isOff0(self.flag) or idaapi.isOff1(self.flag):
-            mt.ri = self.extra['ri']
+            mt.ri = idaapi.refinfo_t(self.extra['flags'], self.extra['base'],
+                                     self.extra['target'],
+                                     self.extra['tdelta'])
         if idaapi.isASCII(self.flag):
             mt.strtype = self.extra['strtype']
         sptr = idaapi.get_struc(self.sid)
         idaapi.add_struc_member(sptr, self.fieldname, self.offset,
                                 self.flag, mt, self.nbytes)
+
+
+class StrucMemberChangedEvent(SimpleEvent):
+    EVT_TYPE = 'struc_member_changed'
+
+    def __init__(self, sid, soff, eoff, flag, extra):
+        super(StrucMemberChangedEvent, self).__init__()
+        self.sid = sid
+        self.soff = soff
+        self.eoff = eoff
+        self.flag = flag
+        self.extra = extra
+
+    def __call__(self):
+        mt = idaapi.opinfo_t()
+        if idaapi.isStruct(self.flag):
+            mt.tid = self.extra['id']
+        if idaapi.isOff0(self.flag) or idaapi.isOff1(self.flag):
+            mt.ri = idaapi.refinfo_t(self.extra['flags'], self.extra['base'],
+                                     self.extra['target'],
+                                     self.extra['tdelta'])
+        if idaapi.isASCII(self.flag):
+            mt.strtype = self.extra['strtype']
+        sptr = idaapi.get_struc(self.sid)
+        idaapi.set_member_type(sptr, self.soff, self.flag,
+                               mt, self.eoff - self.soff)
 
 
 class StrucMemberDeletedEvent(SimpleEvent):

@@ -166,7 +166,8 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
 
     def struc_created(self, tid):
         name = idaapi.get_struc_name(tid)
-        self._sendEvent(StrucCreatedEvent(tid, name))
+        is_union = idaapi.is_union(tid)
+        self._sendEvent(StrucCreatedEvent(tid, name, is_union))
         return 0
 
     def struc_deleted(self, tid):
@@ -188,9 +189,11 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         mt = idaapi.opinfo_t()
         is_not_data = idaapi.retrieve_member_info(mt, mptr)
         if is_not_data:
-            # Is it really possible to create a offset?
             if idaapi.isOff0(flag) or idaapi.isOff1(flag):
-                extra['ri'] = mt.ri
+                extra['target'] = mt.ri.target
+                extra['base'] = mt.ri.base
+                extra['tdelta'] = mt.ri.tdelta
+                extra['flags'] = mt.ri.flags
                 self._sendEvent(StrucMemberCreatedEvent(sptr.id, fieldname,
                                                         offset, flag, nbytes,
                                                         extra))
@@ -218,6 +221,44 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
 
     def struc_member_deleted(self, sptr, off1, off2):
         self._sendEvent(StrucMemberDeletedEvent(sptr.id, off2))
+        return 0
+
+    def struc_member_changed(self, sptr, mptr):
+        extra = {}
+
+        soff = 0 if mptr.unimem() else mptr.soff
+        flag = mptr.flag
+        mt = idaapi.opinfo_t()
+        is_not_data = idaapi.retrieve_member_info(mt, mptr)
+        if is_not_data:
+            if idaapi.isOff0(flag) or idaapi.isOff1(flag):
+                extra['target'] = mt.ri.target
+                extra['base'] = mt.ri.base
+                extra['tdelta'] = mt.ri.tdelta
+                extra['flags'] = mt.ri.flags
+                self._sendEvent(StrucMemberChangedEvent(sptr.id, soff,
+                                                        mptr.eoff, flag,
+                                                        extra))
+            # Is it really possible to create an enum?
+            elif idaapi.isEnum0(flag):
+                extra['serial'] = mt.ec.serial
+                self._sendEvent(StrucMemberChangedEvent(sptr.id, soff,
+                                                        mptr.eoff, flag,
+                                                        extra))
+            elif idaapi.isStruct(flag):
+                extra['id'] = mt.tid
+                self._sendEvent(StrucMemberChangedEvent(sptr.id, soff,
+                                                        mptr.eoff, flag,
+                                                        extra))
+            elif idaapi.isASCII(flag):
+                extra['strtype'] = mt.strtype
+                self._sendEvent(StrucMemberChangedEvent(sptr.id, soff,
+                                                        mptr.eoff, flag,
+                                                        extra))
+        else:
+            self._sendEvent(StrucMemberChangedEvent(sptr.id, soff,
+                                                    mptr.eoff, flag,
+                                                    extra))
         return 0
 
     def struc_cmt_changed(self, tid, repeatable_cmt):
