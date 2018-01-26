@@ -37,7 +37,7 @@ class Protocol(basic.LineReceiver, object):
             dct = json.loads(line, object_hook=self._byteify)
             packet = Packet.parsePacket(dct)
         except Exception as e:
-            self._logger.warning("Unknown packet received: %s" % line)
+            self._logger.warning("Invalid packet received: %s" % line)
             self._logger.exception(e)
             return
 
@@ -82,11 +82,16 @@ class Protocol(basic.LineReceiver, object):
         if not self._connected:
             self._logger.warning("Sending packet while disconnected")
             return
-        self._logger.debug("Sending packet: %s" % packet)
 
-        # Try to build the packet
-        line = json.dumps(packet.buildPacket())
-        super(Protocol, self).sendLine(line.encode('utf-8'))
+        # Try to build and sent the packet
+        try:
+            line = json.dumps(packet.buildPacket())
+            super(Protocol, self).sendLine(line.encode('utf-8'))
+        except Exception as e:
+            self._logger.warning("Invalid packet being sent: %s" % packet)
+            self._logger.exception(e)
+
+        self._logger.debug("Sending packet: %s" % packet)
 
         # Write raw data in containers
         if isinstance(packet, Container):

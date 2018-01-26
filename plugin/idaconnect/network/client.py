@@ -2,7 +2,7 @@ import json
 import logging
 
 # Twisted imports
-from twisted.internet import defer, reactor
+from twisted.internet import defer, reactor, task
 from twisted.internet.protocol import ClientFactory as Factory
 
 from ..shared.packets import Command, Event
@@ -49,7 +49,8 @@ class ClientProtocol(Protocol):
                 packet()
                 self._plugin.getCore().hookAll()
 
-            reactor.callLater(0, callEvent, packet)
+            d = task.deferLater(reactor, 0.0, callEvent, packet)
+            d.addErrback(self._logger.exception)
         else:
             return False
         return True
