@@ -2,7 +2,7 @@ import json
 import logging
 
 # Twisted imports
-from twisted.internet import defer
+from twisted.internet import defer, reactor
 from twisted.internet.protocol import ClientFactory as Factory
 
 from ..shared.packets import Command, Event
@@ -43,11 +43,13 @@ class ClientProtocol(Protocol):
             self._handlers[packet.__class__](packet)
 
         elif isinstance(packet, Event):
-            # Call the event
-            self._plugin.getCore().unhookAll()
-            packet()
-            self._plugin.getCore().hookAll()
+            # Call the event asynchronously
+            def callEvent(packet):
+                self._plugin.getCore().unhookAll()
+                packet()
+                self._plugin.getCore().hookAll()
 
+            reactor.callLater(0, callEvent, packet)
         else:
             return False
         return True

@@ -34,7 +34,6 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         Hooks.__init__(self, plugin)
 
     def make_code(self, insn):
-        print(insn.ea)
         self._sendEvent(MakeCodeEvent(insn.ea))
         return 0
 
@@ -278,6 +277,5 @@ class IDPHooks(Hooks, ida_idp.IDP_Hooks):
         Hooks.__init__(self, plugin)
 
     def ev_undefine(self, ea):
-        print(ea)
         self._sendEvent(UndefinedEvent(ea))
         return 0

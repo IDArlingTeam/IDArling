@@ -273,7 +273,7 @@ class SaveActionHandler(ActionHandler):
             uuid_ = str(uuid.uuid4())
             dateFormat = "%Y/%m/%d %H:%M"
             date = datetime.datetime.now().strftime(dateFormat)
-            rev = Revision(db.getHash(), uuid_, date, idc.__X64__)
+            rev = Revision(db.getHash(), uuid_, date, idc.__EA64__)
             self._plugin.getNetwork().sendPacket(NewRevision(rev))
 
         # Create the packet holding the file
