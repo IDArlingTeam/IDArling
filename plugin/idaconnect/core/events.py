@@ -372,6 +372,19 @@ class StrucMemberDeletedEvent(SimpleEvent):
         idaapi.del_struc_member(sptr, self.offset)
 
 
+class ExpandingStrucEvent(SimpleEvent):
+    EVT_TYPE = 'expanding_struc'
+
+    def __init__(self, sid, offset, delta):
+        self.sid = sid
+        self.offset = offset
+        self.delta = delta
+
+    def __call__(self):
+        sptr = idaapi.get_struc(self.sid)
+        idaapi.expand_struc(sptr, self.offset, self.delta)
+
+
 # -----------------------------------------------------------------------------
 # IDP Events
 # -----------------------------------------------------------------------------

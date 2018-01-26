@@ -265,6 +265,10 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         self._sendEvent(StrucCmtChangedEvent(tid, cmt, repeatable_cmt))
         return 0
 
+    def expanding_struc(self, sptr, offset, delta):
+        self._sendEvent(ExpandingStrucEvent(sptr.id, offset, delta))
+        return 0
+
 # -----------------------------------------------------------------------------
 # IDP Hooks
 # -----------------------------------------------------------------------------
