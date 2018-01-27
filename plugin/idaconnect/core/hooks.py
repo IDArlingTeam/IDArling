@@ -1,6 +1,3 @@
-import logging
-
-import idc
 import ida_idp
 
 from events import *

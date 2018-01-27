@@ -64,12 +64,12 @@ class IDAConnect(idaapi.plugin_t):
         # Try to initialize the plug-in
         try:
             self._init()
-        except Exception as e:
+        except Exception:
             # Initialization failed
             logger.exception("Failed to initialize")
             return idaapi.PLUGIN_SKIP
 
-        # Initialization sucessful
+        # Initialization successful
         self._printBanner()
         logger.info("Successfully initialized")
         return idaapi.PLUGIN_KEEP
@@ -97,11 +97,11 @@ class IDAConnect(idaapi.plugin_t):
         # Try to terminate the plug-in
         try:
             self._term()
-        except Exception as e:
+        except Exception:
             # Termination failed
             logger.exception("Failed to terminate properly")
 
-        # Termination succesful
+        # Termination successful
         logger.info("Terminated properly")
 
     def _term(self):

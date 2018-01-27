@@ -1,8 +1,6 @@
-import json
 import logging
 
-# Twisted imports
-from twisted.internet import defer, reactor, task
+from twisted.internet import reactor, task
 from twisted.internet.protocol import ClientFactory as Factory
 
 from ..shared.packets import Command, Event

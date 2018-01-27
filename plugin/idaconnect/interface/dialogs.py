@@ -37,8 +37,8 @@ class OpenDialog(QDialog):
         self._dbsTable = QTableWidget(len(dbs), 1, self)
         self._dbsTable.setHorizontalHeaderLabels(('Remote Databases',))
         for i, db in enumerate(dbs):
-            item = QTableWidgetItem("%s (%s)" % (str(db.getFile()),
-                                                 str(db.getHash())))
+            item = QTableWidgetItem("%s (%s)" % (str(db.file),
+                                                 str(db.hash)))
             item.setData(Qt.UserRole, db)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             self._dbsTable.setItem(i, 0, item)
@@ -104,20 +104,20 @@ class OpenDialog(QDialog):
     def _dbClicked(self, item):
         # When a database is clicked, update display
         db = item.data(Qt.UserRole)
-        self._fileLabel.setText('<b>File:</b> %s' % str(db.getFile()))
-        self._hashLabel.setText('<b>Hash:</b> %s' % str(db.getHash()))
-        self._typeLabel.setText('<b>Type:</b> %s' % str(db.getType()))
-        self._dateLabel.setText('<b>Date:</b> %s' % str(db.getDate()))
+        self._fileLabel.setText('<b>File:</b> %s' % str(db.file))
+        self._hashLabel.setText('<b>Hash:</b> %s' % str(db.hash))
+        self._typeLabel.setText('<b>Type:</b> %s' % str(db.type))
+        self._dateLabel.setText('<b>Date:</b> %s' % str(db.date))
 
         # Including its list of revisions
-        revs = [rev for rev in self._revs if rev.getHash() == db.getHash()]
+        revs = [rev for rev in self._revs if rev.hash == db.hash]
         self._revsTable.setRowCount(len(revs))
         for i, rev in enumerate(revs):
-            item = QTableWidgetItem(str(rev.getUUID()))
+            item = QTableWidgetItem(str(rev.uuid))
             item.setData(Qt.UserRole, rev)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             self._revsTable.setItem(i, 0, item)
-            item = QTableWidgetItem(str(rev.getDate()))
+            item = QTableWidgetItem(str(rev.date))
             item.setData(Qt.UserRole, rev)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             self._revsTable.setItem(i, 1, item)
@@ -156,8 +156,8 @@ class SaveDialog(QDialog):
         self._dbsTable = QTableWidget(len(dbs) + 1, 1, self)
         self._dbsTable.setHorizontalHeaderLabels(('Remote Databases',))
         for i, db in enumerate(dbs):
-            item = QTableWidgetItem("%s (%s)" % (str(db.getFile()),
-                                                 str(db.getHash())))
+            item = QTableWidgetItem("%s (%s)" % (str(db.file),
+                                                 str(db.hash)))
             item.setData(Qt.UserRole, db)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             self._dbsTable.setItem(i, 0, item)
@@ -228,20 +228,20 @@ class SaveDialog(QDialog):
         db = item.data(Qt.UserRole)
         db = db if db else Database('', '', '', '')
         self._saveButton.setEnabled(True)
-        self._fileLabel.setText('<b>File:</b> %s' % str(db.getFile()))
-        self._hashLabel.setText('<b>Hash:</b> %s' % str(db.getHash()))
-        self._typeLabel.setText('<b>Type:</b> %s' % str(db.getType()))
-        self._dateLabel.setText('<b>Date:</b> %s' % str(db.getDate()))
+        self._fileLabel.setText('<b>File:</b> %s' % str(db.file))
+        self._hashLabel.setText('<b>Hash:</b> %s' % str(db.hash))
+        self._typeLabel.setText('<b>Type:</b> %s' % str(db.type))
+        self._dateLabel.setText('<b>Date:</b> %s' % str(db.date))
 
         # Including its list of revisions
-        revs = [rev for rev in self._revs if rev.getHash() == db.getHash()]
+        revs = [rev for rev in self._revs if rev.hash == db.hash]
         self._revsTable.setRowCount(len(revs) + 1)
         for i, rev in enumerate(revs):
-            item = QTableWidgetItem(str(rev.getUUID()))
+            item = QTableWidgetItem(str(rev.uuid))
             item.setData(Qt.UserRole, rev)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             self._revsTable.setItem(i, 0, item)
-            item = QTableWidgetItem(str(rev.getDate()))
+            item = QTableWidgetItem(str(rev.date))
             item.setData(Qt.UserRole, rev)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             self._revsTable.setItem(i, 1, item)

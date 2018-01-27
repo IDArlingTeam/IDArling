@@ -1,7 +1,6 @@
 import os
-import sys
-import json
 import logging
+import sqlite3
 
 from twisted.internet import reactor, protocol
 from twisted.python import log
@@ -10,8 +9,9 @@ from shared.commands import (GetDatabases, GetDatabasesReply,
                              GetRevisions, GetRevisionsReply,
                              NewDatabase, NewRevision,
                              UploadFile, DownloadFile, DownloadFileReply)
+from shared.mapper import Mapper
 from shared.models import Database, Revision
-from shared.packets import Command, GenericEvent
+from shared.packets import Command, AbstractEvent
 from shared.protocol import Protocol
 
 # -----------------------------------------------------------------------------
@@ -107,7 +107,7 @@ class ServerProtocol(Protocol):
             # Call the handler
             self._handlers[packet.__class__](packet)
 
-        elif isinstance(packet, GenericEvent):
+        elif isinstance(packet, AbstractEvent):
             # Send the event to all clients
             self._factory.sendPacketToAll(packet, self)
 
@@ -120,39 +120,26 @@ class ServerProtocol(Protocol):
     # -------------------------------------------------------------------------
 
     def _handleGetDatabases(self, packet):
-        dbs = self._factory.getDatabases()
-        # Filter by hash if requested
-        if packet.hash:
-            dbs = [db for db in dbs if db.getHash() == packet.hash]
+        dbs = Database.all(hash=packet.hash)
         self.sendPacket(GetDatabasesReply(dbs))
 
     def _handleGetRevisions(self, packet):
-        revs = self._factory.getRevisions()
-        # Filter by hash if requested
-        if packet.hash:
-            revs = [rev for rev in revs if rev.getHash() == packet.hash]
-        # Filter by uuid if requested
-        if packet.uuid:
-            revs = [rev for rev in revs if rev.getUUID() == pacjet.uuid]
+        revs = Revision.all(uuid=packet.uuid, hash=packet.hash)
         self.sendPacket(GetRevisionsReply(revs))
 
     def _handleNewDatabase(self, packet):
-        # FIXME: Make sure no db exists
-        self._factory.addDatabase(packet.db)
+        packet.db.create()
 
     def _handleNewRevision(self, packet):
-        # FIXME: Make sure the db exists
-        # FIXME: Make sure no rev exists
-        self._factory.addRevision(packet.rev)
+        packet.rev.create()
 
     def _handleUploadFile(self, packet):
-        # FIXME: Make sure the user can do that
-        rev = self._factory.getRevisions(packet.uuid)[0]
+        rev = Revision.one(uuid=packet.uuid)
         filesDir = os.path.join(os.path.dirname(__file__), 'files')
         filesDir = os.path.abspath(filesDir)
         if not os.path.exists(filesDir):
             os.makedirs(filesDir)
-        fileName = rev.getUUID() + ('.i64' if rev.getBits() else '.idb')
+        fileName = rev.uuid + ('.i64' if rev.bits else '.idb')
         filePath = os.path.join(filesDir, fileName)
 
         # Write the file to disk
@@ -161,14 +148,13 @@ class ServerProtocol(Protocol):
         logger.info("Saved file %s" % fileName)
 
     def _handleDownloadFile(self, packet):
-        # FIXME: Make sure the user can do that
-        rev = self._factory.getRevisions(packet.uuid)[0]
+        rev = Revision.one(uuid=packet.uuid)
         filesDir = os.path.join(os.path.dirname(__file__), 'files')
         filesDir = os.path.abspath(filesDir)
-        fileName = rev.getUUID() + ('.i64' if rev.getBits() else '.idb')
+        fileName = rev.uuid + ('.i64' if rev.bits else '.idb')
         filePath = os.path.join(filesDir, fileName)
 
-        # Read file from disk and send
+        # Read file from disk
         packet = DownloadFileReply()
         with open(filePath, 'rb') as file:
             packet.setContent(file.read())
@@ -183,12 +169,12 @@ class ServerFactory(protocol.Factory, object):
 
     def __init__(self):
         super(ServerFactory, self).__init__()
-
         self._clients = []
 
-        # FIXME: Use SQL database as storage
-        self._databases = []
-        self._revisions = []
+        # Initialize database and mapper
+        self._db = sqlite3.connect(':memory:', isolation_level=None)
+        self._db.row_factory = sqlite3.Row
+        self._mapper = Mapper(self._db)
 
     def buildProtocol(self, addr):
         return ServerProtocol(self)
@@ -204,24 +190,6 @@ class ServerFactory(protocol.Factory, object):
     def removeClient(self, client):
         # Remove a client from the list
         self._clients.remove(client)
-
-    # -------------------------------------------------------------------------
-    # Storage
-    # -------------------------------------------------------------------------
-
-    def addDatabase(self, db):
-        self._databases.append(db)
-
-    def getDatabases(self, hash=None):
-        return [db for db in self._databases
-                if db.getHash() == hash or hash is None]
-
-    def addRevision(self, rev):
-        self._revisions.append(rev)
-
-    def getRevisions(self, uuid=None):
-        return [rev for rev in self._revisions
-                if rev.getUUID() == uuid or uuid is None]
 
     # -------------------------------------------------------------------------
     # Network

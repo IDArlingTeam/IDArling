@@ -1,13 +1,13 @@
 from models import Database, Revision
-from packets import Command, SimpleCommand, Query, Reply, Container
+from packets import Command, DefaultCommand, Query, Reply, Container
 
 # -----------------------------------------------------------------------------
-# All Commands
+# Get Databases
 # -----------------------------------------------------------------------------
 
 
-class GetDatabases(SimpleCommand, Query):
-    CMD_TYPE = 'get_dbs'
+class GetDatabases(DefaultCommand, Query):
+    __command__ = 'get_dbs'
 
     def __init__(self, hash=None):
         super(GetDatabases, self).__init__()
@@ -15,8 +15,8 @@ class GetDatabases(SimpleCommand, Query):
 
 
 class GetDatabasesReply(Command, Reply):
-    QUERY = GetDatabases
-    CMD_TYPE = 'get_dbs_reply'
+    __command__ = 'get_dbs_reply'
+    __query__ = GetDatabases
 
     def __init__(self, dbs):
         super(GetDatabasesReply, self).__init__()
@@ -28,9 +28,13 @@ class GetDatabasesReply(Command, Reply):
     def parseCommand(self, dct):
         self.dbs = [Database.new(db) for db in dct['dbs']]
 
+# -----------------------------------------------------------------------------
+# Get Revisions
+# -----------------------------------------------------------------------------
 
-class GetRevisions(SimpleCommand, Query):
-    CMD_TYPE = 'get_revs'
+
+class GetRevisions(DefaultCommand, Query):
+    __command__ = 'get_revs'
 
     def __init__(self, hash=None, uuid=None):
         super(GetRevisions, self).__init__()
@@ -39,8 +43,8 @@ class GetRevisions(SimpleCommand, Query):
 
 
 class GetRevisionsReply(Command, Reply):
-    QUERY = GetRevisions
-    CMD_TYPE = 'get_revs_reply'
+    __command__ = 'get_revs_reply'
+    __query__ = GetRevisions
 
     def __init__(self, revs):
         super(GetRevisionsReply, self).__init__()
@@ -52,9 +56,13 @@ class GetRevisionsReply(Command, Reply):
     def parseCommand(self, dct):
         self.revs = [Revision.new(rev) for rev in dct['revs']]
 
+# -----------------------------------------------------------------------------
+# New Database/Revision
+# -----------------------------------------------------------------------------
+
 
 class NewDatabase(Command):
-    CMD_TYPE = 'new_db'
+    __command__ = 'new_db'
 
     def __init__(self, db):
         super(NewDatabase, self).__init__()
@@ -68,7 +76,7 @@ class NewDatabase(Command):
 
 
 class NewRevision(Command):
-    CMD_TYPE = 'new_rev'
+    __command__ = 'new_rev'
 
     def __init__(self, rev):
         super(NewRevision, self).__init__()
@@ -80,9 +88,13 @@ class NewRevision(Command):
     def parseCommand(self, dct):
         self.rev = Revision.new(dct['rev'])
 
+# -----------------------------------------------------------------------------
+# Upload/Download File
+# -----------------------------------------------------------------------------
 
-class UploadFile(Container, SimpleCommand):
-    CMD_TYPE = 'upload_file'
+
+class UploadFile(Container, DefaultCommand):
+    __command__ = 'upload_file'
 
     def __init__(self, hash, uuid):
         super(UploadFile, self).__init__()
@@ -90,8 +102,8 @@ class UploadFile(Container, SimpleCommand):
         self.uuid = uuid
 
 
-class DownloadFile(Query, SimpleCommand):
-    CMD_TYPE = 'download_file'
+class DownloadFile(Query, DefaultCommand):
+    __command__ = 'download_file'
 
     def __init__(self, hash, uuid):
         super(DownloadFile, self).__init__()
@@ -100,5 +112,5 @@ class DownloadFile(Query, SimpleCommand):
 
 
 class DownloadFileReply(Container, Command, Reply):
-    QUERY = DownloadFile
-    CMD_TYPE = 'download_file_reply'
+    __command__ = 'download_file_reply'
+    __query__ = DownloadFile

@@ -169,7 +169,7 @@ class OpenActionHandler(ActionHandler):
         progress.setWindowIcon(QIcon(iconPath))
 
         # Sent packet and show progress
-        packet = DownloadFile(db.getHash(), rev.getUUID())
+        packet = DownloadFile(db.hash, rev.uuid)
         d = self._plugin.getNetwork().sendPacket(packet)
         callback = partial(self._progressCallback, progress)
         d.addInitback(lambda reply: reply.addDownback(callback))
@@ -186,7 +186,7 @@ class OpenActionHandler(ActionHandler):
                                 '.idaconnect', 'files')
         if not os.path.exists(filesDir):
             os.makedirs(filesDir)
-        fileName = rev.getUUID() + ('.i64' if rev.getBits() else '.idb')
+        fileName = rev.uuid + ('.i64' if rev.bits else '.idb')
         filePath = os.path.join(filesDir, fileName)
 
         # Write the file to disk
@@ -268,16 +268,16 @@ class SaveActionHandler(ActionHandler):
             db = Database(hash, file, type, date)
             self._plugin.getNetwork().sendPacket(NewDatabase(db))
 
-        # Create new rev if ncessarry
+        # Create new rev if necessary
         if not rev:
             uuid_ = str(uuid.uuid4())
             dateFormat = "%Y/%m/%d %H:%M"
             date = datetime.datetime.now().strftime(dateFormat)
-            rev = Revision(db.getHash(), uuid_, date, idc.__EA64__)
+            rev = Revision(uuid_, db.hash, date, idc.__EA64__)
             self._plugin.getNetwork().sendPacket(NewRevision(rev))
 
         # Create the packet holding the file
-        packet = UploadFile(db.getHash(), rev.getUUID())
+        packet = UploadFile(db.hash, rev.uuid)
         inputPath = idc.GetIdbPath()
         with open(inputPath, 'rb') as inputFile:
             packet.setContent(inputFile.read())

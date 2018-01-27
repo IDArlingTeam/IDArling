@@ -2,42 +2,78 @@ from collections import defaultdict
 
 from twisted.internet import defer
 
-from models import Model, Simple
-
 # -----------------------------------------------------------------------------
-# Packets
+# Serializable
 # -----------------------------------------------------------------------------
 
 
-class PacketMeta(type):
-    _CLASSES = {}
+class Serializable(object):
 
     @classmethod
-    def getClass(cls, dct):
-        typeCls = cls._CLASSES[dct['type']]
-        if typeCls.__metaclass__ != cls:
-            typeCls = typeCls.__metaclass__.getClass(dct)
-        return typeCls
+    def new(cls, dct):
+        obj = cls.__new__(cls)
+        object.__init__(obj)
+        obj.parse(dct)
+        return obj
 
-    def __new__(cls, name, bases, attrs):
-        cls = super(PacketMeta, cls).__new__(cls, name, bases, attrs)
-        if cls.TYPE is not None and cls.TYPE not in PacketMeta._CLASSES:
-            PacketMeta._CLASSES[cls.TYPE] = cls
+    def build(self, dct):
+        pass  # raise NotImplementedError("build() not implemented")
+
+    def parse(self, dct):
+        pass  # raise NotImplementedError("parse() not implemented")
+
+
+class Default(Serializable):
+
+    @staticmethod
+    def fields(dct):
+        return {key: val for key, val in dct.iteritems()
+                if not key.startswith('_')}
+
+    def build(self, dct):
+        super(Default, self).build(dct)
+        dct.update(Default.fields(self.__dict__))
+        return dct
+
+    def parse(self, dct):
+        super(Default, self).build(dct)
+        self.__dict__.update(Default.fields(dct))
+        return self
+
+# -----------------------------------------------------------------------------
+# Packet
+# -----------------------------------------------------------------------------
+
+
+class PacketFactory(type):
+    _PACKETS = {}
+
+    @classmethod
+    def getClass(mcs, dct):
+        cls = mcs._PACKETS[dct['type']]
+        if cls.__metaclass__ != mcs:
+            cls = cls.__metaclass__.getClass(dct)
+        return cls
+
+    def __new__(mcs, name, bases, attrs):
+        cls = super(PacketFactory, mcs).__new__(mcs, name, bases, attrs)
+        if cls.__type__ is not None and cls.__type__ not in mcs._PACKETS:
+            mcs._PACKETS[cls.__type__] = cls
         return cls
 
 
-class Packet(Model):
-    __metaclass__ = PacketMeta
+class Packet(Serializable):
+    __metaclass__ = PacketFactory
 
-    TYPE = None
+    __type__ = None
 
     def __init__(self):
         super(Packet, self).__init__()
-        assert self.TYPE is not None, "TYPE not implemented"
+        assert self.__type__ is not None, "__type__ not implemented"
 
     @staticmethod
     def parsePacket(dct):
-        cls = PacketMeta.getClass(dct)
+        cls = PacketFactory.getClass(dct)
         packet = cls.new(dct)
         if isinstance(packet, Reply):
             packet.triggerInitback()
@@ -49,7 +85,13 @@ class Packet(Model):
         return dct
 
     def __repr__(self):
-        return 'Packet(type=%s, %s)' % (self.TYPE, self._dictRepr())
+        s = ['{}={}'.format(k, v) for k, v
+             in Default.fields(self.__dict__).iteritems()]
+        return '{}({})'.format(self.__class__.__name__, ', '.join(s))
+
+# -----------------------------------------------------------------------------
+# Packet Deferred
+# -----------------------------------------------------------------------------
 
 
 class AlreadyInitedError(Exception):
@@ -89,43 +131,43 @@ class PacketDeferred(defer.Deferred, object):
             pass
 
 # -----------------------------------------------------------------------------
-# Events
+# Event
 # -----------------------------------------------------------------------------
 
 
-class EventMeta(PacketMeta):
-    _CLASSES = {}
+class EventFactory(PacketFactory):
+    _EVENTS = {}
 
     @classmethod
-    def getClass(cls, dct):
+    def getClass(mcs, dct):
         try:
-            typeCls = cls._CLASSES[dct['evt_type']]
+            cls = mcs._EVENTS[dct['event_type']]
         except KeyError as e:
-            typeCls = GenericEvent
-        if typeCls.__metaclass__ != cls:
-            typeCls = typeCls.__metaclass__.getClass(dct)
-        return typeCls
+            cls = AbstractEvent
+        if cls.__metaclass__ != mcs:
+            cls = cls.__metaclass__.getClass(dct)
+        return cls
 
-    def __new__(cls, name, bases, attrs):
-        cls = super(EventMeta, cls).__new__(cls, name, bases, attrs)
-        if cls.EVT_TYPE is not None and cls.EVT_TYPE not in EventMeta._CLASSES:
-            EventMeta._CLASSES[cls.EVT_TYPE] = cls
+    def __new__(mcs, name, bases, attrs):
+        cls = super(EventFactory, mcs).__new__(mcs, name, bases, attrs)
+        if cls.__event__ is not None and cls.__event__ not in mcs._EVENTS:
+            mcs._EVENTS[cls.__event__] = cls
         return cls
 
 
 class Event(Packet):
-    __metaclass__ = EventMeta
+    __metaclass__ = EventFactory
 
-    TYPE = 'event'
-    EVT_TYPE = None
+    __type__ = 'event'
+    __event__ = None
 
     def __init__(self):
         super(Event, self).__init__()
-        assert self.EVT_TYPE is not None, "EVT_TYPE not implemented"
+        assert self.__event__ is not None, "__event__ not implemented"
 
     def build(self, dct):
-        dct['type'] = self.TYPE
-        dct['evt_type'] = self.EVT_TYPE
+        dct['type'] = self.__type__
+        dct['event_type'] = self.__event__
         self.buildEvent(dct)
         return dct
 
@@ -139,18 +181,15 @@ class Event(Packet):
     def parseEvent(self, dct):
         pass  # raise NotImplementedError("parseEvent() not implemented")
 
-    def __repr__(self):
-        return 'Event(type=%s, %s)' % (self.EVT_TYPE, self._dictRepr())
-
     def __call__(self):
         raise NotImplementedError("__call__() not implemented")
 
 
-class SimpleEvent(Simple, Event):
+class DefaultEvent(Default, Event):
     pass
 
 
-class GenericEvent(Event):
+class AbstractEvent(Event):
 
     def buildEvent(self, dct):
         dct.update(self.__dict__)
@@ -158,46 +197,43 @@ class GenericEvent(Event):
     def parseEvent(self, dct):
         self.__dict__.update(dct)
 
-    def __repr__(self):
-        return 'GenericEvent(%s)' % self._dictRepr()
-
 
 # -----------------------------------------------------------------------------
-# Commands
+# Command
 # -----------------------------------------------------------------------------
 
 
-class CommandMeta(PacketMeta):
-    _CLASSES = {}
+class CommandFactory(PacketFactory):
+    _COMMANDS = {}
 
     @classmethod
-    def getClass(cls, dct):
-        typeCls = cls._CLASSES[dct['cmd_type']]
-        if typeCls.__metaclass__ != cls:
-            typeCls = typeCls.__metaclass__.getClass(dct)
-        return typeCls
+    def getClass(mcs, dct):
+        cls = mcs._COMMANDS[dct['command_type']]
+        if cls.__metaclass__ != mcs:
+            cls = cls.__metaclass__.getClass(dct)
+        return cls
 
-    def __new__(cls, name, bases, attrs):
-        cls = super(CommandMeta, cls).__new__(cls, name, bases, attrs)
-        if cls.CMD_TYPE is not None \
-                and cls.CMD_TYPE not in CommandMeta._CLASSES:
-            CommandMeta._CLASSES[cls.CMD_TYPE] = cls
+    def __new__(mcs, name, bases, attrs):
+        cls = super(CommandFactory, mcs).__new__(mcs, name, bases, attrs)
+        if cls.__command__ is not None \
+                and cls.__command__ not in mcs._COMMANDS:
+            mcs._COMMANDS[cls.__command__] = cls
         return cls
 
 
 class Command(Packet):
-    __metaclass__ = CommandMeta
+    __metaclass__ = CommandFactory
 
-    TYPE = 'cmd'
-    CMD_TYPE = None
+    __type__ = 'command'
+    __command__ = None
 
     def __init__(self):
         super(Command, self).__init__()
-        assert self.CMD_TYPE is not None, "CMD_TYPE not implemented"
+        assert self.__command__ is not None, "__command__ not implemented"
 
     def build(self, dct):
-        dct['type'] = self.TYPE
-        dct['cmd_type'] = self.CMD_TYPE
+        dct['type'] = self.__type__
+        dct['command_type'] = self.__command__
         self.buildCommand(dct)
         return dct
 
@@ -211,43 +247,40 @@ class Command(Packet):
     def parseCommand(self, dct):
         pass  # raise NotImplementedError("parseCommand() not implemented")
 
-    def __repr__(self):
-        return 'Command(type=%s, %s)' % (self.CMD_TYPE, self._dictRepr())
 
-
-class SimpleCommand(Simple, Command):
+class DefaultCommand(Default, Command):
     pass
 
 # -----------------------------------------------------------------------------
-# Queries
+# Query
 # -----------------------------------------------------------------------------
 
 
 class Query(object):
-    CALLBACKS = []
+    _CALLBACKS = []
 
     @classmethod
     def registerCallback(cls, d):
-        cls.CALLBACKS.append(d)
+        cls._CALLBACKS.append(d)
 
 # -----------------------------------------------------------------------------
-# Replies
+# Reply
 # -----------------------------------------------------------------------------
 
 
 class Reply(object):
-    QUERY = None
+    __query__ = None
 
     def __init__(self):
         super(Reply, self).__init__()
-        assert self.QUERY is not None, "QUERY not implemented"
+        assert self.__query__ is not None, "__query__ not implemented"
 
     def triggerInitback(self):
-        d = self.QUERY.CALLBACKS[0]
+        d = self.__query__._CALLBACKS[0]
         d.initback(self)
 
     def triggerCallback(self):
-        d = self.QUERY.CALLBACKS.pop(0)
+        d = self.__query__._CALLBACKS.pop(0)
         d.callback(self)
 
 # -----------------------------------------------------------------------------

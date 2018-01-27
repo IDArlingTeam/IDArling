@@ -36,6 +36,6 @@ class Module(object):
         self._installed = False
         return self._uninstall()
 
-    def _uninstall():
+    def _uninstall(self):
         # Modules should implement this method
         raise NotImplementedError()

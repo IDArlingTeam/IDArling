@@ -1,61 +1,18 @@
-from collections import defaultdict
+from mapper import Table, Field
+from packets import Default
 
 # -----------------------------------------------------------------------------
-# Models
+# Database
 # -----------------------------------------------------------------------------
 
 
-class Model(object):
+class Database(Default, Table):
+    __table__ = 'databases'
 
-    @classmethod
-    def new(cls, dct):
-        obj = cls.__new__(cls)
-        object.__init__(obj)
-        obj.parse(dct)
-        return obj
-
-    def build(self, dct):
-        pass  # raise NotImplementedError("build() not implemented")
-
-    def parse(self, dct):
-        pass  # raise NotImplementedError("parse() not implemented")
-
-    def _dictRepr(self):
-        return ', '.join(['%s=%s' % (key, repr(value)) for key, value in self
-                          .__dict__.iteritems() if not key.startswith('_')])
-
-    def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, self._dictRepr())
-
-
-class Simple(object):
-
-    def build(self, dct):
-        super(Simple, self).build(dct)
-        for key, value in self.__dict__.iteritems():
-            if not key.startswith('_'):
-                if isinstance(value, Model):
-                    value.build(dct[key])
-                else:
-                    dct[key] = value
-        return dct
-
-    def parse(self, dct):
-        super(Simple, self).build(dct)
-        for key, value in dct.iteritems():
-            if not key.startswith('_'):
-                if isinstance(value, Model):
-                    value.build(self.__dict__[key])
-                else:
-                    self.__dict__[key] = value
-        return self
-
-
-class SimpleModel(Simple, Model):
-    pass
-
-
-class Database(SimpleModel):
+    hash = Field(str, notNull=True, unique=True)
+    file = Field(str, notNull=True)
+    type = Field(str, notNull=True)
+    date = Field(str, notNull=True)
 
     def __init__(self, hash, file, type, date):
         super(Database, self).__init__()
@@ -64,36 +21,22 @@ class Database(SimpleModel):
         self.type = type
         self.date = date
 
-    def getHash(self):
-        return self.hash
-
-    def getFile(self):
-        return self.file
-
-    def getType(self):
-        return self.type
-
-    def getDate(self):
-        return self.date
+# -----------------------------------------------------------------------------
+# Revision
+# -----------------------------------------------------------------------------
 
 
-class Revision(SimpleModel):
+class Revision(Default, Table):
+    __table__ = 'revisions'
 
-    def __init__(self, hash, uuid, date, bits):
+    uuid = Field(str, notNull=True, unique=True)
+    hash = Field(str, notNull=True)
+    date = Field(str, notNull=True)
+    bits = Field(str, notNull=True)
+
+    def __init__(self, uuid, hash, date, bits):
         super(Revision, self).__init__()
-        self.hash = hash
         self.uuid = uuid
+        self.hash = hash
         self.date = date
         self.bits = bits
-
-    def getHash(self):
-        return self.hash
-
-    def getUUID(self):
-        return self.uuid
-
-    def getDate(self):
-        return self.date
-
-    def getBits(self):
-        return self.bits

@@ -1,4 +1,5 @@
 # Custom directories
+.idea/
 server/logs/
 server/files/
 

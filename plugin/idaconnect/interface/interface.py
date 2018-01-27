@@ -3,8 +3,6 @@ import logging
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel
 
 from ..module import Module
-
-# Import actions and widgets
 from actions import OpenAction, SaveAction
 from widgets import StatusWidget
 
@@ -17,8 +15,6 @@ logger = logging.getLogger('IDAConnect.Interface')
 
 
 class Interface(Module):
-    ACTION_OPEN = 'idaconnect:open'
-    ACTION_SAVE = 'idaconnect:save'
 
     def __init__(self, plugin):
         super(Interface, self).__init__(plugin)
