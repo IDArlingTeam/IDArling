@@ -1,67 +1,82 @@
 import logging
 
-# Install qt5reactor first
 import qt5reactor  # noqa
 qt5reactor.install()  # noqa
 
-# Twisted imports
 from twisted.internet import reactor
 
 from ..module import Module
+from ..shared.packets import Packet
 from client import ClientFactory
-
 
 logger = logging.getLogger('IDAConnect.Network')
 
-# -----------------------------------------------------------------------------
-# Network Module
-# -----------------------------------------------------------------------------
-
 
 class Network(Module):
+    """
+    The network module, responsible for all interactions with the server.
+    """
 
     def __init__(self, plugin):
+        """
+        Instantiate the network module.
+        :param IDAConnect plugin: the plugin instance
+        """
         super(Network, self).__init__(plugin)
 
         self._host = ''
         self._port = 0
         self._factory = None
-
-    # -------------------------------------------------------------------------
-    # Initialization
-    # -------------------------------------------------------------------------
+        self._connector = None
 
     def _install(self):
-        # Create a new factory and start
+        """
+        Install the network module: create its factory and start the reactor.
+
+        :rtype: bool
+        """
         self._factory = ClientFactory(self._plugin)
+        # noinspection PyUnresolvedReferences
         reactor.runReturn()
+        return True
 
     def connect(self, host, port):
-        # Check if we're already connected
-        if self._factory.isConnected():
+        """
+        Connect to the specified host and port.
+
+        :param str host: the host to connect to
+        :param int port: the port to connect to
+        """
+        # Make sure we're not already connected
+        if self.connected:
             return
 
         # Do the actual connection process
         logger.info("Connecting to %s:%d..." % (host, port))
         self._host, self._port = host, port
+        # noinspection PyUnresolvedReferences
         self._connector = reactor.connectTCP(host, port, self._factory)
 
-        # Notify plugin
+        # Notify the plugin of the connection
         self._plugin.notifyConnecting()
 
-    # -------------------------------------------------------------------------
-    # Termination
-    # -------------------------------------------------------------------------
-
     def _uninstall(self):
-        # Disconnect and stop
+        """
+        Uninstall the network module: disconnect and stop the reactor.
+
+        :rtype: bool
+        """
         self.disconnect()
+        # noinspection PyUnresolvedReferences
         reactor.stop()
         return True
 
     def disconnect(self):
-        # Check if we're already disconnected
-        if not self._factory.isConnected():
+        """
+        Disconnect from the current server.
+        """
+        # Make sure we're actually connected
+        if not self.connected:
             return
 
         # Do the actual disconnection process
@@ -69,25 +84,40 @@ class Network(Module):
         self._host, self._port = '', 0
         self._connector.disconnect()
 
-    # -------------------------------------------------------------------------
-    # Getters/Setters
-    # -------------------------------------------------------------------------
+    @property
+    def host(self):
+        """
+        Get the hostname of the server.
 
-    def getHost(self):
+        :rtype: str
+        """
         return self._host
 
-    def getPort(self):
+    @property
+    def port(self):
+        """
+        Get the port of the server.
+
+        :rtype: int
+        """
         return self._port
 
-    # -------------------------------------------------------------------------
-    # Network
-    # -------------------------------------------------------------------------
+    @property
+    def connected(self):
+        """
+        Return if we are connected to any server.
 
-    def isConnected(self):
-        # Pass on to the factory
+        :rtype: bool
+        """
         return self._installed and self._factory.isConnected()
 
     def sendPacket(self, packet):
-        # Pass on to the factory
-        if self.isConnected():
+        """
+        Send a packet to the server.
+
+        :param Packet packet: the packet to send
+        :return PacketDeferred: a deferred of the reply
+        """
+        if self.connected:
             return self._factory.sendPacket(packet)
+        return None

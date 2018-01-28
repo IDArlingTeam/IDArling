@@ -1,17 +1,13 @@
 from models import Database, Revision
 from packets import Command, DefaultCommand, Query, Reply, Container
 
-# -----------------------------------------------------------------------------
-# Get Databases
-# -----------------------------------------------------------------------------
-
 
 class GetDatabases(DefaultCommand, Query):
     __command__ = 'get_dbs'
 
-    def __init__(self, hash=None):
+    def __init__(self, hash_=None):
         super(GetDatabases, self).__init__()
-        self.hash = hash
+        self.hash = hash_
 
 
 class GetDatabasesReply(Command, Reply):
@@ -28,17 +24,13 @@ class GetDatabasesReply(Command, Reply):
     def parseCommand(self, dct):
         self.dbs = [Database.new(db) for db in dct['dbs']]
 
-# -----------------------------------------------------------------------------
-# Get Revisions
-# -----------------------------------------------------------------------------
-
 
 class GetRevisions(DefaultCommand, Query):
     __command__ = 'get_revs'
 
-    def __init__(self, hash=None, uuid=None):
+    def __init__(self, hash_=None, uuid=None):
         super(GetRevisions, self).__init__()
-        self.hash = hash
+        self.hash = hash_
         self.uuid = uuid
 
 
@@ -55,10 +47,6 @@ class GetRevisionsReply(Command, Reply):
 
     def parseCommand(self, dct):
         self.revs = [Revision.new(rev) for rev in dct['revs']]
-
-# -----------------------------------------------------------------------------
-# New Database/Revision
-# -----------------------------------------------------------------------------
 
 
 class NewDatabase(Command):
@@ -88,26 +76,22 @@ class NewRevision(Command):
     def parseCommand(self, dct):
         self.rev = Revision.new(dct['rev'])
 
-# -----------------------------------------------------------------------------
-# Upload/Download File
-# -----------------------------------------------------------------------------
-
 
 class UploadFile(Container, DefaultCommand):
     __command__ = 'upload_file'
 
-    def __init__(self, hash, uuid):
+    def __init__(self, hash_, uuid):
         super(UploadFile, self).__init__()
-        self.hash = hash
+        self.hash = hash_
         self.uuid = uuid
 
 
 class DownloadFile(Query, DefaultCommand):
     __command__ = 'download_file'
 
-    def __init__(self, hash, uuid):
+    def __init__(self, hash_, uuid):
         super(DownloadFile, self).__init__()
-        self.hash = hash
+        self.hash = hash_
         self.uuid = uuid
 
 

@@ -1,41 +1,49 @@
-# -----------------------------------------------------------------------------
-# Module
-# -----------------------------------------------------------------------------
-
-
 class Module(object):
+    """
+    This is the base class of every module in the plugin.
+    """
 
     def __init__(self, plugin):
-        # Require a plugin install
+        """
+        Initialize the module.
+
+        :param IDAConnect plugin: the plugin instance
+        """
         self._plugin = plugin
         self._installed = False
 
-    # -------------------------------------------------------------------------
-    # Initialization
-    # -------------------------------------------------------------------------
-
     def install(self):
-        # Do not install twice
+        """
+         Install the module (called by the plugin).
+        """
         if self._installed:
             return
         self._installed = True
         self._install()
 
     def _install(self):
-        # Modules should implement this method
-        raise NotImplementedError()
+        """
+        Module subclasses should implement this method.
 
-    # -------------------------------------------------------------------------
-    # Termination
-    # -------------------------------------------------------------------------
+        :return: was the module properly installed
+        :rtype: bool
+        """
+        raise NotImplementedError("_install() not implemented")
 
     def uninstall(self):
-        # Do not uninstall twice
+        """
+        Uninstall the module (called by the plugin).
+        """
         if not self._installed:
             return
         self._installed = False
-        return self._uninstall()
+        self._uninstall()
 
     def _uninstall(self):
-        # Modules should implement this method
-        raise NotImplementedError()
+        """
+        Module subclasses should implement this method.
+
+        :return: was the module properly uninstalled
+        :rtype: bool
+        """
+        raise NotImplementedError("_uninstall() not implemented")

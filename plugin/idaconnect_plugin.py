@@ -1,14 +1,8 @@
-import os
-import logging
-
 import idaapi
 
-# Import all the modules
 from idaconnect.core.core import Core
 from idaconnect.interface.interface import Interface
 from idaconnect.network.network import Network
-
-# Import utilities
 from idaconnect.utilities.log import loggingStarted, startLogging
 from idaconnect.utilities.misc import pluginResource
 
@@ -16,126 +10,167 @@ from idaconnect.utilities.misc import pluginResource
 if not loggingStarted():
     logger = startLogging()
 
-# -----------------------------------------------------------------------------
-# IDA Plugin
-# -----------------------------------------------------------------------------
-
 
 def PLUGIN_ENTRY():
+    """
+    Mandatory entry point for IDAPython plugins.
+
+    :rtype: idaapi.plugin_t
+    """
     return IDAConnect()
 
 
 class IDAConnect(idaapi.plugin_t):
+    """
+    The IDAConnect plugin.
+    """
+    # Internal definitions
     PLUGIN_NAME = "IDAConnect"
     PLUGIN_VERSION = "0.0.1"
     PLUGIN_AUTHORS = "The IDAConnect Team"
 
-    # Definitions required for a IDA plug-in
+    # External definitions
     flags = idaapi.PLUGIN_FIX | idaapi.PLUGIN_HIDE
     comment = "Collaborative Reverse Engineering plugin"
     help = ""
     wanted_name = PLUGIN_NAME
     wanted_hotkey = ""
 
+    @staticmethod
+    def description():
+        """
+        Get the plugin description (name and version).
+
+        :rtype: str
+        """
+        return "{} v{}".format(IDAConnect.PLUGIN_NAME,
+                               IDAConnect.PLUGIN_VERSION)
+
+    @staticmethod
+    def resource(filename):
+        """
+        Get the absolute path to a resource.
+
+        :param str filename: the filename of the resource
+        :rtype: str
+        """
+        return pluginResource(filename)
+
     def __init__(self):
-        # Instantiate all the modules
+        """
+        Instantiate the plugin and all its modules.
+        """
         self._core = Core(self)
         self._interface = Interface(self)
         self._network = Network(self)
 
-    # -------------------------------------------------------------------------
-    # Modules
-    # -------------------------------------------------------------------------
+    @property
+    def core(self):
+        """
+        Get the core module.
 
-    def getCore(self):
+        :rtype: Core
+        """
         return self._core
 
-    def getInterface(self):
+    @property
+    def interface(self):
+        """
+        Get the interface module.
+
+        :rtype: Interface
+        """
         return self._interface
 
-    def getNetwork(self):
+    @property
+    def network(self):
+        """
+        Get the network module.
+
+        :rtype: Network
+        """
         return self._network
 
-    # -------------------------------------------------------------------------
-    # Initialization
-    # -------------------------------------------------------------------------
-
     def init(self):
-        # Try to initialize the plug-in
+        """
+        This method is called when IDA is loading the plugin.
+
+        :rtype: int
+        """
+        # noinspection PyBroadException
         try:
             self._init()
         except Exception:
-            # Initialization failed
             logger.exception("Failed to initialize")
             return idaapi.PLUGIN_SKIP
 
-        # Initialization successful
         self._printBanner()
         logger.info("Successfully initialized")
         return idaapi.PLUGIN_KEEP
 
     def _init(self):
-        # Install all the modules
+        """
+        Initialize the plugin and all its modules.
+        """
         self._core.install()
         self._interface.install()
         self._network.install()
 
     def _printBanner(self):
-        # Print a nice banner for our users
+        """
+        Print the banner into the console.
+        """
         copyright = "(c) %s" % self.PLUGIN_AUTHORS
 
         prefix = '[IDAConnect] '
         print prefix + ("-" * 75)
-        print prefix + "%s - %s" % (self.getDescription(), copyright)
+        print prefix + "%s - %s" % (self.description(), copyright)
         print prefix + ("-" * 75)
 
-    # -------------------------------------------------------------------------
-    # Termination
-    # -------------------------------------------------------------------------
-
     def term(self):
-        # Try to terminate the plug-in
+        """
+        This method is called when IDA is unloading the plugin.
+        """
+        # noinspection PyBroadException
         try:
             self._term()
         except Exception:
-            # Termination failed
             logger.exception("Failed to terminate properly")
 
-        # Termination successful
         logger.info("Terminated properly")
 
     def _term(self):
-        # Uninstall all the modules
+        """
+        Terminate the plugin and its modules.
+        """
         self._core.uninstall()
         self._interface.uninstall()
         self._network.uninstall()
 
-    # -------------------------------------------------------------------------
-    # Execution
-    # -------------------------------------------------------------------------
+    # noinspection PyMethodMayBeStatic
+    def run(self, _):
+        """
+        This method is called when IDA is running the plugin as a script.
 
-    def run(self, arg):
+        :type _: int
+        :rtype: bool
+        """
         idaapi.warning("IDAConnect cannot be run as a script")
 
-    # -------------------------------------------------------------------------
-    # Getters/Setters
-    # -------------------------------------------------------------------------
-
-    def getDescription(self):
-        return "%s v%s" % (self.PLUGIN_NAME, self.PLUGIN_VERSION)
-
-    def getResource(self, resource):
-        return pluginResource(resource)
-
-    # -------------------------------------------------------------------------
-    # Internal Events
-    # -------------------------------------------------------------------------
-
     def notifyDisconnected(self):
+        """
+        Notify the plugin that a disconnection has occurred.
+        """
         self._interface.notifyDisconnected()
 
     def notifyConnecting(self):
+        """
+        Notify the plugin that a connection is being established.
+        """
         self._interface.notifyConnecting()
 
     def notifyConnected(self):
+        """
+        Notify the plugin that a connection has been established.
+        """
         self._interface.notifyConnected()

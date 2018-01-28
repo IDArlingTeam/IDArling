@@ -1,19 +1,14 @@
 import logging
 
-import idc
-import idaapi
+import ida_enum
 import ida_funcs
 import ida_name
-import ida_enum
+import idaapi
+import idc
 
 from ..shared.packets import DefaultEvent as Event
 
-
 logger = logging.getLogger('IDAConnect.Core')
-
-# -----------------------------------------------------------------------------
-# IDB Events
-# -----------------------------------------------------------------------------
 
 
 class MakeCodeEvent(Event):
@@ -233,9 +228,9 @@ class EnumCmtChangedEvent(Event):
 class EnumMemberCreatedEvent(Event):
     __event__ = 'enum_member_created'
 
-    def __init__(self, id, name, value, bmask):
+    def __init__(self, id_, name, value, bmask):
         super(EnumMemberCreatedEvent, self).__init__()
-        self.id = id
+        self.id = id_
         self.name = name
         self.value = value
         self.bmask = bmask
@@ -247,9 +242,9 @@ class EnumMemberCreatedEvent(Event):
 class EnumMemberDeletedEvent(Event):
     __event__ = 'enum_member_deleted'
 
-    def __init__(self, id, value, serial, bmask):
+    def __init__(self, id_, value, serial, bmask):
         super(EnumMemberDeletedEvent, self).__init__()
-        self.id = id
+        self.id = id_
         self.value = value
         self.serial = serial
         self.bmask = bmask
@@ -385,11 +380,6 @@ class ExpandingStrucEvent(Event):
     def __call__(self):
         sptr = idaapi.get_struc(self.sid)
         idaapi.expand_struc(sptr, self.offset, self.delta)
-
-
-# -----------------------------------------------------------------------------
-# IDP Events
-# -----------------------------------------------------------------------------
 
 
 class UndefinedEvent(Event):

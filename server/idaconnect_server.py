@@ -1,9 +1,11 @@
-import os
 import logging
+import os
 import sqlite3
 
 from twisted.internet import reactor, protocol
+from twisted.internet.interfaces import IAddress
 from twisted.python import log
+from twisted.python.failure import Failure
 
 from shared.commands import (GetDatabases, GetDatabasesReply,
                              GetRevisions, GetRevisionsReply,
@@ -11,15 +13,18 @@ from shared.commands import (GetDatabases, GetDatabasesReply,
                              UploadFile, DownloadFile, DownloadFileReply)
 from shared.mapper import Mapper
 from shared.models import Database, Revision
-from shared.packets import Command, AbstractEvent
+from shared.packets import Packet, Command, AbstractEvent
 from shared.protocol import Protocol
-
-# -----------------------------------------------------------------------------
-# Logging
-# -----------------------------------------------------------------------------
 
 
 def startLogging():
+    """
+    Set up the main logger to write both to a log file and to the console
+    using a specific format, and bind Twisted to the Python logger.
+
+    :return: the main logger
+    :rtype: logger.Logger
+    """
     LOGGER_NAME = 'IDAConnect.Server'
 
     # Bind Twisted to Python log
@@ -55,18 +60,22 @@ def startLogging():
 
 logger = startLogging()
 
-# -----------------------------------------------------------------------------
-# Server Protocol
-# -----------------------------------------------------------------------------
-
 
 class ServerProtocol(Protocol):
+    """
+    The server implementation of the protocol.
+    """
 
     def __init__(self, factory):
+        """
+        Initialize the server protocol.
+
+        :param ServerFactory factory: the server factory
+        """
         super(ServerProtocol, self).__init__(logger)
         self._factory = factory
 
-        # Setup handlers
+        # Setup command handlers
         self._handlers[GetDatabases] = self._handleGetDatabases
         self._handlers[GetRevisions] = self._handleGetRevisions
         self._handlers[NewDatabase] = self._handleNewDatabase
@@ -74,11 +83,10 @@ class ServerProtocol(Protocol):
         self._handlers[UploadFile] = self._handleUploadFile
         self._handlers[DownloadFile] = self._handleDownloadFile
 
-    # -------------------------------------------------------------------------
-    # Twisted Events
-    # -------------------------------------------------------------------------
-
     def connectionMade(self):
+        """
+        Called when a connection has been established.
+        """
         super(ServerProtocol, self).connectionMade()
         self._factory.addClient(self)
 
@@ -93,31 +101,35 @@ class ServerProtocol(Protocol):
         self._logger = CustomAdapter(self._logger, {})
         self._logger.info("Connected")
 
-    def connectionLost(self, reason):
+    def connectionLost(self, reason=protocol.connectionDone):
+        """
+        Called when an established connection has been lost.
+
+        :param Failure reason: the reason of the loss
+        """
         super(ServerProtocol, self).connectionLost(reason)
         self._factory.removeClient(self)
         self._logger.info("Disconnected: %s" % reason)
 
-    # -------------------------------------------------------------------------
-    # Internal Events
-    # -------------------------------------------------------------------------
-
     def recvPacket(self, packet):
+        """
+        Called when a packet has been received.
+
+        :param Packet packet: the packet
+        :return: has the packed been handled
+        :rtype: bool
+        """
         if isinstance(packet, Command):
-            # Call the handler
+            # Call the corresponding handler
             self._handlers[packet.__class__](packet)
 
         elif isinstance(packet, AbstractEvent):
-            # Send the event to all clients
+            # Forward the event to all clients
             self._factory.sendPacketToAll(packet, self)
 
         else:
             return False
         return True
-
-    # -------------------------------------------------------------------------
-    # Command Handlers
-    # -------------------------------------------------------------------------
 
     def _handleGetDatabases(self, packet):
         dbs = Database.all(hash=packet.hash)
@@ -127,14 +139,18 @@ class ServerProtocol(Protocol):
         revs = Revision.all(uuid=packet.uuid, hash=packet.hash)
         self.sendPacket(GetRevisionsReply(revs))
 
-    def _handleNewDatabase(self, packet):
+    @staticmethod
+    def _handleNewDatabase(packet):
         packet.db.create()
 
-    def _handleNewRevision(self, packet):
+    @staticmethod
+    def _handleNewRevision(packet):
         packet.rev.create()
 
-    def _handleUploadFile(self, packet):
+    @staticmethod
+    def _handleUploadFile(packet):
         rev = Revision.one(uuid=packet.uuid)
+        assert isinstance(rev, Revision)
         filesDir = os.path.join(os.path.dirname(__file__), 'files')
         filesDir = os.path.abspath(filesDir)
         if not os.path.exists(filesDir):
@@ -142,72 +158,86 @@ class ServerProtocol(Protocol):
         fileName = rev.uuid + ('.i64' if rev.bits else '.idb')
         filePath = os.path.join(filesDir, fileName)
 
-        # Write the file to disk
-        with open(filePath, 'wb') as file:
-            file.write(packet.getContent())
+        # Write the file received to disk
+        with open(filePath, 'wb') as file_:
+            file_.write(packet.content)
         logger.info("Saved file %s" % fileName)
 
     def _handleDownloadFile(self, packet):
         rev = Revision.one(uuid=packet.uuid)
+        assert isinstance(rev, Revision)
         filesDir = os.path.join(os.path.dirname(__file__), 'files')
         filesDir = os.path.abspath(filesDir)
         fileName = rev.uuid + ('.i64' if rev.bits else '.idb')
         filePath = os.path.join(filesDir, fileName)
 
-        # Read file from disk
+        # Read file from disk and sent it
         packet = DownloadFileReply()
-        with open(filePath, 'rb') as file:
-            packet.setContent(file.read())
+        with open(filePath, 'rb') as file_:
+            packet.content = file_.read()
         self.sendPacket(packet)
-
-# -----------------------------------------------------------------------------
-# Server Factory
-# -----------------------------------------------------------------------------
 
 
 class ServerFactory(protocol.Factory, object):
+    """
+    The server factory implementation.
+    """
 
     def __init__(self):
+        """
+        Initialize the server factory.
+        """
         super(ServerFactory, self).__init__()
         self._clients = []
 
-        # Initialize database and mapper
+        # Initialize database and bind mapper
         self._db = sqlite3.connect(':memory:', isolation_level=None)
         self._db.row_factory = sqlite3.Row
         self._mapper = Mapper(self._db)
 
     def buildProtocol(self, addr):
+        """
+        Called then a new protocol instance is needed.
+
+        :param IAddress addr: the address of the remote party
+        :return: the protocol instance
+        :rtype: ServerProtocol
+        """
         return ServerProtocol(self)
 
-    # -------------------------------------------------------------------------
-    # Clients
-    # -------------------------------------------------------------------------
-
     def addClient(self, client):
-        # Add a client to the list
+        """
+        Add a client to the list of connected clients.
+
+        :param ServerProtocol client: the client
+        """
         self._clients.append(client)
 
     def removeClient(self, client):
-        # Remove a client from the list
+        """
+        Remove a client to the list of connected clients.
+
+        :param ServerProtocol client: the client
+        """
         self._clients.remove(client)
 
-    # -------------------------------------------------------------------------
-    # Network
-    # -------------------------------------------------------------------------
-
     def sendPacketToAll(self, packet, ignore=None):
-        # Send line to all client but ignore
+        """
+        Send a packet to all connected clients.
+
+        :param Packet packet: the packet
+        :param ServerProtocol ignore: a client to ignore
+        """
         for client in self._clients:
             if client != ignore:
                 client.sendPacket(packet)
 
-# -----------------------------------------------------------------------------
-# Server Main
-# -----------------------------------------------------------------------------
 
-
+# noinspection PyUnresolvedReferences
 def main():
-    # Start listening on port 31013
+    """
+    The server main function.
+    """
     reactor.listenTCP(31013, ServerFactory())
     reactor.run()
 

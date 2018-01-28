@@ -2,29 +2,35 @@ import ida_idp
 
 from events import *
 
-
 logger = logging.getLogger('IDAConnect.Core')
-
-# -----------------------------------------------------------------------------
-# Hooks
-# -----------------------------------------------------------------------------
 
 
 class Hooks(object):
+    """
+    This is the base class for every hook of the core module.
+    """
 
     def __init__(self, plugin):
-        self._network = plugin.getNetwork()
+        """
+        Initialize the hook.
+
+        :param IDAConnect plugin: the plugin instance
+        """
+        self._network = plugin.network
 
     def _sendEvent(self, event):
-        # Forward packet to network
-        self._network.sendPacket(event)
+        """
+        Send an event to the other clients through the server.
 
-# -----------------------------------------------------------------------------
-# IDB Hooks
-# -----------------------------------------------------------------------------
+        :param Event event: the event to send
+        """
+        self._network.sendPacket(event)
 
 
 class IDBHooks(Hooks, ida_idp.IDB_Hooks):
+    """
+    The concrete class for all IDB-related events.
+    """
 
     def __init__(self, plugin):
         ida_idp.IDB_Hooks.__init__(self)
@@ -74,10 +80,10 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         return 0
 
     def op_type_changed(self, ea, n):
-        def gather_enum_info(ea, n):
-            id = idaapi.get_enum_id(ea, n)[0]
-            serial = idaapi.get_enum_idx(id)
-            return id, serial
+        def gather_enum_info(enum_ea, enum_n):
+            enum_id = idaapi.get_enum_id(enum_ea, enum_n)[0]
+            enum_serial = idaapi.get_enum_idx(enum_id)
+            return enum_id, enum_serial
 
         extra = {}
         flags = idc.get_full_flags(ea)
@@ -94,8 +100,8 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 op = 'oct'
             elif idc.isEnum0(flags):
                 op = 'enum'
-                id, serial = gather_enum_info(ea, n)
-                extra['id'] = id
+                id_, serial = gather_enum_info(ea, n)
+                extra['id'] = id_
                 extra['serial'] = serial
             else:
                 # FIXME: Find a better way
@@ -113,8 +119,8 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 op = 'oct'
             elif idc.isEnum1(flags):
                 op = 'enum'
-                id, serial = gather_enum_info(ea, n)
-                extra['id'] = id
+                id_, serial = gather_enum_info(ea, n)
+                extra['id'] = id_
                 extra['serial'] = serial
             else:
                 # FIXME: Find a better way
@@ -146,18 +152,18 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         self._sendEvent(EnumCmtChangedEvent(tid, cmt, repeatable_cmt))
         return 0
 
-    def enum_member_created(self, id, cid):
+    def enum_member_created(self, id_, cid):
         name = idaapi.get_enum_member_name(cid)
         value = idaapi.get_enum_member_value(cid)
         bmask = idaapi.get_enum_member_bmask(cid)
-        self._sendEvent(EnumMemberCreatedEvent(id, name, value, bmask))
+        self._sendEvent(EnumMemberCreatedEvent(id_, name, value, bmask))
         return 0
 
-    def enum_member_deleted(self, id, cid):
+    def enum_member_deleted(self, id_, cid):
         value = idaapi.get_enum_member_value(cid)
         serial = idaapi.get_enum_member_serial(cid)
         bmask = idaapi.get_enum_member_bmask(cid)
-        self._sendEvent(EnumMemberDeletedEvent(id, value, serial, bmask))
+        self._sendEvent(EnumMemberDeletedEvent(id_, value, serial, bmask))
         return 0
 
     def struc_created(self, tid):
@@ -266,12 +272,11 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         self._sendEvent(ExpandingStrucEvent(sptr.id, offset, delta))
         return 0
 
-# -----------------------------------------------------------------------------
-# IDP Hooks
-# -----------------------------------------------------------------------------
-
 
 class IDPHooks(Hooks, ida_idp.IDP_Hooks):
+    """
+    The concrete class for IDP-related events.
+    """
 
     def __init__(self, plugin):
         ida_idp.IDP_Hooks.__init__(self)

@@ -41,9 +41,9 @@ These are the entry points for a user to load or save a database.
 
 # Acknowledgements
 
-This project is inspired by [Sol[IDA]rity](https://solidarity.re/). It started after contacting its authors and asking if it was ever going to be released to the public. [Lighthouse](https://github.com/gaasedelen/lighthouse) source code was also carefuly studied to understand how to write better IDA plugins.
+This project is inspired by [Sol[IDA]rity](https://solidarity.re/). It started after contacting its authors and asking if it was ever going to be released to the public. [Lighthouse](https://github.com/gaasedelen/lighthouse) source code was also carefully studied to understand how to write better IDA plugins.
 
-* Previous plugins, namely [CollabREate](https://github.com/cseagle/collabREate), [IDASynergy](https://github.com/CubicaLabs/IDASynergy), [YaCo](https://github.com/DGA-MI-SSI/YaCo), were studied during the developpement process;
+* Previous plugins, namely [CollabREate](https://github.com/cseagle/collabREate), [IDASynergy](https://github.com/CubicaLabs/IDASynergy), [YaCo](https://github.com/DGA-MI-SSI/YaCo), were studied during the development process;
 * The icons are edited and combined versions from the sites [freeiconshop.com](http://freeiconshop.com/) and [www.iconsplace.com](http://www.iconsplace.com).
 
 # Authors
