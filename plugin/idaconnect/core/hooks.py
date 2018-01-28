@@ -280,6 +280,10 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                                        s.perm, s.bitness, s.flags))
         return 0
 
+    def segm_deleted(self, start_ea, end_ea):
+        self._sendEvent(SegmDeletedEvent(start_ea))
+        return 0
+
 
 class IDPHooks(Hooks, ida_idp.IDP_Hooks):
     """
