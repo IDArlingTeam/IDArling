@@ -382,6 +382,37 @@ class ExpandingStrucEvent(Event):
         idaapi.expand_struc(sptr, self.offset, self.delta)
 
 
+class SegmAddedEvent(Event):
+    __event__ = 'segm_added_event'
+
+    def __init__(self, name, class_, start_ea, end_ea, orgbase, align,
+                 comb, perm, bitness, flags):
+        super(SegmAddedEvent, self).__init__()
+        self.name = name
+        self.class_ = class_
+        self.start_ea = start_ea
+        self.end_ea = end_ea
+        self.orgbase = orgbase
+        self.align = align
+        self.comb = comb
+        self.perm = perm
+        self.bitness = bitness
+        self.flags = flags
+
+    def __call__(self):
+        s = idaapi.segment_t()
+        s.start_ea = self.start_ea
+        s.end_ea = self.end_ea
+        s.orgbase = self.orgbase
+        s.align = self.align
+        s.comb = self.comb
+        s.perm = self.perm
+        s.bitness = self.bitness
+        s.flags = self.flags
+        idaapi.add_segm_ex(s, self.name, self.class_,
+                           idaapi.ADDSEG_QUIET | idaapi.ADDSEG_NOSREG)
+
+
 class UndefinedEvent(Event):
     __event__ = 'undefined'
 

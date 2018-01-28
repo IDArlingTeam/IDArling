@@ -272,6 +272,14 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         self._sendEvent(ExpandingStrucEvent(sptr.id, offset, delta))
         return 0
 
+    def segm_added(self, s):
+        self._sendEvent(SegmAddedEvent(idaapi.get_segm_name(s),
+                                       idaapi.get_segm_class(s),
+                                       s.start_ea, s.end_ea,
+                                       s.orgbase, s.align, s.comb,
+                                       s.perm, s.bitness, s.flags))
+        return 0
+
 
 class IDPHooks(Hooks, ida_idp.IDP_Hooks):
     """
@@ -295,15 +303,20 @@ class HexRaysHooks(Hooks):
 
     def __init__(self, plugin):
         Hooks.__init__(self, plugin)
+        self.do_hexrays_hook = True
         if not idaapi.init_hexrays_plugin():
-            raise Exception("Hexrays decompiler is not available") 
+            self.do_hexrays_hook = False
 
     def hook(self):
-        idaapi.install_hexrays_callback(self.eventsCallback)
+        if self.do_hexrays_hook:
+            idaapi.install_hexrays_callback(self.eventsCallback)
+        else:
+            logger.info("Hexrays decompilers are not available")
 
     def unhook(self):
-        idaapi.remove_hexrays_callback(self.eventsCallback)
-        idaapi.term_hexrays_plugin()
+        if self.do_hexrays_hook:
+            idaapi.remove_hexrays_callback(self.eventsCallback)
+            idaapi.term_hexrays_plugin()
 
     def eventsCallback(self, event, *args):
         ea = idaapi.get_screen_ea()
