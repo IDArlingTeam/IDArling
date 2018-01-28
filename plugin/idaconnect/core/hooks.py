@@ -295,9 +295,10 @@ class HexRaysHooks(Hooks):
 
     def __init__(self, plugin):
         Hooks.__init__(self, plugin)
+        if not idaapi.init_hexrays_plugin():
+            raise Exception("Hexrays decompiler is not available") 
 
     def hook(self):
-        idaapi.init_hexrays_plugin()
         idaapi.install_hexrays_callback(self.eventsCallback)
 
     def unhook(self):

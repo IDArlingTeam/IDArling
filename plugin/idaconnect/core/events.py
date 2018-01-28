@@ -399,7 +399,7 @@ class UndefinedEvent(Event):
 
 # FIXME : HexRays synchronization doesn't work, have to find a better way.
 #         Maybe by sending events batch...
-class UserDefinedCmtEvent(SimpleEvent):
+class UserDefinedCmtEvent(Event):
     EVT_TYPE = 'user_defined_cmt'
 
     def __init__(self, ea, itp, cmt):
