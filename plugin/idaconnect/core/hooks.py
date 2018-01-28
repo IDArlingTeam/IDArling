@@ -288,6 +288,10 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         self._sendEvent(SegmStartChangedEvent(s.start_ea, oldstart))
         return 0
 
+    def segm_end_changed(self, s, oldend):
+        self._sendEvent(SegmEndChangedEvent(s.end_ea, s.start_ea))
+        return 0
+
 
 class IDPHooks(Hooks, ida_idp.IDP_Hooks):
     """

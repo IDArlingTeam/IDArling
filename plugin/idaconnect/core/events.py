@@ -436,6 +436,18 @@ class SegmStartChangedEvent(Event):
         idaapi.set_segm_start(self.ea, self.newstart, 0)
 
 
+class SegmEndChangedEvent(Event):
+    __event__ = 'segm_end_changed_event'
+
+    def __init__(self, newend, ea):
+        super(SegmEndChangedEvent, self).__init__()
+        self.newend = newend
+        self.ea = ea
+
+    def __call__(self):
+        idaapi.set_segm_end(self.ea, self.newend, 0)
+
+
 class UndefinedEvent(Event):
     __event__ = 'undefined'
 
