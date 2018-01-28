@@ -284,6 +284,10 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         self._sendEvent(SegmDeletedEvent(start_ea))
         return 0
 
+    def segm_start_changed(self, s, oldstart):
+        self._sendEvent(SegmStartChangedEvent(s.start_ea, oldstart))
+        return 0
+
 
 class IDPHooks(Hooks, ida_idp.IDP_Hooks):
     """

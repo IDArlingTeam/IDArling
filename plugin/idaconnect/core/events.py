@@ -424,6 +424,18 @@ class SegmDeletedEvent(Event):
         idaapi.del_segm(self.ea, idaapi.SEGMOD_KEEP | idaapi.SEGMOD_SILENT)
 
 
+class SegmStartChangedEvent(Event):
+    __event__ = 'segm_start_changed_event'
+
+    def __init__(self, newstart, ea):
+        super(SegmStartChangedEvent, self).__init__()
+        self.newstart = newstart
+        self.ea = ea
+
+    def __call__(self):
+        idaapi.set_segm_start(self.ea, self.newstart, 0)
+
+
 class UndefinedEvent(Event):
     __event__ = 'undefined'
 
