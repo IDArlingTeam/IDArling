@@ -1,7 +1,8 @@
 import logging
 
-from hooks import IDBHooks, IDPHooks
 from ..module import Module
+from hooks import IDBHooks, IDPHooks, HexRaysHooks
+
 
 logger = logging.getLogger('IDAConnect.Core')
 
@@ -21,6 +22,7 @@ class Core(Module):
 
         self._idbHooks = None
         self._idpHooks = None
+        self._hexraysHooks = None
 
     def _install(self):
         """
@@ -30,6 +32,7 @@ class Core(Module):
         """
         self._idbHooks = IDBHooks(self._plugin)
         self._idpHooks = IDPHooks(self._plugin)
+        self._hexraysHooks = HexRaysHooks(self._plugin)
 
         logger.debug("Installing hooks")
         self.hookAll()
@@ -51,6 +54,7 @@ class Core(Module):
         """
         self._idbHooks.hook()
         self._idpHooks.hook()
+        self._hexraysHooks.hook()
 
     def unhookAll(self):
         """
@@ -58,3 +62,4 @@ class Core(Module):
         """
         self._idbHooks.unhook()
         self._idpHooks.unhook()
+        self._hexraysHooks.unhook()

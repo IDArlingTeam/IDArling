@@ -285,3 +285,35 @@ class IDPHooks(Hooks, ida_idp.IDP_Hooks):
     def ev_undefine(self, ea):
         self._sendEvent(UndefinedEvent(ea))
         return 0
+
+# -----------------------------------------------------------------------------
+# HexRays Hooks
+# -----------------------------------------------------------------------------
+
+
+class HexRaysHooks(Hooks):
+
+    def __init__(self, plugin):
+        Hooks.__init__(self, plugin)
+
+    def hook(self):
+        idaapi.init_hexrays_plugin()
+        idaapi.install_hexrays_callback(self.eventsCallback)
+
+    def unhook(self):
+        idaapi.remove_hexrays_callback(self.eventsCallback)
+        idaapi.term_hexrays_plugin()
+
+    def eventsCallback(self, event, *args):
+        ea = idaapi.get_screen_ea()
+        self.getUserCmt(ea)
+        return 0
+
+    def getUserCmt(self, ea):
+        cmts = idaapi.restore_user_cmts(ea)
+        if cmts:
+            for tl, cmt in cmts.iteritems():
+                self._sendEvent(UserDefinedCmtEvent(tl.ea, tl.itp,
+                                                    cmt.c_str()))
+                break
+        idaapi.user_cmts_free(cmts)
