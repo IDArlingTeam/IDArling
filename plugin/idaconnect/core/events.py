@@ -445,7 +445,21 @@ class SegmEndChangedEvent(Event):
         self.ea = ea
 
     def __call__(self):
+        s = idaapi.segment_t()
         idaapi.set_segm_end(self.ea, self.newend, 0)
+
+
+class SegmNameChangedEvent(Event):
+    __event__ = 'segm_name_changed_event'
+
+    def __init__(self, ea, name):
+        super(SegmNameChangedEvent, self).__init__()
+        self.ea = ea
+        self.name = name
+
+    def __call__(self):
+        s = idaapi.getseg(self.ea)
+        idaapi.set_segm_name(s, self.name)
 
 
 class UndefinedEvent(Event):
