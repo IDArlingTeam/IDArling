@@ -1,7 +1,9 @@
 # Custom directories
 .idea/
+.mypy_cache/
 server/logs/
 server/files/
+venv/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

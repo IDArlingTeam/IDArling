@@ -1,7 +1,13 @@
+import collections
 import itertools
 import operator
-import sqlite3
-from collections import OrderedDict as Dict
+
+
+MYPY = False
+if MYPY:
+    import sqlite3
+    from typing import Any, Dict, List, Tuple, Type, TypeVar, Union, Optional
+    T = TypeVar('T', bound='Table')
 
 
 class Field(object):
@@ -11,73 +17,80 @@ class Field(object):
     _TYPES = {int: 'integer', float: 'real', str: 'text'}
     _ORDER = itertools.count()
 
-    def __init__(self, type_, unique=False, notNull=False):
+    def __init__(self, type, unique=False, notNull=False):
+        # type: (Type, bool, bool) -> None
         """
         Initialize the field.
 
-        :param type type_: the type of the field
-        :param bool unique: are the column values unique
-        :param bool notNull: can the column values be null
+        :param type: the type of the field
+        :param unique: are the column values unique
+        :param notNull: can the column values be null
         """
         super(Field, self).__init__()
-        assert type_ in Field._TYPES.keys(), "invalid type {}".format(type)
-        self.type = type_
-        self.unique = unique
-        self.notNull = notNull
+        assert type in Field._TYPES.keys(), "invalid type {}".format(type)
+        self._type = type
+        self._unique = unique
+        self._notNull = notNull
 
         self.name = ''
         self.order = Field._ORDER.next()
 
     def __str__(self):
+        # type: () -> str
         """
         Return the textual representation of this field. It will be used to
         specify the columns' types of a table at its creation.
 
-        :rtype: str
+        :return: the representation
         """
-        # noinspection PyTypeChecker
-        descr = '{} {}'.format(self.name, Field._TYPES[self.type])
-        descr += ' unique' if self.unique else ''
-        descr += ' not null' if self.notNull else ''
-        return descr
+        src = '{} {}'.format(self.name, Field._TYPES[self._type])
+        src += ' unique' if self._unique else ''
+        src += ' not null' if self._notNull else ''
+        return src
 
 
 class TableFactory(type):
     """
     The factory used to create table objects on-the-fly.
     """
-    _TABLES = {}
+    _TABLES = {}  # type: Dict[str, Type[Table]]
 
-    @classmethod
-    def getClasses(mcs):
-        """
-        Return the table classes registered by the factory.
-
-        :rtype: dict[str, type[Table]]
-        """
-        return mcs._TABLES
-
-    # noinspection PyUnresolvedReferences
-    def __new__(mcs, name, bases, attrs):
+    @staticmethod
+    def __new__(mcs,    # type: Type[TableFactory]
+                name,   # type: str
+                bases,  # type: Tuple[Type, ...]
+                attrs   # type: Dict[str, Any]
+                ):
+        # type: (...) -> Type[Table]
         """
         Register a new table class in the factory.
 
-        :param str name: the name of the new class
-        :param tuple[type] bases: the base classes of the new class
-        :param dict[str, object] attrs: the attributes of the new class
+        :param name: the name of the new class
+        :param bases: the base classes of the new class
+        :param attrs: the attributes of the new class
         :return: the newly created class
-        :rtype: type[Table]
         """
-        cls = super(TableFactory, mcs).__new__(mcs, name, bases, attrs)
-        if cls.__table__ and cls.__table__ not in mcs._TABLES:
+        cls = super(TableFactory, mcs)  \
+            .__new__(mcs, name, bases, attrs)  # type: Type[Table]
+        if cls.__table__ and cls.__table__ not in TableFactory._TABLES:
             cls.__fields__ = []
             for key, val in cls.__dict__.iteritems():
                 if isinstance(val, Field):
                     val.name = key
                     cls.__fields__.append(val)
-            cls.__fields__.sort(key=operator.attrgetter('order'))
-            mcs._TABLES[cls.__table__] = cls
+                    cls.__fields__.sort(key=operator.attrgetter('order'))
+            TableFactory._TABLES[cls.__table__] = cls
         return cls
+
+    @staticmethod
+    def getClasses():
+        # type: () -> Dict[str, Type[Table]]
+        """
+        Get the table classes registered by the factory.
+
+        :return: the classes
+        """
+        return TableFactory._TABLES
 
 
 class Table(object):
@@ -86,20 +99,24 @@ class Table(object):
     """
     __metaclass__ = TableFactory
 
-    __table__ = None
+    __table__ = None  # type: Optional[str]
+    __fields__ = []   # type: List[Field]
 
     @staticmethod
-    def fields(obj, ignore=None):
+    def fields(obj,         # type: Union[Table, Type[Table]]
+               ignore=None  # type: Optional[List[str]]
+               ):
+        # type: (...) -> Dict[str, Any]
         """
         Get a dictionary of the fields and values of an object.
 
-        :param Table|type[Table] obj: the object of interest
-        :param list[str] ignore: a list of fields to ignore
-        :rtype: dict[str, object]
+        :param obj: the object of interest
+        :param ignore: a list of fields to ignore
+        :return: the dictionary
         """
         if ignore is None:
             ignore = []
-        fields = Dict()
+        fields = collections.OrderedDict()  # type: Dict[str, Field]
         for key in obj.__fields__:
             if key.name not in ignore:
                 fields[key.name] = obj.__dict__[key.name]
@@ -107,62 +124,67 @@ class Table(object):
 
     @classmethod
     def one(cls, **fields):
+        # type: (Dict[str, Any]) -> T
         """
         Get one object from the database matching the filter.
 
-        :param dict[str, object] fields: the fields to filter on
-        :rtype: Table
+        :param fields: the fields to filter on
+        :return: the object
         """
         return Mapper.getInstance().one(cls, **fields)
 
     @classmethod
     def all(cls, **fields):
+        # type: (Dict[str, Any]) -> List[T]
         """
         Get all objects from the database matching the filter.
 
-        :param dict[str, object] fields: the fields to filter on
-        :rtype: list[Table]
+        :param fields: the fields to filter on
+        :return: the objects
         """
         return Mapper.getInstance().all(cls, **fields)
 
     def __init__(self):
+        # type: () -> None
         """
         Instantiate a new table.
         """
         super(Table, self).__init__()
         assert self.__table__, "__table__ not implemented"
-        self.id = 0  # will be filled by the mapper
+        self.id = 0  # will be set by the mapper
 
     def create(self):
+        # type: () -> Table
         """
         Create a new object in the database.
 
-        :rtype: Table
+        :return: the object
         """
         return Mapper.getInstance().create(self)
 
     def update(self):
+        # type: () -> Table
         """
         Update the current object in the database.
 
-        :rtype: Table
+        :return: the object
         """
         return Mapper.getInstance().update(self)
 
     def delete(self):
+        # type: () -> None
         """
         Delete the current object from the database.
-
-        :rtype: Table
         """
-        return Mapper.getInstance().delete(self)
+        Mapper.getInstance().delete(self)
 
     def __repr__(self):
+        # type: () -> str
         """
         Return a textual representation of the object. It will mainly be used
         for pretty-printing into the console.
 
-        :rtype: str
+        :return: the representation
         """
         s = ['{}={}'.format(k, v) for k, v in Table.fields(self).iteritems()]
         return '{}({})'.format(self.__class__.__name__, ', '.join(s))
@@ -172,51 +194,53 @@ class Mapper(object):
     """
     A singleton object that will do the mapping between instances and tables.
     """
-    __instance__ = None
+    __instance__ = None  # Optional[Mapper]
 
     @staticmethod
     def new(cls, **attrs):
+        # type: (Type[Table], Dict[str, Any]) -> T
         """
         Create a new instance of a table class.
 
-        :param type[Table] cls: the table class of the object
-        :param dict[str, object] attrs: the attributes of the object
-        :rtype: Table
+        :param cls: the table class of the object
+        :param attrs: the attributes of the object
+        :return: the object
         """
-        obj = Table.__new__(cls)
-        assert isinstance(obj, Table)
+        obj = Table.__new__(cls)  # type: T
         Table.__init__(obj)
         for key, val in attrs.iteritems():
             setattr(obj, key, val)
         return obj
 
+    @staticmethod
+    def __new__(cls, *args, **kwargs):
+        # type: (Type[Mapper], Tuple[Any, ...], Dict[str, Any]) -> Mapper
+        """
+        Force only one instance of the mapper.
+        """
+        if cls.__instance__ is None:
+            instance = super(Mapper, cls).__new__(cls)  # type: Mapper
+            cls.__instance__ = instance
+        return cls.__instance__
+
     @classmethod
     def getInstance(cls):
+        # type: () -> Mapper
         """
         Return the instance of the mapper.
 
-        :rtype: Mapper
+        :return: the instance
         """
-        return cls.__instance__
-
-    def __new__(cls, *args, **kwargs):
-        """
-        Force only one instance of the mapper.
-
-        :param list[object] args: the arguments
-        :param dict[str, object] kwargs: the named arguments
-        :rtype: type[Mapper]
-        """
-        if cls.__instance__ is None:
-            # noinspection PyArgumentList
-            cls.__instance__ = super(Mapper, cls).__new__(cls, *args, **kwargs)
-        return cls.__instance__
+        if cls.__instance__:
+            return cls.__instance__
+        raise RuntimeError("no instance has been created")
 
     def __init__(self, db):
+        # type: (sqlite3.Connection) -> None
         """
         Instantiate a new mapper.
 
-        :param sqlite3.Connection db: the connection to use
+        :param db: the connection to use
         """
         self._db = db
 
@@ -227,40 +251,41 @@ class Mapper(object):
             self.execute(sql.format(table, ', '.join(columns)))
 
     def one(self, cls, **fields):
+        # type: (Type[Table], Dict[str, Any]) -> T
         """
         Get one object from the database matching the filter.
 
-        :param type[Table] cls: the table class of the object
-        :param dict[str, object] fields: the fields to filter on
-        :rtype: Table
+        :param cls: the table class of the object
+        :param fields: the fields to filter on
+        :return: the object
         """
         row = self.get(cls, **fields).fetchone()
-        assert isinstance(row, sqlite3.Row)
         if not row:
-            return ValueError("object does not exist")
-        # noinspection PyArgumentList
+            raise ValueError("object does not exist")
         return self.new(cls, **row)
 
     def all(self, cls, **fields):
+        # type: (Type[Table], Dict[str, Any]) -> List[T]
         """
         Get all objects from the database matching the filter.
 
-        :param type[Table] cls: the table class of the object
-        :param dict[str, object] fields: the fields to filter on
-        :rtype: list[Table]
+        :param cls: the table class of the object
+        :param fields: the fields to filter on
+        :return: the objects
         """
         return [self.new(cls, **row) for row in self.get(cls, **fields)]
 
     def get(self, cls, **fields):
+        # type: (Type[Table], Dict[str, Any]) -> sqlite3.Cursor
         """
         Get all rows from the database matching the filter.
 
-        :param type[Table] cls: the table class of the object
-        :param dict[str, object] fields: the fields to filter on
-        :rtype: sqlite3.Cursor
+        :param cls: the table class of the object
+        :param fields: the fields to filter on
+        :return: the cursor to the rows
         """
-        assert isinstance(cls, Table.__class__)
-        fields = Dict([(key, val) for key, val in fields.iteritems() if val])
+        fields = collections.OrderedDict([(key, val) for key, val
+                                          in fields.iteritems() if val])
         if not fields:
             sql = 'select * from {}'.format(cls.__table__)
         else:
@@ -269,11 +294,12 @@ class Mapper(object):
         return self.execute(sql, fields.values())
 
     def create(self, obj):
+        # type: (Table) -> Table
         """
         Create an object into the database.
 
-        :param Table obj: the object to use
-        :rtype: Table
+        :param obj: the object to use
+        :return: the same object
         """
         fields = Table.fields(obj, ['id'])
         keys = ', '.join(fields.keys())
@@ -285,11 +311,12 @@ class Mapper(object):
         return obj
 
     def update(self, obj):
+        # type: (Table) -> Table
         """
         Update an object in the database.
 
-        :param Table obj: the object to use
-        :rtype: Table
+        :param obj: the object to use
+        :return: the same object
         """
         fields = Table.fields(obj, ['id'])
         cols = ', '.join(['{} = ?'.format(col) for col in fields.keys()])
@@ -298,22 +325,24 @@ class Mapper(object):
         return obj
 
     def delete(self, obj):
+        # type: (Table) -> None
         """
         Delete an object from the database.
 
-        :param Table obj: the object to use
-        :rtype: Table
+        :param obj: the object to use
+        :return: the same object
         """
         sql = 'delete from {} where id = ?'.format(obj.__table__)
         self.execute(sql, [obj.id])
 
     def execute(self, sql, vals=None):
+        # type: (str, Optional[List[Any]]) -> sqlite3.Cursor
         """
         Execute a SQL request and return the result of the request.
 
-        :param str sql: the sql request
-        :param list[object] vals: the values to use
-        :rtype: sqlite3.Cursor
+        :param sql: the sql request
+        :param vals: the values to use
+        :return: a cursor to the results
         """
         if vals is None:
             vals = []

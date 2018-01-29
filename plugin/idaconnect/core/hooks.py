@@ -1,6 +1,17 @@
-import ida_idp
+import logging
 
-from events import *
+import ida_idp  # type: ignore
+import idaapi   # type: ignore
+import idc      # type: ignore
+
+from .events import *
+
+
+MYPY = False
+if MYPY:
+    from ..plugin import IDAConnect
+    from ..shared.packets import Event
+
 
 logger = logging.getLogger('IDAConnect.Core')
 
@@ -11,28 +22,31 @@ class Hooks(object):
     """
 
     def __init__(self, plugin):
+        # type: (IDAConnect) -> None
         """
         Initialize the hook.
 
-        :param IDAConnect plugin: the plugin instance
+        :param plugin: the plugin instance
         """
         self._network = plugin.network
 
     def _sendEvent(self, event):
+        # type: (Event) -> None
         """
         Send an event to the other clients through the server.
 
-        :param Event event: the event to send
+        :param event: the event to send
         """
         self._network.sendPacket(event)
 
 
-class IDBHooks(Hooks, ida_idp.IDB_Hooks):
+class IDBHooks(Hooks, ida_idp.IDB_Hooks):  # type: ignore
     """
     The concrete class for all IDB-related events.
     """
 
     def __init__(self, plugin):
+        # type: (IDAConnect) -> None
         ida_idp.IDB_Hooks.__init__(self)
         Hooks.__init__(self, plugin)
 
@@ -74,16 +88,16 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         self._sendEvent(ExtraCmtChangedEvent(ea, line_idx, cmt))
         return 0
 
-    def ti_changed(self, ea, type_, fname):
-        py_type = idc.GetTinfo(ea)
-        self._sendEvent(TiChangedEvent(ea, py_type))
+    def ti_changed(self, ea, type, fname):
+        type = idc.GetTinfo(ea)
+        self._sendEvent(TiChangedEvent(ea, type))
         return 0
 
     def op_type_changed(self, ea, n):
-        def gather_enum_info(enum_ea, enum_n):
-            enum_id = idaapi.get_enum_id(enum_ea, enum_n)[0]
-            enum_serial = idaapi.get_enum_idx(enum_id)
-            return enum_id, enum_serial
+        def gather_enum_info(ea, n):
+            id = idaapi.get_enum_id(ea, n)[0]
+            serial = idaapi.get_enum_idx(id)
+            return id, serial
 
         extra = {}
         flags = idc.get_full_flags(ea)
@@ -100,8 +114,8 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 op = 'oct'
             elif idc.isEnum0(flags):
                 op = 'enum'
-                id_, serial = gather_enum_info(ea, n)
-                extra['id'] = id_
+                id, serial = gather_enum_info(ea, n)
+                extra['id'] = id
                 extra['serial'] = serial
             else:
                 # FIXME: Find a better way
@@ -119,8 +133,8 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 op = 'oct'
             elif idc.isEnum1(flags):
                 op = 'enum'
-                id_, serial = gather_enum_info(ea, n)
-                extra['id'] = id_
+                id, serial = gather_enum_info(ea, n)
+                extra['id'] = id
                 extra['serial'] = serial
             else:
                 # FIXME: Find a better way
@@ -152,18 +166,18 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         self._sendEvent(EnumCmtChangedEvent(tid, cmt, repeatable_cmt))
         return 0
 
-    def enum_member_created(self, id_, cid):
+    def enum_member_created(self, id, cid):
         name = idaapi.get_enum_member_name(cid)
         value = idaapi.get_enum_member_value(cid)
         bmask = idaapi.get_enum_member_bmask(cid)
-        self._sendEvent(EnumMemberCreatedEvent(id_, name, value, bmask))
+        self._sendEvent(EnumMemberCreatedEvent(id, name, value, bmask))
         return 0
 
-    def enum_member_deleted(self, id_, cid):
+    def enum_member_deleted(self, id, cid):
         value = idaapi.get_enum_member_value(cid)
         serial = idaapi.get_enum_member_serial(cid)
         bmask = idaapi.get_enum_member_bmask(cid)
-        self._sendEvent(EnumMemberDeletedEvent(id_, value, serial, bmask))
+        self._sendEvent(EnumMemberDeletedEvent(id, value, serial, bmask))
         return 0
 
     def struc_created(self, tid):
@@ -301,12 +315,13 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         return 0
 
 
-class IDPHooks(Hooks, ida_idp.IDP_Hooks):
+class IDPHooks(Hooks, ida_idp.IDP_Hooks):  # type: ignore
     """
     The concrete class for IDP-related events.
     """
 
     def __init__(self, plugin):
+        # type: (IDAConnect) -> None
         ida_idp.IDP_Hooks.__init__(self)
         Hooks.__init__(self, plugin)
 
@@ -314,26 +329,28 @@ class IDPHooks(Hooks, ida_idp.IDP_Hooks):
         self._sendEvent(UndefinedEvent(ea))
         return 0
 
-# -----------------------------------------------------------------------------
-# HexRays Hooks
-# -----------------------------------------------------------------------------
-
 
 class HexRaysHooks(Hooks):
+    """
+    The concrete class for Hex-Rays-related events.
+    """
 
     def __init__(self, plugin):
+        # type: (IDAConnect) -> None
         Hooks.__init__(self, plugin)
         self.do_hexrays_hook = True
         if not idaapi.init_hexrays_plugin():
             self.do_hexrays_hook = False
 
     def hook(self):
+        # type: () -> None
         if self.do_hexrays_hook:
             idaapi.install_hexrays_callback(self.eventsCallback)
         else:
             logger.info("Hexrays decompilers are not available")
 
     def unhook(self):
+        # type: () -> None
         if self.do_hexrays_hook:
             idaapi.remove_hexrays_callback(self.eventsCallback)
             idaapi.term_hexrays_plugin()

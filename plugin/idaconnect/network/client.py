@@ -1,12 +1,18 @@
 import logging
 
-from twisted.internet import reactor, task
-from twisted.internet.interfaces import IAddress, IConnector
-from twisted.internet.protocol import ClientFactory as Factory
-from twisted.python.failure import Failure
+from twisted.internet import reactor, task                      # type: ignore
+from twisted.internet.interfaces import IAddress, IConnector    # type: ignore
+from twisted.internet.protocol import ClientFactory as Factory  # type: ignore
+from twisted.python.failure import Failure                      # type: ignore
 
-from ..shared.packets import Packet, Command, Event
 from ..shared.protocol import Protocol
+
+
+MYPY = False
+if MYPY:
+    from ..plugin import IDAConnect
+    from ..shared.packets import Packet, Command, Event
+
 
 logger = logging.getLogger('IDAConnect.Network')
 
@@ -17,15 +23,17 @@ class ClientProtocol(Protocol):
     """
 
     def __init__(self, plugin):
+        # type: (IDAConnect) -> None
         """
         Initialize the client protocol.
 
-        :param IDAConnect plugin: the plugin instance
+        :param plugin: the plugin instance
         """
         super(ClientProtocol, self).__init__(logger)
         self._plugin = plugin
 
     def connectionMade(self):
+        # type: () -> None
         """
         Called when the connection has been established.
         """
@@ -36,12 +44,12 @@ class ClientProtocol(Protocol):
         self._plugin.notifyConnected()
 
     def recvPacket(self, packet):
+        # type: (Packet) -> bool
         """
         Called when a packet has been received.
 
-        :param Packet packet: the packet received
+        :param packet: the packet received
         :return: has the packet been handled
-        :rtype: bool
         """
         if isinstance(packet, Command):
             # Call the corresponding command handler
@@ -50,6 +58,7 @@ class ClientProtocol(Protocol):
         elif isinstance(packet, Event):
             # Call the event asynchronously
             def callEvent(event):
+                # type: (Event) -> None
                 self._plugin.core.unhookAll()
                 event()
                 self._plugin.core.hookAll()
@@ -61,16 +70,17 @@ class ClientProtocol(Protocol):
         return True
 
 
-class ClientFactory(Factory, object):
+class ClientFactory(Factory, object):  # type: ignore
     """
     The client factory implementation.
     """
 
     def __init__(self, plugin):
+        # type: (IDAConnect) -> None
         """
         Initialize the client factory.
 
-        :param IDAConnect plugin: the plugin instance
+        :param plugin: the plugin instance
         """
         super(ClientFactory, self).__init__()
         self._plugin = plugin
@@ -81,20 +91,21 @@ class ClientFactory(Factory, object):
         self.sendPacket = self._protocol.sendPacket
 
     def buildProtocol(self, addr):
+        # type: (IAddress) -> ClientProtocol
         """
         Called then a new protocol instance is needed.
 
-        :param IAddress addr: the address of the remote party
+        :param addr: the address of the remote party
         :return: the protocol instance
-        :rtype: ClientProtocol
         """
         return self._protocol
 
     def startedConnecting(self, connector):
+        # type: (IConnector) -> None
         """
         Called when we are starting to connect to the server.
 
-        :param IConnector connector: the connector used
+        :param connector: the connector used
         """
         super(ClientFactory, self).startedConnecting(connector)
 
@@ -102,11 +113,12 @@ class ClientFactory(Factory, object):
         self._plugin.notifyConnecting()
 
     def clientConnectionFailed(self, connector, reason):
+        # type: (IConnector, Failure) -> None
         """
         Called when the connection we attempted failed.
 
-        :param IConnector connector: the connector used
-        :param Failure reason: the reason of the failure
+        :param connector: the connector used
+        :param reason: the reason of the failure
         """
         super(ClientFactory, self).clientConnectionFailed(connector, reason)
         logger.info("Connection failed: %s" % reason)
@@ -115,11 +127,12 @@ class ClientFactory(Factory, object):
         self._plugin.notifyDisconnected()
 
     def clientConnectionLost(self, connector, reason):
+        # type: (IConnector, Failure) -> None
         """
         Called when a previously established connection was lost.
 
-        :param IConnector connector: the connector used
-        :param Failure reason: the reason of the loss
+        :param connector: the connector used
+        :param reason: the reason of the loss
         """
         super(ClientFactory, self).clientConnectionLost(connector, reason)
         logger.info("Connection lost: %s" % reason)

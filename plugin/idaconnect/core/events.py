@@ -1,17 +1,18 @@
 import logging
 
-import ida_enum
-import ida_funcs
-import ida_name
-import idaapi
-import idc
+import ida_enum   # type: ignore
+import ida_funcs  # type: ignore
+import ida_name   # type: ignore
+import idaapi     # type: ignore
+import idc        # type: ignore
 
-from ..shared.packets import DefaultEvent as Event
+from ..shared.packets import DefaultEvent
+
 
 logger = logging.getLogger('IDAConnect.Core')
 
 
-class MakeCodeEvent(Event):
+class MakeCodeEvent(DefaultEvent):
     __event__ = 'make_code'
 
     def __init__(self, ea):
@@ -22,7 +23,7 @@ class MakeCodeEvent(Event):
         idc.create_insn(self.ea)
 
 
-class MakeDataEvent(Event):
+class MakeDataEvent(DefaultEvent):
     __event__ = 'make_data'
 
     def __init__(self, ea, flags, size, tid):
@@ -36,7 +37,7 @@ class MakeDataEvent(Event):
         idc.create_data(self.ea, self.flags, self.size, self.tid)
 
 
-class RenamedEvent(Event):
+class RenamedEvent(DefaultEvent):
     __event__ = 'renamed'
 
     def __init__(self, ea, new_name, local_name):
@@ -50,7 +51,7 @@ class RenamedEvent(Event):
         idc.set_name(self.ea, self.new_name, flags | ida_name.SN_NOWARN)
 
 
-class FuncAddedEvent(Event):
+class FuncAddedEvent(DefaultEvent):
     __event__ = 'func_added'
 
     def __init__(self, start_ea, end_ea):
@@ -62,7 +63,7 @@ class FuncAddedEvent(Event):
         idc.add_func(self.start_ea, self.end_ea)
 
 
-class DeletingFuncEvent(Event):
+class DeletingFuncEvent(DefaultEvent):
     __event__ = 'deleting_func'
 
     def __init__(self, start_ea):
@@ -73,7 +74,7 @@ class DeletingFuncEvent(Event):
         idc.del_func(self.start_ea)
 
 
-class SetFuncStartEvent(Event):
+class SetFuncStartEvent(DefaultEvent):
     __event__ = 'set_func_start'
 
     def __init__(self, start_ea, new_start):
@@ -85,7 +86,7 @@ class SetFuncStartEvent(Event):
         ida_funcs.set_func_start(self.start_ea, self.new_start)
 
 
-class SetFuncEndEvent(Event):
+class SetFuncEndEvent(DefaultEvent):
     __event__ = 'set_func_end'
 
     def __init__(self, start_ea, new_end):
@@ -97,7 +98,7 @@ class SetFuncEndEvent(Event):
         ida_funcs.set_func_end(self.start_ea, self.new_end)
 
 
-class CmtChangedEvent(Event):
+class CmtChangedEvent(DefaultEvent):
     __event__ = 'cmt_changed'
 
     def __init__(self, ea, comment, rptble):
@@ -110,7 +111,7 @@ class CmtChangedEvent(Event):
         idc.set_cmt(self.ea, self.comment, self.rptble)
 
 
-class ExtraCmtChangedEvent(Event):
+class ExtraCmtChangedEvent(DefaultEvent):
     __event__ = 'extra_cmt_changed'
 
     def __init__(self, ea, line_idx, cmt):
@@ -127,7 +128,7 @@ class ExtraCmtChangedEvent(Event):
         idaapi.add_extra_cmt(self.ea, isprev, self.cmt)
 
 
-class TiChangedEvent(Event):
+class TiChangedEvent(DefaultEvent):
     __event__ = 'ti_changed'
 
     def __init__(self, ea, py_type):
@@ -139,7 +140,7 @@ class TiChangedEvent(Event):
         idc.apply_type(self.ea, self.py_type)
 
 
-class OpTypeChangedEvent(Event):
+class OpTypeChangedEvent(DefaultEvent):
     __event__ = 'op_type_changed'
 
     def __init__(self, ea, n, op, extra):
@@ -165,7 +166,7 @@ class OpTypeChangedEvent(Event):
                          self.extra['serial'])
 
 
-class EnumCreatedEvent(Event):
+class EnumCreatedEvent(DefaultEvent):
     __event__ = 'enum_created'
 
     def __init__(self, enum, name):
@@ -177,7 +178,7 @@ class EnumCreatedEvent(Event):
         idc.add_enum(self.enum, self.name, 0)
 
 
-class EnumDeletedEvent(Event):
+class EnumDeletedEvent(DefaultEvent):
     __event__ = 'enum_deleted'
 
     def __init__(self, enum):
@@ -188,7 +189,7 @@ class EnumDeletedEvent(Event):
         idc.del_enum(self.enum)
 
 
-class EnumRenamedEvent(Event):
+class EnumRenamedEvent(DefaultEvent):
     __event__ = 'enum_renamed'
 
     def __init__(self, tid, new_name):
@@ -200,7 +201,7 @@ class EnumRenamedEvent(Event):
         idaapi.set_enum_name(self.tid, self.new_name)
 
 
-class EnumBfChangedEvent(Event):
+class EnumBfChangedEvent(DefaultEvent):
     __event__ = 'enum_bf_changed'
 
     def __init__(self, tid, bf_flag):
@@ -212,7 +213,7 @@ class EnumBfChangedEvent(Event):
         ida_enum.set_enum_bf(self.tid, self.bf_flag)
 
 
-class EnumCmtChangedEvent(Event):
+class EnumCmtChangedEvent(DefaultEvent):
     __event__ = 'enum_cmt_changed'
 
     def __init__(self, tid, cmt, repeatable_cmt):
@@ -225,12 +226,12 @@ class EnumCmtChangedEvent(Event):
         idaapi.set_enum_cmt(self.tid, self.cmt, self.repeatable_cmt)
 
 
-class EnumMemberCreatedEvent(Event):
+class EnumMemberCreatedEvent(DefaultEvent):
     __event__ = 'enum_member_created'
 
-    def __init__(self, id_, name, value, bmask):
+    def __init__(self, id, name, value, bmask):
         super(EnumMemberCreatedEvent, self).__init__()
-        self.id = id_
+        self.id = id
         self.name = name
         self.value = value
         self.bmask = bmask
@@ -239,12 +240,12 @@ class EnumMemberCreatedEvent(Event):
         idaapi.add_enum_member(self.id, self.name, self.value, self.bmask)
 
 
-class EnumMemberDeletedEvent(Event):
+class EnumMemberDeletedEvent(DefaultEvent):
     __event__ = 'enum_member_deleted'
 
-    def __init__(self, id_, value, serial, bmask):
+    def __init__(self, id, value, serial, bmask):
         super(EnumMemberDeletedEvent, self).__init__()
-        self.id = id_
+        self.id = id
         self.value = value
         self.serial = serial
         self.bmask = bmask
@@ -253,7 +254,7 @@ class EnumMemberDeletedEvent(Event):
         idaapi.del_enum_member(self.id, self.value, self.serial, self.bmask)
 
 
-class StrucCreatedEvent(Event):
+class StrucCreatedEvent(DefaultEvent):
     __event__ = 'struc_created'
 
     def __init__(self, struc, name, is_union):
@@ -266,7 +267,7 @@ class StrucCreatedEvent(Event):
         idc.add_struc(self.struc, self.name, self.is_union)
 
 
-class StrucDeletedEvent(Event):
+class StrucDeletedEvent(DefaultEvent):
     __event__ = 'struc_deleted'
 
     def __init__(self, struc):
@@ -277,7 +278,7 @@ class StrucDeletedEvent(Event):
         idc.del_struc(self.struc)
 
 
-class StrucRenamedEvent(Event):
+class StrucRenamedEvent(DefaultEvent):
     __event__ = 'struc_renamed'
 
     def __init__(self, sid, new_name):
@@ -289,7 +290,7 @@ class StrucRenamedEvent(Event):
         idaapi.set_struc_name(self.sid, self.new_name)
 
 
-class StrucCmtChangedEvent(Event):
+class StrucCmtChangedEvent(DefaultEvent):
     __event__ = 'struc_cmt_changed'
 
     def __init__(self, tid, cmt, repeatable_cmt):
@@ -302,7 +303,7 @@ class StrucCmtChangedEvent(Event):
         idaapi.set_struc_cmt(self.tid, self.cmt, self.repeatable_cmt)
 
 
-class StrucMemberCreatedEvent(Event):
+class StrucMemberCreatedEvent(DefaultEvent):
     __event__ = 'struc_member_created'
 
     def __init__(self, sid, fieldname, offset, flag, nbytes, extra):
@@ -329,7 +330,7 @@ class StrucMemberCreatedEvent(Event):
                                 self.flag, mt, self.nbytes)
 
 
-class StrucMemberChangedEvent(Event):
+class StrucMemberChangedEvent(DefaultEvent):
     __event__ = 'struc_member_changed'
 
     def __init__(self, sid, soff, eoff, flag, extra):
@@ -355,7 +356,7 @@ class StrucMemberChangedEvent(Event):
                                mt, self.eoff - self.soff)
 
 
-class StrucMemberDeletedEvent(Event):
+class StrucMemberDeletedEvent(DefaultEvent):
     __event__ = 'struc_member_deleted'
 
     def __init__(self, sid, offset):
@@ -368,7 +369,7 @@ class StrucMemberDeletedEvent(Event):
         idaapi.del_struc_member(sptr, self.offset)
 
 
-class ExpandingStrucEvent(Event):
+class ExpandingStrucEvent(DefaultEvent):
     __event__ = 'expanding_struc'
 
     def __init__(self, sid, offset, delta):
@@ -382,7 +383,7 @@ class ExpandingStrucEvent(Event):
         idaapi.expand_struc(sptr, self.offset, self.delta)
 
 
-class SegmAddedEvent(Event):
+class SegmAddedEvent(DefaultEvent):
     __event__ = 'segm_added_event'
 
     def __init__(self, name, class_, start_ea, end_ea, orgbase, align,
@@ -413,7 +414,7 @@ class SegmAddedEvent(Event):
                            idaapi.ADDSEG_QUIET | idaapi.ADDSEG_NOSREG)
 
 
-class SegmDeletedEvent(Event):
+class SegmDeletedEvent(DefaultEvent):
     __event__ = 'segm_deleted_event'
 
     def __init__(self, ea):
@@ -424,7 +425,7 @@ class SegmDeletedEvent(Event):
         idaapi.del_segm(self.ea, idaapi.SEGMOD_KEEP | idaapi.SEGMOD_SILENT)
 
 
-class SegmStartChangedEvent(Event):
+class SegmStartChangedEvent(DefaultEvent):
     __event__ = 'segm_start_changed_event'
 
     def __init__(self, newstart, ea):
@@ -436,7 +437,7 @@ class SegmStartChangedEvent(Event):
         idaapi.set_segm_start(self.ea, self.newstart, 0)
 
 
-class SegmEndChangedEvent(Event):
+class SegmEndChangedEvent(DefaultEvent):
     __event__ = 'segm_end_changed_event'
 
     def __init__(self, newend, ea):
@@ -449,7 +450,7 @@ class SegmEndChangedEvent(Event):
         idaapi.set_segm_end(self.ea, self.newend, 0)
 
 
-class SegmNameChangedEvent(Event):
+class SegmNameChangedEvent(DefaultEvent):
     __event__ = 'segm_name_changed_event'
 
     def __init__(self, ea, name):
@@ -462,7 +463,7 @@ class SegmNameChangedEvent(Event):
         idaapi.set_segm_name(s, self.name)
 
 
-class SegmClassChangedEvent(Event):
+class SegmClassChangedEvent(DefaultEvent):
     __event__ = 'segm_class_changed_event'
 
     def __init__(self, ea, sclass):
@@ -475,7 +476,7 @@ class SegmClassChangedEvent(Event):
         idaapi.set_segm_class(s, self.sclass)
 
 
-class UndefinedEvent(Event):
+class UndefinedEvent(DefaultEvent):
     __event__ = 'undefined'
 
     def __init__(self, ea):
@@ -486,13 +487,9 @@ class UndefinedEvent(Event):
         idc.del_items(self.ea)
 
 
-# -----------------------------------------------------------------------------
-# HexRays Events
-# -----------------------------------------------------------------------------
-
-# FIXME : HexRays synchronization doesn't work, have to find a better way.
-#         Maybe by sending events batch...
-class UserDefinedCmtEvent(Event):
+class UserDefinedCmtEvent(DefaultEvent):
+    # FIXME : HexRays synchronization doesn't work, have to find a better way.
+    #         Maybe by sending events batch...
     EVT_TYPE = 'user_defined_cmt'
 
     def __init__(self, ea, itp, cmt):

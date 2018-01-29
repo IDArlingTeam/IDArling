@@ -1,12 +1,18 @@
 import logging
 
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel  # type: ignore
 
-from actions import OpenAction, SaveAction
-from widgets import StatusWidget
 from ..module import Module
+from .actions import OpenAction, SaveAction
+from .widgets import StatusWidget
+
 
 logger = logging.getLogger('IDAConnect.Interface')
+
+
+MYPY = False
+if MYPY:
+    from ..plugin import IDAConnect
 
 
 class Interface(Module):
@@ -16,22 +22,18 @@ class Interface(Module):
 
     @staticmethod
     def _findMainWindow():
+        # type: () -> QMainWindow
         """
         Return the main window instance using Qt.
 
-        :rtype: QMainWindow
+        :return: the main window
         """
-        # noinspection PyArgumentList
         for widget in QApplication.topLevelWidgets():
             if isinstance(widget, QMainWindow):
                 return widget
 
     def __init__(self, plugin):
-        """
-        Initialize the interface module: initialize the actions and widgets.
-
-        :param IDAConnect plugin: the plugin instance
-        """
+        # type: (IDAConnect) -> None
         super(Interface, self).__init__(plugin)
 
         self._window = self._findMainWindow()
@@ -43,13 +45,19 @@ class Interface(Module):
         self._statusWidget = None
 
     def _install(self):
-        """
-        Install the module: install the actions and widgets.
-        """
+        # type: () -> bool
         self._installActions()
         self._installWidgets()
+        return True
+
+    def _uninstall(self):
+        # type: () -> bool
+        self._uninstallActions()
+        self._uninstallWidgets()
+        return True
 
     def _installActions(self):
+        # type: () -> None
         """
         Install the actions: install open and save.
         """
@@ -57,6 +65,7 @@ class Interface(Module):
         self._saveAction.install()
 
     def _installWidgets(self):
+        # type: () -> None
         """
         Install the widgets: install label and status.
         """
@@ -70,15 +79,8 @@ class Interface(Module):
 
         logger.debug("Installed widgets in status bar")
 
-    def _uninstall(self):
-        """
-        Uninstall the module: uninstall actions and widgets.
-        """
-        self._uninstallActions()
-        self._uninstallWidgets()
-        return True
-
     def _uninstallActions(self):
+        # type: () -> None
         """
         Uninstall the actions: uninstall open and save.
         """
@@ -86,6 +88,7 @@ class Interface(Module):
         self._saveAction.uninstall()
 
     def _uninstallWidgets(self):
+        # type: () -> None
         """
         Uninstall the widgets: uninstall label and status.
         """
@@ -98,6 +101,7 @@ class Interface(Module):
         logger.debug("Uninstalled widgets from status bar")
 
     def _updateActions(self):
+        # type: () -> None
         """
         Force to update the actions' status (enabled/disabled).
         """
@@ -105,27 +109,33 @@ class Interface(Module):
         self._saveAction.update()
 
     def notifyDisconnected(self):
+        # type: () -> None
         """
         Notify the user that a disconnection has occurred. This will mainly
         cause the status widget to update its display.
         """
-        self._statusWidget.setState(StatusWidget.STATE_DISCONNECTED)
-        self._statusWidget.setServer(StatusWidget.SERVER_DISCONNECTED)
+        if self._statusWidget:
+            self._statusWidget.setState(StatusWidget.STATE_DISCONNECTED)
+            self._statusWidget.setServer(StatusWidget.SERVER_DISCONNECTED)
         self._updateActions()
 
     def notifyConnecting(self):
+        # type: () -> None
         """
         Notify the user that a connection is being established. This will
         mainly cause the status widget to update its display.
         """
-        self._statusWidget.setState(StatusWidget.STATE_CONNECTING)
-        self._statusWidget.setServer(self._plugin.network.host)
+        if self._statusWidget:
+            self._statusWidget.setState(StatusWidget.STATE_CONNECTING)
+            self._statusWidget.setServer(self._plugin.network.host)
         self._updateActions()
 
     def notifyConnected(self):
+        # type: () -> None
         """
         Notify the user that a connection has being established. This will
         mainly cause the status widget to update its display.
         """
-        self._statusWidget.setState(StatusWidget.STATE_CONNECTED)
+        if self._statusWidget:
+            self._statusWidget.setState(StatusWidget.STATE_CONNECTED)
         self._updateActions()

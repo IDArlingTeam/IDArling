@@ -4,20 +4,30 @@ import os
 import uuid
 from functools import partial
 
-import ida_kernwin
-import ida_loader
-import idaapi
-import idautils
-import idc
-from PyQt5.QtCore import Qt, QProcess
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import qApp, QProgressDialog, QMessageBox
+import ida_kernwin  # type: ignore
+import ida_loader   # type: ignore
+import idaapi       # type: ignore
+import idautils     # type: ignore
+import idc          # type: ignore
 
-from dialogs import OpenDialog, SaveDialog
-from ..shared.commands import (GetDatabases, GetDatabasesReply, GetRevisions,
-                               GetRevisionsReply, NewDatabase, NewRevision,
-                               DownloadFile, DownloadFileReply, UploadFile)
+from PyQt5.QtCore import Qt, QProcess                           # type: ignore
+from PyQt5.QtGui import QIcon                                   # type: ignore
+from PyQt5.QtWidgets import qApp, QProgressDialog, QMessageBox  # type: ignore
+
+from .dialogs import OpenDialog, SaveDialog
+from ..shared.commands import (GetDatabases, GetRevisions,
+                               NewDatabase, NewRevision,
+                               DownloadFile, UploadFile)
 from ..shared.models import Database, Revision
+
+
+MYPY = False
+if MYPY:
+    from typing import Any, List, Optional
+    from ..plugin import IDAConnect
+    from ..shared.commands import (GetDatabasesReply, GetRevisionsReply,
+                                   DownloadFileReply)
+
 
 logger = logging.getLogger('IDAConnect.Interface')
 
@@ -26,17 +36,18 @@ class Action(object):
     """
     This is a base class for all the actions of the interface module.
     """
-    _ACTION_ID = None
+    _ACTION_ID = None  # type: Optional[str]
 
     def __init__(self, menu, text, tooltip, icon, handler):
+        # type: (str, str, str, str, ActionHandler) -> None
         """
         Initialize the action.
 
-        :param str menu: the menu to attach to
-        :param str text: the text to display
-        :param str tooltip: the tooltip to show
-        :param str icon: the path to the icon
-        :param ActionHandler handler: the action handler
+        :param menu: the menu to attach to
+        :param text: the text to display
+        :param tooltip: the tooltip to show
+        :param icon: the path to the icon
+        :param handler: the action handler
         """
         super(Action, self).__init__()
         self._menu = menu
@@ -48,10 +59,11 @@ class Action(object):
         self._iconId = idaapi.BADADDR
 
     def install(self):
+        # type: () -> bool
         """
         Install the action into the IDA UI.
 
-        :rtype: bool
+        :return: did the install succeed
         """
         # Read and load the icon file
         iconData = str(open(self._icon, 'rb').read())
@@ -83,10 +95,11 @@ class Action(object):
         return True
 
     def uninstall(self):
+        # type: () -> bool
         """
         Uninstall the action from the IDA UI.
 
-        :rtype: bool
+        :return: did the uninstall succeed
         """
         # Detach the action from the chosen menu
         result = idaapi.detach_action_from_menu(
@@ -108,6 +121,7 @@ class Action(object):
         return True
 
     def update(self):
+        # type: () -> None
         """
         Force to update the action's state (enabled/disabled).
         """
@@ -115,25 +129,27 @@ class Action(object):
                                         self._handler.update(None))
 
 
-class ActionHandler(idaapi.action_handler_t):
+class ActionHandler(idaapi.action_handler_t):  # type: ignore
     """
     This is the base class for all action handlers of the interface module.
     """
 
     def __init__(self, plugin):
+        # type: (IDAConnect) -> None
         """
         Initialize the action handler.
 
-        :param IDAConnect plugin: the plugin instance
+        :param plugin: the plugin instance
         """
         super(ActionHandler, self).__init__()
         self._plugin = plugin
 
     def update(self, ctx):
+        # type: (Optional[ida_kernwin.action_update_ctx_t]) -> Any
         """
         Update the state of the associated action.
 
-        :param Optional[ida_kernwin.action_update_ctx_t] ctx: the context
+        :param ctx: the context
         :return: should the action be enabled or not
         """
         if self._plugin.network.connected:
@@ -148,6 +164,7 @@ class OpenAction(Action):
     _ACTION_ID = 'idaconnect:open'
 
     def __init__(self, plugin):
+        # type: (IDAConnect) -> None
         super(OpenAction, self).__init__(
             'File/Open',
             'Open from server...',
@@ -163,58 +180,63 @@ class OpenActionHandler(ActionHandler):
 
     @staticmethod
     def _progressCallback(progress, count, total):
+        # type: (QProgressDialog, int, int) -> None
         """
         Called when some data from the file has been received.
 
-        :param QProgressDialog progress: the progress dialog
-        :param int count: the number of bytes received
-        :param int total: the total number of bytes to receive
+        :param progress: the progress dialog
+        :param count: the number of bytes received
+        :param total: the total number of bytes to receive
         """
         progress.setRange(0, total)
         progress.setValue(count)
 
     def activate(self, ctx):
+        # type: (Optional[ida_kernwin.action_update_ctx_t]) -> int
         """
         Called when the action is triggered.
 
-        :param ida_kernwin.action_activation_ctx_t ctx: the context
+        :param ctx: the context
         :return: refresh or not the IDA windows
-        :rtype: int
         """
         # Ask the server for the list of databases
         d = self._plugin.network.sendPacket(GetDatabases())
-        d.addCallback(self._onGetDatabasesReply)
-        d.addErrback(logger.exception)
+        if d:
+            d.addCallback(self._onGetDatabasesReply)
+            d.addErrback(logger.exception)
         return 1
 
     def _onGetDatabasesReply(self, reply):
+        # type: (GetDatabasesReply) -> None
         """
         Called when the list of databases is received.
 
-        :param GetDatabasesReply reply: the reply from the server
+        :param reply: the reply from the server
         """
         # Ask the server for the list of revisions
         d = self._plugin.network.sendPacket(GetRevisions())
-        d.addCallback(partial(self._onGetRevisionsReply, reply.dbs))
-        d.addErrback(logger.exception)
+        if d:
+            d.addCallback(partial(self._onGetRevisionsReply, reply.dbs))
+            d.addErrback(logger.exception)
 
     def _onGetRevisionsReply(self, dbs, reply):
+        # type: (List[Database], GetRevisionsReply) -> None
         """
         Called when the list of revisions is received.
 
-        :param list[Database] dbs: the list of databases
-        :param GetRevisionsReply reply: the reply from the server
+        :param dbs: the list of databases
+        :param reply: the reply from the server
         """
         dialog = OpenDialog(self._plugin, dbs, reply.revs)
-        # noinspection PyUnresolvedReferences
         dialog.accepted.connect(partial(self._dialogAccepted, dialog))
         dialog.exec_()
 
     def _dialogAccepted(self, dialog):
+        # type: (OpenDialog) -> None
         """
         Called when the open dialog is accepted by the user.
 
-        :param OpenDialog dialog: the open dialog
+        :param dialog: the open dialog
         """
         db, rev = dialog.getResult()
 
@@ -235,26 +257,28 @@ class OpenActionHandler(ActionHandler):
         callback = partial(self._progressCallback, progress)
 
         def setDownloadCallback(reply):
+            # type: (DownloadFileReply) -> None
             reply.downback = callback
 
-        d.addInitback(setDownloadCallback)
-        d.addCallback(partial(self._fileDownloaded, rev, progress))
-        d.addErrback(logger.exception)
+        if d:
+            d.addInitback(setDownloadCallback)
+            d.addCallback(partial(self._fileDownloaded, rev, progress))
+            d.addErrback(logger.exception)
         progress.show()
 
     def _fileDownloaded(self, rev, progress, reply):
+        # type: (Revision, QProgressDialog, DownloadFileReply) -> None
         """
         Called when the file has been downloaded.
 
-        :param Revision rev: the revision
-        :param QProgressDialog progress: the progress dialog
-        :param DownloadFileReply reply: the reply from the server
+        :param rev: the revision
+        :param progress: the progress dialog
+        :param reply: the reply from the server
         """
-
         # Close the progress dialog
         self._progressCallback(progress, 1, 1)
 
-        # FIXME: Make utility for accessing user directory
+        # FIXME: Make an utility for accessing user directory
         filesDir = os.path.join(idaapi.get_user_idadir(),
                                 '.idaconnect', 'files')
         if not os.path.exists(filesDir):
@@ -263,8 +287,9 @@ class OpenActionHandler(ActionHandler):
         filePath = os.path.join(filesDir, fileName)
 
         # Write the packet content to disk
-        with open(filePath, 'wb') as file_:
-            file_.write(reply.content)
+        if reply.content:
+            with open(filePath, 'wb') as outputFile:
+                outputFile.write(reply.content)
         logger.info("Saved file %s" % fileName)
 
         # Show a success dialog
@@ -292,6 +317,7 @@ class SaveAction(Action):
     _ACTION_ID = 'idaconnect:save'
 
     def __init__(self, plugin):
+        # type: (IDAConnect) -> None
         super(SaveAction, self).__init__(
             'File/Save',
             'Save to server...',
@@ -307,80 +333,80 @@ class SaveActionHandler(ActionHandler):
 
     @staticmethod
     def _progressCallback(progress, count, total):
+        # type: (QProgressDialog, int, int) -> None
         """
         Called when some data from the file has been sent.
 
-        :param QProgressDialog progress: the progress dialog
-        :param int count: the number of bytes sent
-        :param int total: the total number of bytes to send
+        :param progress: the progress dialog
+        :param count: the number of bytes sent
+        :param total: the total number of bytes to send
         """
         progress.setRange(0, total)
         progress.setValue(count)
 
     def update(self, ctx):
-        """
-        Update the state of the associated action.
-
-        :param ida_kernwin.action_update_ctx_t ctx: the context
-        :return: should the action be enabled or not
-        """
+        # type: (Optional[ida_kernwin.action_update_ctx_t]) -> Any
         if not idc.GetIdbPath():
             return idaapi.AST_DISABLE
         return super(SaveActionHandler, self).update(ctx)
 
     def activate(self, ctx):
+        # type: (Optional[ida_kernwin.action_activation_ctx_t]) -> int
         """
         Called when the action is triggered.
 
-        :param ida_kernwin.action_activation_ctx_t ctx: the context
+        :param ctx: the context
         :return: refresh or not the IDA windows
-        :rtype: int
         """
         # Ask the server for the list of databases
         d = self._plugin.network.sendPacket(GetDatabases())
-        d.addCallback(self._onGetDatabasesReply)
-        d.addErrback(logger.exception)
+        if d:
+            d.addCallback(self._onGetDatabasesReply)
+            d.addErrback(logger.exception)
         return 1
 
     def _onGetDatabasesReply(self, reply):
+        # type: (GetDatabasesReply) -> None
         """
         Called when the list of databases is received.
 
-        :param GetDatabasesReply reply: the reply from the server
+        :param reply: the reply from the server
         """
         # Ask the server for the list of revisions
         d = self._plugin.network.sendPacket(GetRevisions())
-        d.addCallback(partial(self._onGetRevisionsReply, reply.dbs))
-        d.addErrback(logger.exception)
+        if d:
+            d.addCallback(partial(self._onGetRevisionsReply, reply.dbs))
+            d.addErrback(logger.exception)
 
     def _onGetRevisionsReply(self, dbs, reply):
+        # type: (List[Database], GetRevisionsReply) -> None
         """
         Called when the list of revisions is received.
 
-        :param list[Database] dbs: the list of databases
-        :param GetRevisionsReply reply: the reply from the server
+        :param dbs: the list of databases
+        :param reply: the reply from the server
         """
         dialog = SaveDialog(self._plugin, dbs, reply.revs)
-        # noinspection PyUnresolvedReferences
         dialog.accepted.connect(partial(self._dialogAccepted, dialog))
         dialog.exec_()
 
     def _dialogAccepted(self, dialog):
+        # type: (SaveDialog) -> None
         """
         Called when the save dialog is accepted by the user.
 
-        :param SaveDialog dialog: the save dialog
+        :param dialog: the save dialog
         """
         db, rev = dialog.getResult()
 
         # Create new database if necessary
         if not db:
-            hash_ = idautils.GetInputFileMD5()
-            file_ = idc.GetInputFile()
-            type_ = idaapi.get_file_type_name()
+            hash = idautils.GetInputFileMD5()
+            file = idc.GetInputFile()
+            type = idaapi.get_file_type_name()
             dateFormat = "%Y/%m/%d %H:%M"
             date = datetime.datetime.now().strftime(dateFormat)
-            db = Database(hash_, file_, type_, date)
+            db = Database(hash, file, type, date)
             self._plugin.network.sendPacket(NewDatabase(db))
 
         # Create new revision if necessary

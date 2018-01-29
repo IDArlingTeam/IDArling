@@ -1,13 +1,20 @@
 import logging
 
-from PyQt5.QtCore import Qt, QPoint, QSize
-from PyQt5.QtGui import QPixmap, QIcon, QPainter, QPaintEvent
-from PyQt5.QtWidgets import QWidget, QLabel, QMenu, QAction
+from PyQt5.QtCore import Qt, QSize, QPoint                   # type: ignore
+from PyQt5.QtGui import QPixmap, QIcon, QPainter             # type: ignore
+from PyQt5.QtWidgets import QWidget, QLabel, QMenu, QAction  # type: ignore
+
+
+MYPY = False
+if MYPY:
+    from PyQt5.QtGui import QPaintEvent
+    from ..plugin import IDAConnect
+
 
 logger = logging.getLogger('IDAConnect.Interface')
 
 
-class StatusWidget(QWidget):
+class StatusWidget(QWidget):  # type: ignore
     """
     The widget that displays the status of the connection to the server.
     """
@@ -18,12 +25,12 @@ class StatusWidget(QWidget):
     STATE_CONNECTING = 1
     STATE_CONNECTED = 2
 
-    # noinspection PyArgumentList
     def __init__(self, plugin):
+        # type: (IDAConnect) -> None
         """
         Initialize the status widget.
 
-        :param IDAConnect plugin: the plugin instance
+        :param plugin: the plugin instance
         """
         super(StatusWidget, self).__init__()
         self._plugin = plugin
@@ -34,11 +41,11 @@ class StatusWidget(QWidget):
 
         # Set a custom context menu policy
         self.setContextMenuPolicy(Qt.CustomContextMenu)
-        # noinspection PyUnresolvedReferences
         self.customContextMenuRequested.connect(self._contextMenu)
         self._update()
 
     def _update(self):
+        # type: () -> None
         """
         Called to update the widget when its state has changed.
         """
@@ -73,10 +80,11 @@ class StatusWidget(QWidget):
         self.repaint()
 
     def _contextMenu(self, point):
+        # type: (QPoint) -> None
         """
         Called when the widget is right-clicked to display the context menu.
 
-        :param QPoint point: the location where the click happened
+        :param point: the location where the click happened
         """
         logger.debug("Opening widget context menu")
         menu = QMenu(self)
@@ -93,53 +101,53 @@ class StatusWidget(QWidget):
             for server in self._servers:
                 isConnected = self._plugin.network.connected \
                               and server == self._plugin.network.host
-                # noinspection PyArgumentList
                 serverAction = QAction(server, menu, checkable=True)
                 serverAction.setChecked(isConnected)
 
                 # Add a handler on the action
                 def serverActionToggled(checked=False):
+                    # type: (bool) -> None
                     if checked:
                         self._plugin.network.connect(server, 31013)
                     else:
                         self._plugin.network.disconnect()
 
-                # noinspection PyUnresolvedReferences
                 serverAction.toggled.connect(serverActionToggled)
                 menu.addAction(serverAction)
 
         # Show the context menu
         menu.exec_(self.mapToGlobal(point))
 
-    def paintEvent(self, event):
+    def paintEvent(self, _):
+        # type: (QPaintEvent) -> None
         """
         Called when the widget is painted on the window.
-
-        :param QPaintEvent event: the event
         """
         painter = QPainter(self)
         # Paint the text first
-        map_ = painter.deviceTransform().map
-        self._textWidget.render(painter, map_(QPoint(0, 0)))
+        map = painter.deviceTransform().map
+        self._textWidget.render(painter, map(QPoint(0, 0)))
         # Then paint the icon
         current = self._textWidget.sizeHint().width() + 3
-        self._iconWidget.render(painter, map_(QPoint(current, 0)))
+        self._iconWidget.render(painter, map(QPoint(current, 0)))
 
     def setState(self, state):
+        # type: (int) -> None
         """
         Set the state of the connection.
 
-        :param int state: the new state
+        :param state: the new state
         """
         if state != self._state:
             self._state = state
             self._update()
 
     def setServer(self, server):
+        # type: (str) -> None
         """
         Set the server we're connected to.
 
-        :param str server: the server host
+        :param server: the server host
         """
         if server != self._server:
             self._server = server

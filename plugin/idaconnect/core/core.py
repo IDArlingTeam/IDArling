@@ -1,7 +1,13 @@
 import logging
 
 from ..module import Module
-from hooks import IDBHooks, IDPHooks, HexRaysHooks
+from .hooks import IDBHooks, IDPHooks, HexRaysHooks
+
+
+MYPY = False
+if MYPY:
+    from typing import Optional
+    from ..plugin import IDAConnect
 
 
 logger = logging.getLogger('IDAConnect.Core')
@@ -13,23 +19,15 @@ class Core(Module):
     """
 
     def __init__(self, plugin):
-        """
-        Instantiate the core module.
-
-        :param IDAConnect plugin: the plugin instance
-        """
+        # type: (IDAConnect) -> None
         super(Core, self).__init__(plugin)
 
-        self._idbHooks = None
-        self._idpHooks = None
-        self._hexraysHooks = None
+        self._idbHooks = None  # type: Optional[IDBHooks]
+        self._idpHooks = None  # type: Optional[IDPHooks]
+        self._hexraysHooks = None  # type: Optional[HexRaysHooks]
 
     def _install(self):
-        """
-        Install the core module: add the hooks.
-
-        :rtype: bool
-        """
+        # type: () -> bool
         self._idbHooks = IDBHooks(self._plugin)
         self._idpHooks = IDPHooks(self._plugin)
         self._hexraysHooks = HexRaysHooks(self._plugin)
@@ -39,27 +37,31 @@ class Core(Module):
         return True
 
     def _uninstall(self):
-        """
-        Uninstall the core module: remove the hooks.
-
-        :rtype: bool
-        """
+        # type: () -> bool
         logger.debug("Uninstalling hooks")
         self.unhookAll()
         return True
 
     def hookAll(self):
+        # type: () -> None
         """
         Add the hooks to be notified of incoming IDA events.
         """
-        self._idbHooks.hook()
-        self._idpHooks.hook()
-        self._hexraysHooks.hook()
+        if self._idbHooks:
+            self._idbHooks.hook()
+        if self._idpHooks:
+            self._idpHooks.hook()
+        if self._hexraysHooks:
+            self._hexraysHooks.hook()
 
     def unhookAll(self):
+        # type: () -> None
         """
         Remove the hooks to not be notified of incoming IDA events.
         """
-        self._idbHooks.unhook()
-        self._idpHooks.unhook()
-        self._hexraysHooks.unhook()
+        if self._idbHooks:
+            self._idbHooks.unhook()
+        if self._idpHooks:
+            self._idpHooks.unhook()
+        if self._hexraysHooks:
+            self._hexraysHooks.unhook()

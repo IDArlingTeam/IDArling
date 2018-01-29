@@ -1,13 +1,13 @@
-from models import Database, Revision
-from packets import Command, DefaultCommand, Query, Reply, Container
+from .models import Database, Revision
+from .packets import Command, DefaultCommand, Query, Reply, Container
 
 
 class GetDatabases(DefaultCommand, Query):
     __command__ = 'get_dbs'
 
-    def __init__(self, hash_=None):
+    def __init__(self, hash=None):
         super(GetDatabases, self).__init__()
-        self.hash = hash_
+        self.hash = hash
 
 
 class GetDatabasesReply(Command, Reply):
@@ -28,9 +28,9 @@ class GetDatabasesReply(Command, Reply):
 class GetRevisions(DefaultCommand, Query):
     __command__ = 'get_revs'
 
-    def __init__(self, hash_=None, uuid=None):
+    def __init__(self, hash=None, uuid=None):
         super(GetRevisions, self).__init__()
-        self.hash = hash_
+        self.hash = hash
         self.uuid = uuid
 
 
@@ -80,18 +80,18 @@ class NewRevision(Command):
 class UploadFile(Container, DefaultCommand):
     __command__ = 'upload_file'
 
-    def __init__(self, hash_, uuid):
+    def __init__(self, hash, uuid):
         super(UploadFile, self).__init__()
-        self.hash = hash_
+        self.hash = hash
         self.uuid = uuid
 
 
-class DownloadFile(Query, DefaultCommand):
+class DownloadFile(DefaultCommand, Query):
     __command__ = 'download_file'
 
-    def __init__(self, hash_, uuid):
+    def __init__(self, hash, uuid):
         super(DownloadFile, self).__init__()
-        self.hash = hash_
+        self.hash = hash
         self.uuid = uuid
 
 

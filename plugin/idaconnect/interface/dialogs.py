@@ -1,29 +1,36 @@
 import logging
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout, QGridLayout,
-                             QWidget, QTableWidget, QTableWidgetItem,
-                             QGroupBox, QLabel, QPushButton)
+from PyQt5.QtCore import Qt                                      # type: ignore
+from PyQt5.QtGui import QIcon                                    # type: ignore
+from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout,  # type: ignore
+                             QGridLayout, QWidget, QTableWidget,
+                             QTableWidgetItem, QGroupBox, QLabel, QPushButton)
 
 from ..shared.models import Database, Revision
+
+
+MYPY = False
+if MYPY:
+    from typing import List, Tuple
+    from ..plugin import IDAConnect
+
 
 logger = logging.getLogger('IDAConnect.Interface')
 
 
-class OpenDialog(QDialog):
+class OpenDialog(QDialog):  # type: ignore
     """
     The open dialog allowing an user to select a remote revision to download.
     """
 
-    # noinspection PyArgumentList,PyUnresolvedReferences
     def __init__(self, plugin, dbs, revs):
+        # type: (IDAConnect, List[Database], List[Revision]) -> None
         """
         Initialize the open dialog.
 
-        :param IDAConnect plugin: the plugin instance
-        :param list[Database] dbs: the list of databases
-        :param list[Revision] revs: the list of revisions
+        :param plugin: the plugin instance
+        :param dbs: the list of databases
+        :param revs: the list of revisions
         """
         super(OpenDialog, self).__init__()
         self._plugin = plugin
@@ -103,10 +110,11 @@ class OpenDialog(QDialog):
         layout.addWidget(rightSide)
 
     def _dbClicked(self, item):
+        # type: (QTableWidgetItem) -> None
         """
         Called when a database item is clicked, will update the display.
 
-        :param QTableWidgetItem item: the item clicked
+        :param item: the item clicked
         """
         db = item.data(Qt.UserRole)
         self._fileLabel.setText('<b>File:</b> %s' % str(db.file))
@@ -128,36 +136,36 @@ class OpenDialog(QDialog):
             self._revsTable.setItem(i, 1, item)
 
     def _revClicked(self, _):
+        # type: (QTableWidgetItem) -> None
         """
         Called when a revision item is clicked.
-
-        :param QTableWidgetItem _: the item clicked
         """
         self._openButton.setEnabled(True)
 
     def getResult(self):
+        # type: () -> Tuple[Database, Revision]
         """
         Get the result (database, revision) from this dialog.
 
-        :rtype: (Database, Revision)
+        :return: the result
         """
         db = self._dbsTable.currentItem().data(Qt.UserRole)
         return db, self._revsTable.currentItem().data(Qt.UserRole)
 
 
-class SaveDialog(QDialog):
+class SaveDialog(QDialog):  # type: ignore
     """
     The save dialog allowing an user to select a remote revision to upload to.
     """
 
-    # noinspection PyArgumentList,PyUnresolvedReferences
     def __init__(self, plugin, dbs, revs):
+        # type: (IDAConnect, List[Database], List[Revision]) -> None
         """
         Initialize the open dialog.
 
-        :param IDAConnect plugin: the plugin instance
-        :param list[Database] dbs: the list of databases
-        :param list[Revision] revs: the list of revisions
+        :param plugin: the plugin instance
+        :param dbs: the list of databases
+        :param revs: the list of revisions
         """
         super(SaveDialog, self).__init__()
         self._plugin = plugin
@@ -240,10 +248,11 @@ class SaveDialog(QDialog):
         layout.addWidget(rightSide)
 
     def _dbClicked(self, item):
+        # type: (QTableWidgetItem) -> None
         """
         Called when a database item is clicked, will update the display.
 
-        :param QTableWidgetItem item: the item clicked
+        :param item: the item clicked
         """
         db = item.data(Qt.UserRole)
         db = db if db else Database('', '', '', '')
@@ -275,18 +284,18 @@ class SaveDialog(QDialog):
         self._revsTable.setItem(len(revs), 1, newItem)
 
     def _revClicked(self, _):
+        # type: (QTableWidgetItem) -> None
         """
         Called when a revision item is clicked.
-
-        :param QTableWidgetItem _: the item clicked
         """
         self._saveButton.setEnabled(True)
 
     def getResult(self):
+        # type: () -> Tuple[Database, Revision]
         """
         Get the result (database, revision) from this dialog.
 
-        :rtype: (Database, Revision)
+        :return: the result
         """
         db = self._dbsTable.currentItem().data(Qt.UserRole)
         return db, self._revsTable.currentItem().data(Qt.UserRole)
