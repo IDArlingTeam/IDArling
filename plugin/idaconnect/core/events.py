@@ -462,6 +462,19 @@ class SegmNameChangedEvent(Event):
         idaapi.set_segm_name(s, self.name)
 
 
+class SegmClassChangedEvent(Event):
+    __event__ = 'segm_class_changed_event'
+
+    def __init__(self, ea, sclass):
+        super(SegmClassChangedEvent, self).__init__()
+        self.ea = ea
+        self.sclass = sclass
+
+    def __call__(self):
+        s = idaapi.getseg(self.ea)
+        idaapi.set_segm_class(s, self.sclass)
+
+
 class UndefinedEvent(Event):
     __event__ = 'undefined'
 
