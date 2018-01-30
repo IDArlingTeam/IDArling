@@ -329,6 +329,9 @@ class IDPHooks(Hooks, ida_idp.IDP_Hooks):  # type: ignore
         self._sendEvent(UndefinedEvent(ea))
         return 0
 
+    def ev_adjust_argloc(self, *_):
+        return 0
+
 
 class HexRaysHooks(Hooks):
     """
@@ -337,34 +340,36 @@ class HexRaysHooks(Hooks):
 
     def __init__(self, plugin):
         # type: (IDAConnect) -> None
-        Hooks.__init__(self, plugin)
-        self.do_hexrays_hook = True
+        super(HexRaysHooks, self).__init__(plugin)
+        self._hexrays_available = True
         if not idaapi.init_hexrays_plugin():
-            self.do_hexrays_hook = False
+            self._hexrays_available = False
+            logger.info("Hex-Rays decompiler plugin is not available")
+
+    def __del__(self):
+        if self._hexrays_available:
+            idaapi.term_hexrays_plugin()
 
     def hook(self):
         # type: () -> None
-        if self.do_hexrays_hook:
-            idaapi.install_hexrays_callback(self.eventsCallback)
-        else:
-            logger.info("Hexrays decompilers are not available")
+        if self._hexrays_available:
+            idaapi.install_hexrays_callback(self._eventsCallback)
 
     def unhook(self):
         # type: () -> None
-        if self.do_hexrays_hook:
-            idaapi.remove_hexrays_callback(self.eventsCallback)
-            idaapi.term_hexrays_plugin()
+        if self._hexrays_available:
+            idaapi.remove_hexrays_callback(self._eventsCallback)
 
-    def eventsCallback(self, event, *args):
-        ea = idaapi.get_screen_ea()
-        self.getUserCmt(ea)
+    def _eventsCallback(self, event, *_):
+        if event == idaapi.hxe_func_printed:
+            ea = idaapi.get_screen_ea()
+            func = idaapi.get_func(ea)
+            self._getUserCmts(func.startEA)
         return 0
 
-    def getUserCmt(self, ea):
+    def _getUserCmts(self, ea):
         cmts = idaapi.restore_user_cmts(ea)
-        if cmts:
+        if cmts is not None:
             for tl, cmt in cmts.iteritems():
-                self._sendEvent(UserDefinedCmtEvent(tl.ea, tl.itp,
-                                                    cmt.c_str()))
-                break
-        idaapi.user_cmts_free(cmts)
+                self._sendEvent(UserDefinedCmtEvent(tl.ea, tl.itp, str(cmt)))
+            idaapi.user_cmts_free(cmts)

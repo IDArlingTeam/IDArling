@@ -5,13 +5,14 @@ from twisted.internet.interfaces import IAddress, IConnector    # type: ignore
 from twisted.internet.protocol import ClientFactory as Factory  # type: ignore
 from twisted.python.failure import Failure                      # type: ignore
 
+from ..shared.packets import Command, Event
 from ..shared.protocol import Protocol
 
 
 MYPY = False
 if MYPY:
     from ..plugin import IDAConnect
-    from ..shared.packets import Packet, Command, Event
+    from ..shared.packets import Packet
 
 
 logger = logging.getLogger('IDAConnect.Network')

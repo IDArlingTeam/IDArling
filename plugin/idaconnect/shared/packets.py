@@ -353,7 +353,7 @@ class DefaultEvent(Default, Event):
 
     def parseEvent(self, dct):
         # type: (Dict[str, Any]) -> None
-        self.buildDefault(dct)
+        self.parseDefault(dct)
 
 
 class AbstractEvent(Event):

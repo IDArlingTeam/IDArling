@@ -40,6 +40,7 @@ class Core(Module):
         # type: () -> bool
         logger.debug("Uninstalling hooks")
         self.unhookAll()
+        del self._hexraysHooks
         return True
 
     def hookAll(self):
