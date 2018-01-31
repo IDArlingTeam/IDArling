@@ -2,6 +2,9 @@ import collections
 import itertools
 import operator
 
+from twisted.enterprise import adbapi
+from twisted.internet import defer
+
 
 class Field(object):
     """
@@ -87,7 +90,7 @@ class Table(object):
     __fields__ = []
 
     @staticmethod
-    def fields(obj, ignore=None):
+    def fields(obj, ignore=[]):
         """
         Get a dictionary of the fields and values of an object.
 
@@ -95,8 +98,6 @@ class Table(object):
         :param ignore: a list of fields to ignore
         :return: the dictionary
         """
-        if ignore is None:
-            ignore = []
         fields = collections.OrderedDict()
         for key in obj.__fields__:
             if key.name not in ignore:
@@ -109,7 +110,7 @@ class Table(object):
         Get one object from the database matching the filter.
 
         :param fields: the fields to filter on
-        :return: the object
+        :return: a deferred of the object
         """
         return Mapper.getInstance().one(cls, **fields)
 
@@ -119,7 +120,7 @@ class Table(object):
         Get all objects from the database matching the filter.
 
         :param fields: the fields to filter on
-        :return: the objects
+        :return: a deferred of the objects
         """
         return Mapper.getInstance().all(cls, **fields)
 
@@ -135,7 +136,7 @@ class Table(object):
         """
         Create a new object in the database.
 
-        :return: the object
+        :return: a deferred of the object
         """
         return Mapper.getInstance().create(self)
 
@@ -143,15 +144,17 @@ class Table(object):
         """
         Update the current object in the database.
 
-        :return: the object
+        :return: a deferred of the object
         """
         return Mapper.getInstance().update(self)
 
     def delete(self):
         """
         Delete the current object from the database.
+
+        :return: a deferred of the object
         """
-        Mapper.getInstance().delete(self)
+        return Mapper.getInstance().delete(self)
 
     def __repr__(self):
         """
@@ -203,19 +206,28 @@ class Mapper(object):
         """
         return cls.__instance__
 
-    def __init__(self, db):
+    def __init__(self, *args, **kwargs):
         """
         Instantiate a new mapper.
 
-        :param db: the connection to use
+        :param args: the arguments to pass
+        :param kwargs: the keyword arguments to pass
         """
-        self._db = db
+        self._db = adbapi.ConnectionPool(*args, **kwargs)
 
-        # Create the tables if necessary
+    def initialize(self):
+        """
+        Create the tables if necessary.
+
+        :return: a deferred to the results
+        """
+        lst = []
         for table, model in TableFactory.getClasses().iteritems():
             columns = [str(field) for field in Table.fields(model)]
             sql = 'create table if not exists {} (id integer primary key, {});'
-            self.execute(sql.format(table, ', '.join(columns)))
+            lst.append(self.execute(lambda txn: None,
+                                    sql.format(table, ', '.join(columns))))
+        return defer.gatherResults(lst, consumeErrors=True)
 
     def one(self, cls, **fields):
         """
@@ -223,12 +235,14 @@ class Mapper(object):
 
         :param cls: the table class of the object
         :param fields: the fields to filter on
-        :return: the object
+        :return: a deferred of the object
         """
-        row = self.get(cls, **fields).fetchone()
-        if not row:
-            raise ValueError("object does not exist")
-        return self.new(cls, **row)
+        def callback(txn):
+            row = txn.fetchone()
+            if not row:
+                raise ValueError("object does not exist")
+            return self.new(cls, **row)
+        return self.get(callback, cls, **fields)
 
     def all(self, cls, **fields):
         """
@@ -236,75 +250,84 @@ class Mapper(object):
 
         :param cls: the table class of the object
         :param fields: the fields to filter on
-        :return: the objects
+        :return: a deferred of the objects
         """
-        return [self.new(cls, **row) for row in self.get(cls, **fields)]
+        def callback(txn):
+            return [self.new(cls, **row) for row in txn.fetchall()]
+        return self.get(callback, cls, **fields)
 
-    def get(self, cls, **fields):
+    def get(self, callback, cls, **fields):
         """
         Get all rows from the database matching the filter.
 
+        :param callback: a function that will receive a cursor-like object
+                         after the specified sql request has been executed
         :param cls: the table class of the object
         :param fields: the fields to filter on
-        :return: the cursor to the rows
+        :return: a deferred of the results of the callback
         """
         fields = collections.OrderedDict([(key, val) for key, val
                                           in fields.iteritems() if val])
         if not fields:
-            sql = 'select * from {}'.format(cls.__table__)
+            sql = 'select * from {};'.format(cls.__table__)
         else:
             cols = ', '.join(['{} = ?'.format(col) for col in fields.keys()])
-            sql = 'select * from {} where {}'.format(cls.__table__, cols)
-        return self.execute(sql, fields.values())
+            sql = 'select * from {} where {};'.format(cls.__table__, cols)
+        return self.execute(callback, sql, fields.values())
 
     def create(self, obj):
         """
         Create an object into the database.
 
         :param obj: the object to use
-        :return: the same object
+        :return: a deferred of the same object
         """
         fields = Table.fields(obj, ['id'])
         keys = ', '.join(fields.keys())
         vals = ', '.join(['?' for _ in xrange(len(fields))])
-        sql = 'insert into {} ({}) values ({})'
+        sql = 'insert into {} ({}) values ({});'
         sql = sql.format(obj.__table__, keys, vals)
-        result = self.execute(sql, fields.values())
-        obj.id = result.lastrowid
-        return obj
+
+        def callback(txn):
+            obj.id = txn.lastrowid
+            return obj
+        return self.execute(callback, sql, fields.values())
 
     def update(self, obj):
         """
         Update an object in the database.
 
         :param obj: the object to use
-        :return: the same object
+        :return: a deferred of the same object
         """
         fields = Table.fields(obj, ['id'])
         cols = ', '.join(['{} = ?'.format(col) for col in fields.keys()])
-        sql = 'update {} set {} where id = ?'.format(obj.__table__, cols)
-        self.execute(sql, fields.values() + [obj.id])
-        return obj
+        sql = 'update {} set {} where id = ?;'.format(obj.__table__, cols)
+        return self.execute(lambda txn: obj, sql, fields.values() + [obj.id])
 
     def delete(self, obj):
         """
         Delete an object from the database.
 
         :param obj: the object to use
-        :return: the same object
+        :return: a deferred of the same object
         """
-        sql = 'delete from {} where id = ?'.format(obj.__table__)
-        self.execute(sql, [obj.id])
+        sql = 'delete from {} where id = ?;'.format(obj.__table__)
+        return self.execute(lambda txn: obj, sql)
 
-    def execute(self, sql, vals=None):
+    def execute(self, callback, sql, vals=[]):
         """
         Execute a SQL request and return the result of the request.
 
+        :param callback: a function that will receive a cursor-like object
+                         after the specified sql request has been executed
         :param sql: the sql request
         :param vals: the values to use
-        :return: a cursor to the results
+        :return: a deferred of the results of the callback
         """
-        if vals is None:
-            vals = []
         print sql.replace('?', '{}').format(*vals)
-        return self._db.execute(sql, vals)
+
+        def interact(txn):
+            txn.execute(sql, vals)
+            return callback(txn)
+        return self._db.runInteraction(interact)

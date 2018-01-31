@@ -49,7 +49,7 @@ class GetRevisionsReply(Command, Reply):
         self.revs = [Revision.new(rev) for rev in dct['revs']]
 
 
-class NewDatabase(Command):
+class NewDatabase(Command, Query):
     __command__ = 'new_db'
 
     def __init__(self, db):
@@ -63,7 +63,12 @@ class NewDatabase(Command):
         self.db = Database.new(dct['db'])
 
 
-class NewRevision(Command):
+class NewDatabaseReply(Command, Reply):
+    __command__ = 'new_db_reply'
+    __query__ = NewDatabase
+
+
+class NewRevision(Command, Query):
     __command__ = 'new_rev'
 
     def __init__(self, rev):
@@ -75,6 +80,11 @@ class NewRevision(Command):
 
     def parseCommand(self, dct):
         self.rev = Revision.new(dct['rev'])
+
+
+class NewRevisionReply(Command, Reply):
+    __command__ = 'new_rev_reply'
+    __query__ = NewRevision
 
 
 class UploadFile(Container, DefaultCommand):

@@ -7,7 +7,8 @@ from twisted.python import log
 
 from shared.commands import (GetDatabases, GetDatabasesReply,
                              GetRevisions, GetRevisionsReply,
-                             NewDatabase, NewRevision,
+                             NewDatabase, NewDatabaseReply,
+                             NewRevision, NewRevisionReply,
                              UploadFile, DownloadFile, DownloadFileReply)
 from shared.mapper import Mapper
 from shared.models import Database, Revision
@@ -130,48 +131,50 @@ class ServerProtocol(Protocol):
         return True
 
     def _handleGetDatabases(self, packet):
-        dbs = Database.all(hash=packet.hash)
-        self.sendPacket(GetDatabasesReply(dbs))
+        d = Database.all(hash=packet.hash)
+        d.addCallback(lambda dbs: self.sendPacket(GetDatabasesReply(dbs)))
 
     def _handleGetRevisions(self, packet):
-        revs = Revision.all(uuid=packet.uuid, hash=packet.hash)
-        self.sendPacket(GetRevisionsReply(revs))
+        d = Revision.all(uuid=packet.uuid, hash=packet.hash)
+        d.addCallback(lambda revs:  self.sendPacket(GetRevisionsReply(revs)))
 
-    @staticmethod
-    def _handleNewDatabase(packet):
-        packet.db.create()
+    def _handleNewDatabase(self, packet):
+        d = packet.db.create()
+        d.addCallback(lambda _: self.sendPacket(NewDatabaseReply()))
 
-    @staticmethod
-    def _handleNewRevision(packet):
-        packet.rev.create()
+    def _handleNewRevision(self, packet):
+        d = packet.rev.create()
+        d.addCallback(lambda _: self.sendPacket(NewRevisionReply()))
 
     @staticmethod
     def _handleUploadFile(packet):
-        rev = Revision.one(uuid=packet.uuid)
-        filesDir = os.path.join(os.path.dirname(__file__), 'files')
-        filesDir = os.path.abspath(filesDir)
-        if not os.path.exists(filesDir):
-            os.makedirs(filesDir)
-        fileName = rev.uuid + ('.i64' if rev.bits else '.idb')
-        filePath = os.path.join(filesDir, fileName)
+        def onRevision(rev):
+            filesDir = os.path.join(os.path.dirname(__file__), 'files')
+            filesDir = os.path.abspath(filesDir)
+            if not os.path.exists(filesDir):
+                os.makedirs(filesDir)
+            fileName = rev.uuid + ('.i64' if rev.bits else '.idb')
+            filePath = os.path.join(filesDir, fileName)
 
-        # Write the file received to disk
-        with open(filePath, 'wb') as outputFile:
-            outputFile.write(packet.content)
-        logger.info("Saved file %s" % fileName)
+            # Write the file received to disk
+            with open(filePath, 'wb') as outputFile:
+                outputFile.write(packet.content)
+            logger.info("Saved file %s" % fileName)
+        Revision.one(uuid=packet.uuid).addCallback(onRevision)
 
     def _handleDownloadFile(self, packet):
-        rev = Revision.one(uuid=packet.uuid)
-        filesDir = os.path.join(os.path.dirname(__file__), 'files')
-        filesDir = os.path.abspath(filesDir)
-        fileName = rev.uuid + ('.i64' if rev.bits else '.idb')
-        filePath = os.path.join(filesDir, fileName)
+        def onRevision(rev):
+            filesDir = os.path.join(os.path.dirname(__file__), 'files')
+            filesDir = os.path.abspath(filesDir)
+            fileName = rev.uuid + ('.i64' if rev.bits else '.idb')
+            filePath = os.path.join(filesDir, fileName)
 
-        # Read file from disk and sent it
-        packet = DownloadFileReply()
-        with open(filePath, 'rb') as file_:
-            packet.content = file_.read()
-        self.sendPacket(packet)
+            # Read file from disk and sent it
+            packet = DownloadFileReply()
+            with open(filePath, 'rb') as inputFile:
+                packet.content = inputFile.read()
+            self.sendPacket(packet)
+        Revision.one(uuid=packet.uuid).addCallback(onRevision)
 
 
 class ServerFactory(protocol.Factory, object):
@@ -187,9 +190,13 @@ class ServerFactory(protocol.Factory, object):
         self._clients = []
 
         # Initialize database and bind mapper
-        self._db = sqlite3.connect(':memory:', isolation_level=None)
-        self._db.row_factory = sqlite3.Row
-        self._mapper = Mapper(self._db)
+        def setRowFactory(db):
+            db.row_factory = sqlite3.Row
+        self._db = Mapper('sqlite3', 'database.db', check_same_thread=False,
+                          cp_openfun=setRowFactory)
+        d = self._db.initialize()
+        d.addCallback(lambda _: logger.info("Database initialized"))
+        d.addErrback(logger.exception)
 
     def buildProtocol(self, addr):
         """

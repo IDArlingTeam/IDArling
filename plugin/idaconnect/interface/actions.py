@@ -372,16 +372,24 @@ class SaveActionHandler(ActionHandler):
             dateFormat = "%Y/%m/%d %H:%M"
             date = datetime.datetime.now().strftime(dateFormat)
             db = Database(hash, file, type, date)
-            self._plugin.network.sendPacket(NewDatabase(db))
+            d = self._plugin.network.sendPacket(NewDatabase(db))
+            d.addCallback(partial(self._onNewDatabaseReply, db, rev))
+        else:
+            self._onNewDatabaseReply(db, rev, None)
 
+    def _onNewDatabaseReply(self, db, rev, _):
         # Create new revision if necessary
         if not rev:
             uuid_ = str(uuid.uuid4())
             dateFormat = "%Y/%m/%d %H:%M"
             date = datetime.datetime.now().strftime(dateFormat)
             rev = Revision(uuid_, db.hash, date, idc.__EA64__)
-            self._plugin.network.sendPacket(NewRevision(rev))
+            d = self._plugin.network.sendPacket(NewRevision(rev))
+            d.addCallback(partial(self._onNewRevisionReply, db, rev))
+        else:
+            self._onNewRevisionReply(db, rev, None)
 
+    def _onNewRevisionReply(self, db, rev, _):
         # Create the packet that will hold the file
         packet = UploadFile(db.hash, rev.uuid)
         inputPath = idc.GetIdbPath()
