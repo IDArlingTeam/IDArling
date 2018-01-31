@@ -1,30 +1,23 @@
 import logging
 
-from PyQt5.QtCore import Qt                                      # type: ignore
-from PyQt5.QtGui import QIcon                                    # type: ignore
-from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout,  # type: ignore
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout,
                              QGridLayout, QWidget, QTableWidget,
                              QTableWidgetItem, QGroupBox, QLabel, QPushButton)
 
-from ..shared.models import Database, Revision
-
-
-MYPY = False
-if MYPY:
-    from typing import List, Tuple
-    from ..plugin import IDAConnect
+from ..shared.models import Database
 
 
 logger = logging.getLogger('IDAConnect.Interface')
 
 
-class OpenDialog(QDialog):  # type: ignore
+class OpenDialog(QDialog):
     """
     The open dialog allowing an user to select a remote revision to download.
     """
 
     def __init__(self, plugin, dbs, revs):
-        # type: (IDAConnect, List[Database], List[Revision]) -> None
         """
         Initialize the open dialog.
 
@@ -110,7 +103,6 @@ class OpenDialog(QDialog):  # type: ignore
         layout.addWidget(rightSide)
 
     def _dbClicked(self, item):
-        # type: (QTableWidgetItem) -> None
         """
         Called when a database item is clicked, will update the display.
 
@@ -136,14 +128,12 @@ class OpenDialog(QDialog):  # type: ignore
             self._revsTable.setItem(i, 1, item)
 
     def _revClicked(self, _):
-        # type: (QTableWidgetItem) -> None
         """
         Called when a revision item is clicked.
         """
         self._openButton.setEnabled(True)
 
     def getResult(self):
-        # type: () -> Tuple[Database, Revision]
         """
         Get the result (database, revision) from this dialog.
 
@@ -153,13 +143,12 @@ class OpenDialog(QDialog):  # type: ignore
         return db, self._revsTable.currentItem().data(Qt.UserRole)
 
 
-class SaveDialog(QDialog):  # type: ignore
+class SaveDialog(QDialog):
     """
     The save dialog allowing an user to select a remote revision to upload to.
     """
 
     def __init__(self, plugin, dbs, revs):
-        # type: (IDAConnect, List[Database], List[Revision]) -> None
         """
         Initialize the open dialog.
 
@@ -248,7 +237,6 @@ class SaveDialog(QDialog):  # type: ignore
         layout.addWidget(rightSide)
 
     def _dbClicked(self, item):
-        # type: (QTableWidgetItem) -> None
         """
         Called when a database item is clicked, will update the display.
 
@@ -284,14 +272,12 @@ class SaveDialog(QDialog):  # type: ignore
         self._revsTable.setItem(len(revs), 1, newItem)
 
     def _revClicked(self, _):
-        # type: (QTableWidgetItem) -> None
         """
         Called when a revision item is clicked.
         """
         self._saveButton.setEnabled(True)
 
     def getResult(self):
-        # type: () -> Tuple[Database, Revision]
         """
         Get the result (database, revision) from this dialog.
 

@@ -1,20 +1,14 @@
 import logging
 
-from PyQt5.QtCore import Qt, QSize, QPoint                   # type: ignore
-from PyQt5.QtGui import QPixmap, QIcon, QPainter             # type: ignore
-from PyQt5.QtWidgets import QWidget, QLabel, QMenu, QAction  # type: ignore
-
-
-MYPY = False
-if MYPY:
-    from PyQt5.QtGui import QPaintEvent
-    from ..plugin import IDAConnect
+from PyQt5.QtCore import Qt, QSize, QPoint
+from PyQt5.QtGui import QPixmap, QIcon, QPainter
+from PyQt5.QtWidgets import QWidget, QLabel, QMenu, QAction
 
 
 logger = logging.getLogger('IDAConnect.Interface')
 
 
-class StatusWidget(QWidget):  # type: ignore
+class StatusWidget(QWidget):
     """
     The widget that displays the status of the connection to the server.
     """
@@ -26,7 +20,6 @@ class StatusWidget(QWidget):  # type: ignore
     STATE_CONNECTED = 2
 
     def __init__(self, plugin):
-        # type: (IDAConnect) -> None
         """
         Initialize the status widget.
 
@@ -45,7 +38,6 @@ class StatusWidget(QWidget):  # type: ignore
         self._update()
 
     def _update(self):
-        # type: () -> None
         """
         Called to update the widget when its state has changed.
         """
@@ -80,7 +72,6 @@ class StatusWidget(QWidget):  # type: ignore
         self.repaint()
 
     def _contextMenu(self, point):
-        # type: (QPoint) -> None
         """
         Called when the widget is right-clicked to display the context menu.
 
@@ -106,7 +97,6 @@ class StatusWidget(QWidget):  # type: ignore
 
                 # Add a handler on the action
                 def serverActionToggled(checked=False):
-                    # type: (bool) -> None
                     if checked:
                         self._plugin.network.connect(server, 31013)
                     else:
@@ -119,7 +109,6 @@ class StatusWidget(QWidget):  # type: ignore
         menu.exec_(self.mapToGlobal(point))
 
     def paintEvent(self, _):
-        # type: (QPaintEvent) -> None
         """
         Called when the widget is painted on the window.
         """
@@ -132,7 +121,6 @@ class StatusWidget(QWidget):  # type: ignore
         self._iconWidget.render(painter, map(QPoint(current, 0)))
 
     def setState(self, state):
-        # type: (int) -> None
         """
         Set the state of the connection.
 
@@ -143,7 +131,6 @@ class StatusWidget(QWidget):  # type: ignore
             self._update()
 
     def setServer(self, server):
-        # type: (str) -> None
         """
         Set the server we're connected to.
 

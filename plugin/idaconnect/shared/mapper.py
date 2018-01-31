@@ -3,13 +3,6 @@ import itertools
 import operator
 
 
-MYPY = False
-if MYPY:
-    import sqlite3
-    from typing import Any, Dict, List, Tuple, Type, TypeVar, Union, Optional
-    T = TypeVar('T', bound='Table')
-
-
 class Field(object):
     """
     An object representing a SQL column.
@@ -18,7 +11,6 @@ class Field(object):
     _ORDER = itertools.count()
 
     def __init__(self, type, unique=False, notNull=False):
-        # type: (Type, bool, bool) -> None
         """
         Initialize the field.
 
@@ -36,7 +28,6 @@ class Field(object):
         self.order = Field._ORDER.next()
 
     def __str__(self):
-        # type: () -> str
         """
         Return the textual representation of this field. It will be used to
         specify the columns' types of a table at its creation.
@@ -53,15 +44,10 @@ class TableFactory(type):
     """
     The factory used to create table objects on-the-fly.
     """
-    _TABLES = {}  # type: Dict[str, Type[Table]]
+    _TABLES = {}
 
     @staticmethod
-    def __new__(mcs,    # type: Type[TableFactory]
-                name,   # type: str
-                bases,  # type: Tuple[Type, ...]
-                attrs   # type: Dict[str, Any]
-                ):
-        # type: (...) -> Type[Table]
+    def __new__(mcs, name, bases, attrs):
         """
         Register a new table class in the factory.
 
@@ -70,8 +56,7 @@ class TableFactory(type):
         :param attrs: the attributes of the new class
         :return: the newly created class
         """
-        cls = super(TableFactory, mcs)  \
-            .__new__(mcs, name, bases, attrs)  # type: Type[Table]
+        cls = super(TableFactory, mcs).__new__(mcs, name, bases, attrs)
         if cls.__table__ and cls.__table__ not in TableFactory._TABLES:
             cls.__fields__ = []
             for key, val in cls.__dict__.iteritems():
@@ -84,7 +69,6 @@ class TableFactory(type):
 
     @staticmethod
     def getClasses():
-        # type: () -> Dict[str, Type[Table]]
         """
         Get the table classes registered by the factory.
 
@@ -99,14 +83,11 @@ class Table(object):
     """
     __metaclass__ = TableFactory
 
-    __table__ = None  # type: Optional[str]
-    __fields__ = []   # type: List[Field]
+    __table__ = None
+    __fields__ = []
 
     @staticmethod
-    def fields(obj,         # type: Union[Table, Type[Table]]
-               ignore=None  # type: Optional[List[str]]
-               ):
-        # type: (...) -> Dict[str, Any]
+    def fields(obj, ignore=None):
         """
         Get a dictionary of the fields and values of an object.
 
@@ -116,7 +97,7 @@ class Table(object):
         """
         if ignore is None:
             ignore = []
-        fields = collections.OrderedDict()  # type: Dict[str, Field]
+        fields = collections.OrderedDict()
         for key in obj.__fields__:
             if key.name not in ignore:
                 fields[key.name] = obj.__dict__[key.name]
@@ -124,7 +105,6 @@ class Table(object):
 
     @classmethod
     def one(cls, **fields):
-        # type: (Dict[str, Any]) -> T
         """
         Get one object from the database matching the filter.
 
@@ -135,7 +115,6 @@ class Table(object):
 
     @classmethod
     def all(cls, **fields):
-        # type: (Dict[str, Any]) -> List[T]
         """
         Get all objects from the database matching the filter.
 
@@ -145,7 +124,6 @@ class Table(object):
         return Mapper.getInstance().all(cls, **fields)
 
     def __init__(self):
-        # type: () -> None
         """
         Instantiate a new table.
         """
@@ -154,7 +132,6 @@ class Table(object):
         self.id = 0  # will be set by the mapper
 
     def create(self):
-        # type: () -> Table
         """
         Create a new object in the database.
 
@@ -163,7 +140,6 @@ class Table(object):
         return Mapper.getInstance().create(self)
 
     def update(self):
-        # type: () -> Table
         """
         Update the current object in the database.
 
@@ -172,14 +148,12 @@ class Table(object):
         return Mapper.getInstance().update(self)
 
     def delete(self):
-        # type: () -> None
         """
         Delete the current object from the database.
         """
         Mapper.getInstance().delete(self)
 
     def __repr__(self):
-        # type: () -> str
         """
         Return a textual representation of the object. It will mainly be used
         for pretty-printing into the console.
@@ -194,11 +168,10 @@ class Mapper(object):
     """
     A singleton object that will do the mapping between instances and tables.
     """
-    __instance__ = None  # Optional[Mapper]
+    __instance__ = None
 
     @staticmethod
     def new(cls, **attrs):
-        # type: (Type[Table], Dict[str, Any]) -> T
         """
         Create a new instance of a table class.
 
@@ -206,7 +179,7 @@ class Mapper(object):
         :param attrs: the attributes of the object
         :return: the object
         """
-        obj = Table.__new__(cls)  # type: T
+        obj = Table.__new__(cls)
         Table.__init__(obj)
         for key, val in attrs.iteritems():
             setattr(obj, key, val)
@@ -214,29 +187,23 @@ class Mapper(object):
 
     @staticmethod
     def __new__(cls, *args, **kwargs):
-        # type: (Type[Mapper], Tuple[Any, ...], Dict[str, Any]) -> Mapper
         """
         Force only one instance of the mapper.
         """
         if cls.__instance__ is None:
-            instance = super(Mapper, cls).__new__(cls)  # type: Mapper
-            cls.__instance__ = instance
+            cls.__instance__ = super(Mapper, cls).__new__(cls)
         return cls.__instance__
 
     @classmethod
     def getInstance(cls):
-        # type: () -> Mapper
         """
         Return the instance of the mapper.
 
         :return: the instance
         """
-        if cls.__instance__:
-            return cls.__instance__
-        raise RuntimeError("no instance has been created")
+        return cls.__instance__
 
     def __init__(self, db):
-        # type: (sqlite3.Connection) -> None
         """
         Instantiate a new mapper.
 
@@ -251,7 +218,6 @@ class Mapper(object):
             self.execute(sql.format(table, ', '.join(columns)))
 
     def one(self, cls, **fields):
-        # type: (Type[Table], Dict[str, Any]) -> T
         """
         Get one object from the database matching the filter.
 
@@ -265,7 +231,6 @@ class Mapper(object):
         return self.new(cls, **row)
 
     def all(self, cls, **fields):
-        # type: (Type[Table], Dict[str, Any]) -> List[T]
         """
         Get all objects from the database matching the filter.
 
@@ -276,7 +241,6 @@ class Mapper(object):
         return [self.new(cls, **row) for row in self.get(cls, **fields)]
 
     def get(self, cls, **fields):
-        # type: (Type[Table], Dict[str, Any]) -> sqlite3.Cursor
         """
         Get all rows from the database matching the filter.
 
@@ -294,7 +258,6 @@ class Mapper(object):
         return self.execute(sql, fields.values())
 
     def create(self, obj):
-        # type: (Table) -> Table
         """
         Create an object into the database.
 
@@ -311,7 +274,6 @@ class Mapper(object):
         return obj
 
     def update(self, obj):
-        # type: (Table) -> Table
         """
         Update an object in the database.
 
@@ -325,7 +287,6 @@ class Mapper(object):
         return obj
 
     def delete(self, obj):
-        # type: (Table) -> None
         """
         Delete an object from the database.
 
@@ -336,7 +297,6 @@ class Mapper(object):
         self.execute(sql, [obj.id])
 
     def execute(self, sql, vals=None):
-        # type: (str, Optional[List[Any]]) -> sqlite3.Cursor
         """
         Execute a SQL request and return the result of the request.
 

@@ -1,18 +1,10 @@
 import logging
 
-from twisted.internet import reactor, task                      # type: ignore
-from twisted.internet.interfaces import IAddress, IConnector    # type: ignore
-from twisted.internet.protocol import ClientFactory as Factory  # type: ignore
-from twisted.python.failure import Failure                      # type: ignore
+from twisted.internet import reactor, task
+from twisted.internet.protocol import ClientFactory as Factory
 
 from ..shared.packets import Command, Event
 from ..shared.protocol import Protocol
-
-
-MYPY = False
-if MYPY:
-    from ..plugin import IDAConnect
-    from ..shared.packets import Packet
 
 
 logger = logging.getLogger('IDAConnect.Network')
@@ -24,7 +16,6 @@ class ClientProtocol(Protocol):
     """
 
     def __init__(self, plugin):
-        # type: (IDAConnect) -> None
         """
         Initialize the client protocol.
 
@@ -34,7 +25,6 @@ class ClientProtocol(Protocol):
         self._plugin = plugin
 
     def connectionMade(self):
-        # type: () -> None
         """
         Called when the connection has been established.
         """
@@ -45,7 +35,6 @@ class ClientProtocol(Protocol):
         self._plugin.notifyConnected()
 
     def recvPacket(self, packet):
-        # type: (Packet) -> bool
         """
         Called when a packet has been received.
 
@@ -59,7 +48,6 @@ class ClientProtocol(Protocol):
         elif isinstance(packet, Event):
             # Call the event asynchronously
             def callEvent(event):
-                # type: (Event) -> None
                 self._plugin.core.unhookAll()
                 event()
                 self._plugin.core.hookAll()
@@ -71,13 +59,12 @@ class ClientProtocol(Protocol):
         return True
 
 
-class ClientFactory(Factory, object):  # type: ignore
+class ClientFactory(Factory, object):
     """
     The client factory implementation.
     """
 
     def __init__(self, plugin):
-        # type: (IDAConnect) -> None
         """
         Initialize the client factory.
 
@@ -92,7 +79,6 @@ class ClientFactory(Factory, object):  # type: ignore
         self.sendPacket = self._protocol.sendPacket
 
     def buildProtocol(self, addr):
-        # type: (IAddress) -> ClientProtocol
         """
         Called then a new protocol instance is needed.
 
@@ -102,7 +88,6 @@ class ClientFactory(Factory, object):  # type: ignore
         return self._protocol
 
     def startedConnecting(self, connector):
-        # type: (IConnector) -> None
         """
         Called when we are starting to connect to the server.
 
@@ -114,7 +99,6 @@ class ClientFactory(Factory, object):  # type: ignore
         self._plugin.notifyConnecting()
 
     def clientConnectionFailed(self, connector, reason):
-        # type: (IConnector, Failure) -> None
         """
         Called when the connection we attempted failed.
 
@@ -128,7 +112,6 @@ class ClientFactory(Factory, object):  # type: ignore
         self._plugin.notifyDisconnected()
 
     def clientConnectionLost(self, connector, reason):
-        # type: (IConnector, Failure) -> None
         """
         Called when a previously established connection was lost.
 

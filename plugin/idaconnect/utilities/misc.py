@@ -5,7 +5,6 @@ PLUGIN_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
 def pluginResource(filename):
-    # type: (str) -> str
     """
     Get the absolute path of a plugin resource.
 

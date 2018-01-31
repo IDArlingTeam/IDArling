@@ -2,30 +2,20 @@ import logging
 import os
 import sqlite3
 
-from twisted.internet import reactor, protocol  # type: ignore
-from twisted.python import log                  # type: ignore
+from twisted.internet import reactor, protocol
+from twisted.python import log
 
-from .shared.commands import (GetDatabases, GetDatabasesReply,
-                              GetRevisions, GetRevisionsReply,
-                              NewDatabase, NewRevision,
-                              UploadFile, DownloadFile, DownloadFileReply)
-from .shared.mapper import Mapper
-from .shared.models import Database, Revision
-from .shared.packets import Command, AbstractEvent
-from .shared.protocol import Protocol
-
-
-MYPY = False
-if MYPY:
-    from typing import (Any, Callable, Dict, List, MutableMapping,
-                        Optional, Tuple, Type)
-    from twisted.internet.interfaces import IAddress  # type: ignore
-    from twisted.python.failure import Failure        # type: ignore
-    from .shared.packets import Packet
+from shared.commands import (GetDatabases, GetDatabasesReply,
+                             GetRevisions, GetRevisionsReply,
+                             NewDatabase, NewRevision,
+                             UploadFile, DownloadFile, DownloadFileReply)
+from shared.mapper import Mapper
+from shared.models import Database, Revision
+from shared.packets import Command, AbstractEvent
+from shared.protocol import Protocol
 
 
 def startLogging():
-    # type: () -> logging.Logger
     """
     Set up the main logger to write both to a log file and to the console
     using a specific format, and bind Twisted to the Python logger.
@@ -74,7 +64,6 @@ class ServerProtocol(Protocol):
     """
 
     def __init__(self, factory):
-        # type: (ServerFactory) -> None
         """
         Initialize the server protocol.
 
@@ -91,10 +80,9 @@ class ServerProtocol(Protocol):
             NewRevision: self._handleNewRevision,
             UploadFile: self._handleUploadFile,
             DownloadFile: self._handleDownloadFile
-        }  # type: Dict[Type[Command], Callable[[Command], None]]
+        }
 
     def connectionMade(self):
-        # type: () -> None
         """
         Called when a connection has been established.
         """
@@ -106,17 +94,13 @@ class ServerProtocol(Protocol):
         prefix = '%s:%s' % (peer.host, peer.port)
 
         class CustomAdapter(logging.LoggerAdapter):
-            def process(self, msg,  # type: unicode
-                        kwargs      # type: MutableMapping[str, Any]
-                        ):
-                # type: (...) -> Tuple[str, MutableMapping[str, Any]]
+            def process(self, msg, kwargs):
                 return '(%s) %s' % (prefix, msg), kwargs
 
-        self._logger = CustomAdapter(self._logger, {})  # type: ignore
+        self._logger = CustomAdapter(self._logger, {})
         self._logger.info("Connected")
 
     def connectionLost(self, reason=protocol.connectionDone):
-        # type: (Failure) -> None
         """
         Called when an established connection has been lost.
 
@@ -127,7 +111,6 @@ class ServerProtocol(Protocol):
         self._logger.info("Disconnected: %s" % reason)
 
     def recvPacket(self, packet):
-        # type: (Packet) -> bool
         """
         Called when a packet has been received.
 
@@ -191,18 +174,17 @@ class ServerProtocol(Protocol):
         self.sendPacket(packet)
 
 
-class ServerFactory(protocol.Factory, object):  # type: ignore
+class ServerFactory(protocol.Factory, object):
     """
     The server factory implementation.
     """
 
     def __init__(self):
-        # type: () -> None
         """
         Initialize the server factory.
         """
         super(ServerFactory, self).__init__()
-        self._clients = []  # type: List[ServerProtocol]
+        self._clients = []
 
         # Initialize database and bind mapper
         self._db = sqlite3.connect(':memory:', isolation_level=None)
@@ -210,7 +192,6 @@ class ServerFactory(protocol.Factory, object):  # type: ignore
         self._mapper = Mapper(self._db)
 
     def buildProtocol(self, addr):
-        # type: (IAddress) -> ServerProtocol
         """
         Called then a new protocol instance is needed.
 
@@ -220,7 +201,6 @@ class ServerFactory(protocol.Factory, object):  # type: ignore
         return ServerProtocol(self)
 
     def addClient(self, client):
-        # type: (ServerProtocol) -> None
         """
         Add a client to the list of connected clients.
 
@@ -229,7 +209,6 @@ class ServerFactory(protocol.Factory, object):  # type: ignore
         self._clients.append(client)
 
     def removeClient(self, client):
-        # type: (ServerProtocol) -> None
         """
         Remove a client to the list of connected clients.
 
@@ -238,7 +217,6 @@ class ServerFactory(protocol.Factory, object):  # type: ignore
         self._clients.remove(client)
 
     def sendPacketToAll(self, packet, ignore=None):
-        # type: (Packet, Optional[ServerProtocol]) -> None
         """
         Send a packet to all connected clients.
 
@@ -251,7 +229,6 @@ class ServerFactory(protocol.Factory, object):  # type: ignore
 
 
 def main():
-    # type: () -> None
     """
     The server main function.
     """

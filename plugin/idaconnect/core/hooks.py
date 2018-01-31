@@ -1,16 +1,10 @@
 import logging
 
-import ida_idp  # type: ignore
-import idaapi   # type: ignore
-import idc      # type: ignore
+import ida_idp
+import idaapi
+import idc
 
-from .events import *
-
-
-MYPY = False
-if MYPY:
-    from ..plugin import IDAConnect
-    from ..shared.packets import Event
+from events import *
 
 
 logger = logging.getLogger('IDAConnect.Core')
@@ -22,7 +16,6 @@ class Hooks(object):
     """
 
     def __init__(self, plugin):
-        # type: (IDAConnect) -> None
         """
         Initialize the hook.
 
@@ -31,7 +24,6 @@ class Hooks(object):
         self._network = plugin.network
 
     def _sendEvent(self, event):
-        # type: (Event) -> None
         """
         Send an event to the other clients through the server.
 
@@ -40,13 +32,12 @@ class Hooks(object):
         self._network.sendPacket(event)
 
 
-class IDBHooks(Hooks, ida_idp.IDB_Hooks):  # type: ignore
+class IDBHooks(Hooks, ida_idp.IDB_Hooks):
     """
     The concrete class for all IDB-related events.
     """
 
     def __init__(self, plugin):
-        # type: (IDAConnect) -> None
         ida_idp.IDB_Hooks.__init__(self)
         Hooks.__init__(self, plugin)
 
@@ -315,13 +306,12 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):  # type: ignore
         return 0
 
 
-class IDPHooks(Hooks, ida_idp.IDP_Hooks):  # type: ignore
+class IDPHooks(Hooks, ida_idp.IDP_Hooks):
     """
     The concrete class for IDP-related events.
     """
 
     def __init__(self, plugin):
-        # type: (IDAConnect) -> None
         ida_idp.IDP_Hooks.__init__(self)
         Hooks.__init__(self, plugin)
 
@@ -339,7 +329,6 @@ class HexRaysHooks(Hooks):
     """
 
     def __init__(self, plugin):
-        # type: (IDAConnect) -> None
         super(HexRaysHooks, self).__init__(plugin)
         self._hexrays_available = True
         if not idaapi.init_hexrays_plugin():
@@ -351,12 +340,10 @@ class HexRaysHooks(Hooks):
             idaapi.term_hexrays_plugin()
 
     def hook(self):
-        # type: () -> None
         if self._hexrays_available:
             idaapi.install_hexrays_callback(self._eventsCallback)
 
     def unhook(self):
-        # type: () -> None
         if self._hexrays_available:
             idaapi.remove_hexrays_callback(self._eventsCallback)
 

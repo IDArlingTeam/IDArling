@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 
-import idaapi  # type: ignore
+import idaapi
 
 
 class LoggerProxy(object):
@@ -11,7 +11,6 @@ class LoggerProxy(object):
     """
 
     def __init__(self, stream, logger, level=logging.INFO):
-        # type: (file, logging.Logger, int) -> None
         """
         Initialize the proxy class.
 
@@ -24,7 +23,6 @@ class LoggerProxy(object):
         self._level = level
 
     def write(self, buf):
-        # type: (str) -> int
         """
         Called when a string is being written.
 
@@ -35,14 +33,12 @@ class LoggerProxy(object):
         return self._stream.write(buf)
 
     def flush(self):
-        # type: () -> None
         """
         Called to flush the internal buffer.
         """
         pass
 
     def isatty(self):
-        # type: () -> bool
         """
         Called to check if this is a tty.
         """
@@ -50,7 +46,6 @@ class LoggerProxy(object):
 
 
 def startLogging():
-    # type: () -> logging.Logger
     """
     Set up the main logger to write to a log file with a specific format and
     intercept both standard output and standard error output.
@@ -74,12 +69,10 @@ def startLogging():
 
     # Redirect standard output to logger
     stdoutLogger = logging.getLogger('IDAConnect.STDOUT')
-    sys.stdout = LoggerProxy(sys.stdout,  # type: ignore
-                             stdoutLogger, logging.INFO)
+    sys.stdout = LoggerProxy(sys.stdout, stdoutLogger, logging.INFO)
 
     # Redirect standard error output to logger
     stderrLogger = logging.getLogger('IDAConnect.STDERR')
-    sys.stderr = LoggerProxy(sys.stderr,  # type: ignore
-                             stderrLogger, logging.ERROR)
+    sys.stderr = LoggerProxy(sys.stderr, stderrLogger, logging.ERROR)
 
     return logger

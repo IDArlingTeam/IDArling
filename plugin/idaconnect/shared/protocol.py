@@ -1,26 +1,18 @@
 import json
 
-from twisted.internet.protocol import connectionDone  # type: ignore
-from twisted.protocols import basic                   # type: ignore
+from twisted.internet.protocol import connectionDone
+from twisted.protocols import basic
 
-from .packets import Packet, PacketDeferred, Query, Reply, Container
-
-
-MYPY = False
-if MYPY:
-    import logging
-    from typing import Iterable, Optional
-    from twisted.python.failure import Failure  # type: ignore
+from packets import Packet, PacketDeferred, Query, Reply, Container
 
 
-class Protocol(basic.LineReceiver, object):  # type: ignore
+class Protocol(basic.LineReceiver, object):
     """
     The protocol implementation that is common to the client and the server.
     """
 
     @staticmethod
     def _makeChunks(bs, n=65535):
-        # type: (str, int) -> Iterable[str]
         """
         Create chunk of a specified size from a specified bytes.
 
@@ -32,7 +24,6 @@ class Protocol(basic.LineReceiver, object):  # type: ignore
             yield bs[i:i + n]
 
     def __init__(self, logger):
-        # type: (logging.Logger) -> None
         """
         Initialize the protocol.
 
@@ -43,17 +34,15 @@ class Protocol(basic.LineReceiver, object):  # type: ignore
 
         self._connected = False
         self._content = b''
-        self._container = None  # type: Optional[Container]
+        self._container = None
 
     def connectionMade(self):
-        # type: () -> None
         """
         Called when the connection has been established.
         """
         self._connected = True
 
     def connectionLost(self, reason=connectionDone):
-        # type: (Failure) -> None
         """
         Called when an established connection has been lost.
 
@@ -62,7 +51,6 @@ class Protocol(basic.LineReceiver, object):  # type: ignore
         self._connected = False
 
     def lineReceived(self, line):
-        # type: (str) -> None
         """
         Called when a line has been received.
 
@@ -87,7 +75,6 @@ class Protocol(basic.LineReceiver, object):  # type: ignore
         self.packetReceived(packet)
 
     def rawDataReceived(self, data):
-        # type: (str) -> None
         """
         Called when some raw data has been received.
 
@@ -95,18 +82,14 @@ class Protocol(basic.LineReceiver, object):  # type: ignore
         """
         # Append raw data to content already received
         self._content += data
-        if self._container is None:
-            return
-        downloadCallback = self._container.downback
-        if downloadCallback:  # trigger download callback
-            downloadCallback(len(self._content), len(self._container))
+        if self._container.downback:  # trigger download callback
+            self._container.downback(len(self._content), len(self._container))
         if len(self._content) >= len(self._container):
             self.setLineMode()
             self._container.content = self._content
             self.packetReceived(self._container)
 
     def packetReceived(self, packet):
-        # type: (Packet) -> None
         """
         Called when a packet has been received.
 
@@ -123,7 +106,6 @@ class Protocol(basic.LineReceiver, object):  # type: ignore
             self._logger.warning("Unhandled packet received: %s" % packet)
 
     def isConnected(self):
-        # type: () -> bool
         """
         Return if the protocol is currently connected.
 
@@ -132,7 +114,6 @@ class Protocol(basic.LineReceiver, object):  # type: ignore
         return self._connected
 
     def sendPacket(self, packet):
-        # type: (Packet) -> Optional[PacketDeferred]
         """
         Send a packet the other party.
 
@@ -155,15 +136,13 @@ class Protocol(basic.LineReceiver, object):  # type: ignore
 
         # Write raw data for containers
         if isinstance(packet, Container):
-            if packet.content:
-                data = packet.content
-                count, total = 0, len(data)
-                for chunk in self._makeChunks(data):
-                    self.transport.write(chunk)
-                    count += len(chunk)
-                    uploadCallback = packet.upback
-                    if uploadCallback:  # trigger upload callback
-                        uploadCallback(count, total)
+            data = packet.content
+            count, total = 0, len(data)
+            for chunk in self._makeChunks(data):
+                self.transport.write(chunk)
+                count += len(chunk)
+                if packet.upback:  # trigger upload callback
+                    packet.upback(count, total)
 
         # Queries return a packet deferred
         if isinstance(packet, Query):
@@ -173,7 +152,6 @@ class Protocol(basic.LineReceiver, object):  # type: ignore
         return None
 
     def recvPacket(self, packet):
-        # type: (Packet) -> bool
         """
         Protocol subclasses should implement this method.
 
@@ -183,7 +161,6 @@ class Protocol(basic.LineReceiver, object):  # type: ignore
         raise NotImplementedError("recvPacket() not implemented")
 
     def _byteify(self, data):
-        # type: (object) -> object
         """
         Recursively transform an object into a bytes instance.
 

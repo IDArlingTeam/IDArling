@@ -2,7 +2,6 @@ from idaconnect.plugin import IDAConnect
 
 
 def PLUGIN_ENTRY():
-    # type: () -> IDAConnect
     """
     Entry point for IDAPython plugins.
 

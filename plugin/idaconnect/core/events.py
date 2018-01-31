@@ -1,10 +1,10 @@
 import logging
 
-import ida_enum   # type: ignore
-import ida_funcs  # type: ignore
-import ida_name   # type: ignore
-import idaapi     # type: ignore
-import idc        # type: ignore
+import ida_enum
+import ida_funcs
+import ida_name
+import idaapi
+import idc
 
 from ..shared.packets import DefaultEvent
 

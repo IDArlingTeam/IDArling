@@ -4,29 +4,21 @@ import os
 import uuid
 from functools import partial
 
-import ida_kernwin  # type: ignore
-import ida_loader   # type: ignore
-import idaapi       # type: ignore
-import idautils     # type: ignore
-import idc          # type: ignore
+import ida_kernwin
+import ida_loader
+import idaapi
+import idautils
+import idc
 
-from PyQt5.QtCore import Qt, QProcess                           # type: ignore
-from PyQt5.QtGui import QIcon                                   # type: ignore
-from PyQt5.QtWidgets import qApp, QProgressDialog, QMessageBox  # type: ignore
+from PyQt5.QtCore import Qt, QProcess
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import qApp, QProgressDialog, QMessageBox
 
-from .dialogs import OpenDialog, SaveDialog
 from ..shared.commands import (GetDatabases, GetRevisions,
                                NewDatabase, NewRevision,
                                DownloadFile, UploadFile)
 from ..shared.models import Database, Revision
-
-
-MYPY = False
-if MYPY:
-    from typing import Any, List, Optional
-    from ..plugin import IDAConnect
-    from ..shared.commands import (GetDatabasesReply, GetRevisionsReply,
-                                   DownloadFileReply)
+from dialogs import OpenDialog, SaveDialog
 
 
 logger = logging.getLogger('IDAConnect.Interface')
@@ -36,10 +28,9 @@ class Action(object):
     """
     This is a base class for all the actions of the interface module.
     """
-    _ACTION_ID = None  # type: Optional[str]
+    _ACTION_ID = None
 
     def __init__(self, menu, text, tooltip, icon, handler):
-        # type: (str, str, str, str, ActionHandler) -> None
         """
         Initialize the action.
 
@@ -59,7 +50,6 @@ class Action(object):
         self._iconId = idaapi.BADADDR
 
     def install(self):
-        # type: () -> bool
         """
         Install the action into the IDA UI.
 
@@ -95,7 +85,6 @@ class Action(object):
         return True
 
     def uninstall(self):
-        # type: () -> bool
         """
         Uninstall the action from the IDA UI.
 
@@ -121,7 +110,6 @@ class Action(object):
         return True
 
     def update(self):
-        # type: () -> None
         """
         Force to update the action's state (enabled/disabled).
         """
@@ -129,13 +117,12 @@ class Action(object):
                                         self._handler.update(None))
 
 
-class ActionHandler(idaapi.action_handler_t):  # type: ignore
+class ActionHandler(idaapi.action_handler_t):
     """
     This is the base class for all action handlers of the interface module.
     """
 
     def __init__(self, plugin):
-        # type: (IDAConnect) -> None
         """
         Initialize the action handler.
 
@@ -145,7 +132,6 @@ class ActionHandler(idaapi.action_handler_t):  # type: ignore
         self._plugin = plugin
 
     def update(self, ctx):
-        # type: (Optional[ida_kernwin.action_update_ctx_t]) -> Any
         """
         Update the state of the associated action.
 
@@ -164,7 +150,6 @@ class OpenAction(Action):
     _ACTION_ID = 'idaconnect:open'
 
     def __init__(self, plugin):
-        # type: (IDAConnect) -> None
         super(OpenAction, self).__init__(
             'File/Open',
             'Open from server...',
@@ -180,7 +165,6 @@ class OpenActionHandler(ActionHandler):
 
     @staticmethod
     def _progressCallback(progress, count, total):
-        # type: (QProgressDialog, int, int) -> None
         """
         Called when some data from the file has been received.
 
@@ -192,7 +176,6 @@ class OpenActionHandler(ActionHandler):
         progress.setValue(count)
 
     def activate(self, ctx):
-        # type: (Optional[ida_kernwin.action_update_ctx_t]) -> int
         """
         Called when the action is triggered.
 
@@ -201,13 +184,11 @@ class OpenActionHandler(ActionHandler):
         """
         # Ask the server for the list of databases
         d = self._plugin.network.sendPacket(GetDatabases())
-        if d:
-            d.addCallback(self._onGetDatabasesReply)
-            d.addErrback(logger.exception)
+        d.addCallback(self._onGetDatabasesReply)
+        d.addErrback(logger.exception)
         return 1
 
     def _onGetDatabasesReply(self, reply):
-        # type: (GetDatabasesReply) -> None
         """
         Called when the list of databases is received.
 
@@ -215,12 +196,10 @@ class OpenActionHandler(ActionHandler):
         """
         # Ask the server for the list of revisions
         d = self._plugin.network.sendPacket(GetRevisions())
-        if d:
-            d.addCallback(partial(self._onGetRevisionsReply, reply.dbs))
-            d.addErrback(logger.exception)
+        d.addCallback(partial(self._onGetRevisionsReply, reply.dbs))
+        d.addErrback(logger.exception)
 
     def _onGetRevisionsReply(self, dbs, reply):
-        # type: (List[Database], GetRevisionsReply) -> None
         """
         Called when the list of revisions is received.
 
@@ -232,7 +211,6 @@ class OpenActionHandler(ActionHandler):
         dialog.exec_()
 
     def _dialogAccepted(self, dialog):
-        # type: (OpenDialog) -> None
         """
         Called when the open dialog is accepted by the user.
 
@@ -253,21 +231,18 @@ class OpenActionHandler(ActionHandler):
 
         # Sent a packet to download the file
         packet = DownloadFile(db.hash, rev.uuid)
-        d = self._plugin.network.sendPacket(packet)
         callback = partial(self._progressCallback, progress)
 
         def setDownloadCallback(reply):
-            # type: (DownloadFileReply) -> None
             reply.downback = callback
 
-        if d:
-            d.addInitback(setDownloadCallback)
-            d.addCallback(partial(self._fileDownloaded, rev, progress))
-            d.addErrback(logger.exception)
+        d = self._plugin.network.sendPacket(packet)
+        d.addInitback(setDownloadCallback)
+        d.addCallback(partial(self._fileDownloaded, rev, progress))
+        d.addErrback(logger.exception)
         progress.show()
 
     def _fileDownloaded(self, rev, progress, reply):
-        # type: (Revision, QProgressDialog, DownloadFileReply) -> None
         """
         Called when the file has been downloaded.
 
@@ -287,9 +262,8 @@ class OpenActionHandler(ActionHandler):
         filePath = os.path.join(filesDir, fileName)
 
         # Write the packet content to disk
-        if reply.content:
-            with open(filePath, 'wb') as outputFile:
-                outputFile.write(reply.content)
+        with open(filePath, 'wb') as outputFile:
+            outputFile.write(reply.content)
         logger.info("Saved file %s" % fileName)
 
         # Show a success dialog
@@ -317,7 +291,6 @@ class SaveAction(Action):
     _ACTION_ID = 'idaconnect:save'
 
     def __init__(self, plugin):
-        # type: (IDAConnect) -> None
         super(SaveAction, self).__init__(
             'File/Save',
             'Save to server...',
@@ -333,7 +306,6 @@ class SaveActionHandler(ActionHandler):
 
     @staticmethod
     def _progressCallback(progress, count, total):
-        # type: (QProgressDialog, int, int) -> None
         """
         Called when some data from the file has been sent.
 
@@ -345,13 +317,11 @@ class SaveActionHandler(ActionHandler):
         progress.setValue(count)
 
     def update(self, ctx):
-        # type: (Optional[ida_kernwin.action_update_ctx_t]) -> Any
         if not idc.GetIdbPath():
             return idaapi.AST_DISABLE
         return super(SaveActionHandler, self).update(ctx)
 
     def activate(self, ctx):
-        # type: (Optional[ida_kernwin.action_activation_ctx_t]) -> int
         """
         Called when the action is triggered.
 
@@ -360,13 +330,11 @@ class SaveActionHandler(ActionHandler):
         """
         # Ask the server for the list of databases
         d = self._plugin.network.sendPacket(GetDatabases())
-        if d:
-            d.addCallback(self._onGetDatabasesReply)
-            d.addErrback(logger.exception)
+        d.addCallback(self._onGetDatabasesReply)
+        d.addErrback(logger.exception)
         return 1
 
     def _onGetDatabasesReply(self, reply):
-        # type: (GetDatabasesReply) -> None
         """
         Called when the list of databases is received.
 
@@ -374,12 +342,10 @@ class SaveActionHandler(ActionHandler):
         """
         # Ask the server for the list of revisions
         d = self._plugin.network.sendPacket(GetRevisions())
-        if d:
-            d.addCallback(partial(self._onGetRevisionsReply, reply.dbs))
-            d.addErrback(logger.exception)
+        d.addCallback(partial(self._onGetRevisionsReply, reply.dbs))
+        d.addErrback(logger.exception)
 
     def _onGetRevisionsReply(self, dbs, reply):
-        # type: (List[Database], GetRevisionsReply) -> None
         """
         Called when the list of revisions is received.
 
@@ -391,7 +357,6 @@ class SaveActionHandler(ActionHandler):
         dialog.exec_()
 
     def _dialogAccepted(self, dialog):
-        # type: (SaveDialog) -> None
         """
         Called when the save dialog is accepted by the user.
 

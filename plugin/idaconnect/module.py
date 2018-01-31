@@ -1,15 +1,9 @@
-MYPY = False
-if MYPY:
-    from .plugin import IDAConnect
-
-
 class Module(object):
     """
     This is the base class of every module in the plugin.
     """
 
     def __init__(self, plugin):
-        # type: (IDAConnect) -> None
         """
         Initialize the module.
 
@@ -19,7 +13,6 @@ class Module(object):
         self._installed = False
 
     def install(self):
-        # type: () -> bool
         """
          Install the module (called by the plugin).
 
@@ -31,7 +24,6 @@ class Module(object):
         return self._install()
 
     def _install(self):
-        # type: () -> bool
         """
         Install the module (called by the base class).
 
@@ -40,7 +32,6 @@ class Module(object):
         raise NotImplementedError("_install() not implemented")
 
     def uninstall(self):
-        # type: () -> bool
         """
         Uninstall the module (called by the plugin).
 
@@ -52,7 +43,6 @@ class Module(object):
         return self._uninstall()
 
     def _uninstall(self):
-        # type: () -> bool
         """
         Uninstall the module (called by the base class).
 

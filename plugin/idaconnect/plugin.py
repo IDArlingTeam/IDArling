@@ -1,18 +1,18 @@
-import idaapi  # type: ignore
+import idaapi
 
-from .core.core import Core
-from .interface.interface import Interface
-from .network.network import Network
+from core.core import Core
+from interface.interface import Interface
+from network.network import Network
 
-from .utilities.log import startLogging
-from .utilities.misc import pluginResource
+from utilities.log import startLogging
+from utilities.misc import pluginResource
 
 
 # Start logging
 logger = startLogging()
 
 
-class IDAConnect(idaapi.plugin_t):  # type: ignore
+class IDAConnect(idaapi.plugin_t):
     """
     The IDAConnect plugin.
     """
@@ -30,7 +30,6 @@ class IDAConnect(idaapi.plugin_t):  # type: ignore
 
     @staticmethod
     def description():
-        # type: () -> str
         """
         Get the plugin description (name and version).
 
@@ -41,7 +40,6 @@ class IDAConnect(idaapi.plugin_t):  # type: ignore
 
     @staticmethod
     def resource(filename):
-        # type: (str) -> str
         """
         Get the absolute path to a resource.
 
@@ -51,7 +49,6 @@ class IDAConnect(idaapi.plugin_t):  # type: ignore
         return pluginResource(filename)
 
     def __init__(self):
-        # type: () -> None
         """
         Instantiate the plugin and all its modules.
         """
@@ -61,7 +58,6 @@ class IDAConnect(idaapi.plugin_t):  # type: ignore
 
     @property
     def core(self):
-        # type: () -> Core
         """
         Get the core module.
 
@@ -71,7 +67,6 @@ class IDAConnect(idaapi.plugin_t):  # type: ignore
 
     @property
     def interface(self):
-        # type: () -> Interface
         """
         Get the interface module.
 
@@ -81,7 +76,6 @@ class IDAConnect(idaapi.plugin_t):  # type: ignore
 
     @property
     def network(self):
-        # type: () -> Network
         """
         Get the network module.
 
@@ -90,7 +84,6 @@ class IDAConnect(idaapi.plugin_t):  # type: ignore
         return self._network
 
     def init(self):
-        # type: () -> int
         """
         This method is called when IDA is loading the plugin.
 
@@ -100,16 +93,15 @@ class IDAConnect(idaapi.plugin_t):  # type: ignore
             self._init()
         except Exception:
             logger.exception("Failed to initialize")
-            skip = idaapi.PLUGIN_SKIP  # type: int
+            skip = idaapi.PLUGIN_SKIP
             return skip
 
         self._printBanner()
         logger.info("Successfully initialized")
-        keep = idaapi.PLUGIN_KEEP  # type: int
+        keep = idaapi.PLUGIN_KEEP
         return keep
 
     def _init(self):
-        # type: () -> None
         """
         Initialize the plugin and all its modules.
         """
@@ -118,7 +110,6 @@ class IDAConnect(idaapi.plugin_t):  # type: ignore
         self._network.install()
 
     def _printBanner(self):
-        # type: () -> None
         """
         Print the banner into the console.
         """
@@ -130,7 +121,6 @@ class IDAConnect(idaapi.plugin_t):  # type: ignore
         print prefix + ("-" * 75)
 
     def term(self):
-        # type: () -> None
         """
         This method is called when IDA is unloading the plugin.
         """
@@ -142,7 +132,6 @@ class IDAConnect(idaapi.plugin_t):  # type: ignore
         logger.info("Terminated properly")
 
     def _term(self):
-        # type: () -> None
         """
         Terminate the plugin and its modules.
         """
@@ -151,7 +140,6 @@ class IDAConnect(idaapi.plugin_t):  # type: ignore
         self._network.uninstall()
 
     def run(self, _):
-        # type: (int) -> bool
         """
         This method is called when IDA is running the plugin as a script.
         """
@@ -159,21 +147,18 @@ class IDAConnect(idaapi.plugin_t):  # type: ignore
         return False
 
     def notifyDisconnected(self):
-        # type: () -> None
         """
         Notify the plugin that a disconnection has occurred.
         """
         self._interface.notifyDisconnected()
 
     def notifyConnecting(self):
-        # type: () -> None
         """
         Notify the plugin that a connection is being established.
         """
         self._interface.notifyConnecting()
 
     def notifyConnected(self):
-        # type: () -> None
         """
         Notify the plugin that a connection has been established.
         """
