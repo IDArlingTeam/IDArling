@@ -1,5 +1,7 @@
 import logging
 
+import idaapi
+
 from ..module import Module
 from hooks import IDBHooks, IDPHooks, UIHooks, HexRaysHooks
 
@@ -10,6 +12,7 @@ class Core(Module):
     """
     The core module, responsible for all interactions with the IDA kernel.
     """
+    NETNODE_NAME = '$ idaconnect'
 
     def __init__(self, plugin):
         super(Core, self).__init__(plugin)
@@ -18,6 +21,9 @@ class Core(Module):
         self._idpHooks = None
         self._uiHooks = None
         self._hxeHooks = None
+
+        self._repo = None
+        self._branch = None
 
     def _install(self):
         self._idbHooks = IDBHooks(self._plugin)
@@ -51,3 +57,61 @@ class Core(Module):
         self._idpHooks.unhook()
         self._uiHooks.unhook()
         self._hxeHooks.unhook()
+
+    @property
+    def repo(self):
+        """
+        Get the current repository hash.
+
+        :return: the hash
+        """
+        return self._repo
+
+    @repo.setter
+    def repo(self, hash):
+        """
+        Set the current repository hash.
+
+        :param hash: the hash
+        """
+        self._repo = hash
+
+    @property
+    def branch(self):
+        """
+        Get the current branch UUID.
+
+        :return: the UUID
+        """
+        return self._branch
+
+    @branch.setter
+    def branch(self, uuid):
+        """
+        Set the current branch UUID.
+
+        :param uuid: the UUID
+        """
+        self._branch = uuid
+
+    def loadNetnode(self):
+        """
+        Load the netnode if it exists.
+        """
+        node = idaapi.netnode()
+        if node.create(Core.NETNODE_NAME):
+            return  # node doesn't exists
+        self._repo = node.hashval('hash')
+        self._branch = node.hashval('uuid')
+        logger.debug("Loaded netnode: %s, %s" % (self._repo, self._branch))
+
+    def saveNetnode(self):
+        """
+        Save the netnode.
+        """
+        node = idaapi.netnode()
+        if not node.create(Core.NETNODE_NAME):
+            pass  # node already exists
+        node.hashset('hash', self._repo)
+        node.hashset('uuid', self._branch)
+        logger.debug("Saved netnode: %s, %s" % (self._repo, self._branch))

@@ -1,6 +1,3 @@
-import json
-import os
-
 import idaapi
 
 from core.core import Core
@@ -8,7 +5,7 @@ from interface.interface import Interface
 from network.network import Network
 
 from utilities.log import startLogging
-from utilities.misc import localResource, pluginResource
+from utilities.misc import pluginResource
 
 # Start logging
 logger = startLogging()
@@ -112,7 +109,7 @@ class IDAConnect(idaapi.plugin_t):
         self._network.install()
 
         # Load the current state
-        self.loadState()
+        self.network.loadState()
 
     def _printBanner(self):
         """
@@ -168,28 +165,3 @@ class IDAConnect(idaapi.plugin_t):
         Notify the plugin that a connection has been established.
         """
         self._interface.notifyConnected()
-
-    def loadState(self):
-        """
-        Load the state file if it exists.
-        """
-        statePath = localResource('files', 'state.json')
-        if os.path.isfile(statePath):
-            with open(statePath, 'rb') as stateFile:
-                state = json.loads(stateFile.read())
-                if state['connected']:
-                    self.network.connect(state['host'], state['port'])
-            os.remove(statePath)
-
-    def saveState(self):
-        """
-        Save the state file.
-        """
-        statePath = localResource('files', 'state.json')
-        with open(statePath, 'wb') as stateFile:
-            state = {
-                'connected': self.network.connected,
-                'host': self.network.host,
-                'port': self.network.port,
-            }
-            stateFile.write(json.dumps(state))

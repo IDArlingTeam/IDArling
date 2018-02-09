@@ -21,7 +21,7 @@ class Hooks(object):
 
         :param plugin: the plugin instance
         """
-        self._network = plugin.network
+        self._plugin = plugin
 
     def _sendEvent(self, event):
         """
@@ -29,7 +29,7 @@ class Hooks(object):
 
         :param event: the event to send
         """
-        self._network.sendPacket(event)
+        self._plugin.network.sendPacket(event)
 
 
 class IDBHooks(Hooks, ida_idp.IDB_Hooks):
@@ -331,6 +331,9 @@ class UIHooks(Hooks, ida_kernwin.UI_Hooks):
     def __init__(self, plugin):
         ida_kernwin.UI_Hooks.__init__(self)
         Hooks.__init__(self, plugin)
+
+    def ready_to_run(self, *_):
+        self._plugin.core.loadNetnode()
 
 
 class HexRaysHooks(Hooks):

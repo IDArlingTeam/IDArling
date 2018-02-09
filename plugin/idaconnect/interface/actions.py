@@ -273,7 +273,7 @@ class OpenActionHandler(ActionHandler):
         # success.exec_()
 
         # Save the current state
-        self._plugin.saveState()
+        self._plugin.network.saveState()
 
         # Save the old database
         idbPath = idc.GetIdbPath()
@@ -378,6 +378,8 @@ class SaveActionHandler(ActionHandler):
             self._onNewRepositoryReply(repo, branch, None)
 
     def _onNewRepositoryReply(self, repo, branch, _):
+        self._plugin.core.repo = repo.hash
+
         # Create new branch if necessary
         if not branch:
             uuid_ = str(uuid.uuid4())
@@ -390,6 +392,12 @@ class SaveActionHandler(ActionHandler):
             self._onNewBranchReply(repo, branch, None)
 
     def _onNewBranchReply(self, repo, branch, _):
+        self._plugin.core.branch = branch.uuid
+
+        # Save the current database
+        self._plugin.core.saveNetnode()
+        idc.save_database(idc.GetIdbPath(), 0)
+
         # Create the packet that will hold the database
         packet = UploadDatabase.Query(repo.hash, branch.uuid)
         inputPath = idc.GetIdbPath()
