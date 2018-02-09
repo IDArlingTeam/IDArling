@@ -6,28 +6,28 @@ from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout,
                              QGridLayout, QWidget, QTableWidget,
                              QTableWidgetItem, QGroupBox, QLabel, QPushButton)
 
-from ..shared.models import Database
+from ..shared.models import Repository
 
 logger = logging.getLogger('IDAConnect.Interface')
 
 
 class OpenDialog(QDialog):
     """
-    The open dialog allowing an user to select a remote revision to download.
+    The open dialog allowing an user to select a remote database to download.
     """
 
-    def __init__(self, plugin, dbs, revs):
+    def __init__(self, plugin, repos, branches):
         """
         Initialize the open dialog.
 
         :param plugin: the plugin instance
-        :param dbs: the list of databases
-        :param revs: the list of revisions
+        :param repos: the list of repositories
+        :param branches: the list of branches
         """
         super(OpenDialog, self).__init__()
         self._plugin = plugin
-        self._dbs = dbs
-        self._revs = revs
+        self._repos = repos
+        self._branches = branches
 
         # General setup of the dialog
         logger.debug("Showing open database dialog")
@@ -38,25 +38,25 @@ class OpenDialog(QDialog):
 
         # Setup of the layout and widgets
         layout = QHBoxLayout(self)
-        self._dbsTable = QTableWidget(len(dbs), 1, self)
-        self._dbsTable.setHorizontalHeaderLabels(('Remote Databases',))
-        for i, db in enumerate(dbs):
-            item = QTableWidgetItem("%s (%s)" % (str(db.file),
-                                                 str(db.hash)))
-            item.setData(Qt.UserRole, db)
+        self._reposTable = QTableWidget(len(repos), 1, self)
+        self._reposTable.setHorizontalHeaderLabels(('Remote Repositories',))
+        for i, repo in enumerate(repos):
+            item = QTableWidgetItem("%s (%s)" % (str(repo.file),
+                                                 str(repo.hash)))
+            item.setData(Qt.UserRole, repo)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self._dbsTable.setItem(i, 0, item)
-        self._dbsTable.horizontalHeader().setSectionsClickable(False)
-        self._dbsTable.horizontalHeader().setStretchLastSection(True)
-        self._dbsTable.verticalHeader().setVisible(False)
-        self._dbsTable.setSelectionBehavior(QTableWidget.SelectRows)
-        self._dbsTable.setSelectionMode(QTableWidget.SingleSelection)
-        self._dbsTable.itemClicked.connect(self._dbClicked)
-        minSZ = self._dbsTable.minimumSize()
-        self._dbsTable.setMinimumSize(300, minSZ.height())
-        maxSZ = self._dbsTable.maximumSize()
-        self._dbsTable.setMaximumSize(300, maxSZ.height())
-        layout.addWidget(self._dbsTable)
+            self._reposTable.setItem(i, 0, item)
+        self._reposTable.horizontalHeader().setSectionsClickable(False)
+        self._reposTable.horizontalHeader().setStretchLastSection(True)
+        self._reposTable.verticalHeader().setVisible(False)
+        self._reposTable.setSelectionBehavior(QTableWidget.SelectRows)
+        self._reposTable.setSelectionMode(QTableWidget.SingleSelection)
+        self._reposTable.itemClicked.connect(self._repoClicked)
+        minSZ = self._reposTable.minimumSize()
+        self._reposTable.setMinimumSize(300, minSZ.height())
+        maxSZ = self._reposTable.maximumSize()
+        self._reposTable.setMaximumSize(300, maxSZ.height())
+        layout.addWidget(self._reposTable)
 
         rightSide = QWidget(self)
         rightLayout = QVBoxLayout(rightSide)
@@ -74,19 +74,19 @@ class OpenDialog(QDialog):
         infoLayout.setColumnStretch(1, 1)
         rightLayout.addWidget(infoGroup)
 
-        revsGroup = QGroupBox("Revisions", rightSide)
-        revsLayout = QGridLayout(revsGroup)
-        self._revsTable = QTableWidget(0, 2, revsGroup)
-        self._revsTable.setHorizontalHeaderLabels(('Identifier', 'Date'))
-        horizontalHeader = self._revsTable.horizontalHeader()
+        branchesGroup = QGroupBox("Branches", rightSide)
+        branchesLayout = QGridLayout(branchesGroup)
+        self._branchesTable = QTableWidget(0, 2, branchesGroup)
+        self._branchesTable.setHorizontalHeaderLabels(('Identifier', 'Date'))
+        horizontalHeader = self._branchesTable.horizontalHeader()
         horizontalHeader.setSectionsClickable(False)
         horizontalHeader.setSectionResizeMode(0, horizontalHeader.Stretch)
-        self._revsTable.verticalHeader().setVisible(False)
-        self._revsTable.setSelectionBehavior(QTableWidget.SelectRows)
-        self._revsTable.setSelectionMode(QTableWidget.SingleSelection)
-        self._revsTable.itemClicked.connect(self._revClicked)
-        revsLayout.addWidget(self._revsTable, 0, 0)
-        rightLayout.addWidget(revsGroup)
+        self._branchesTable.verticalHeader().setVisible(False)
+        self._branchesTable.setSelectionBehavior(QTableWidget.SelectRows)
+        self._branchesTable.setSelectionMode(QTableWidget.SingleSelection)
+        self._branchesTable.itemClicked.connect(self._branchClicked)
+        branchesLayout.addWidget(self._branchesTable, 0, 0)
+        rightLayout.addWidget(branchesGroup)
 
         buttonsWidget = QWidget(rightSide)
         buttonsLayout = QHBoxLayout(buttonsWidget)
@@ -101,64 +101,64 @@ class OpenDialog(QDialog):
         rightLayout.addWidget(buttonsWidget)
         layout.addWidget(rightSide)
 
-    def _dbClicked(self, item):
+    def _repoClicked(self, item):
         """
-        Called when a database item is clicked, will update the display.
+        Called when a repository item is clicked, will update the display.
 
         :param item: the item clicked
         """
-        db = item.data(Qt.UserRole)
-        self._fileLabel.setText('<b>File:</b> %s' % str(db.file))
-        self._hashLabel.setText('<b>Hash:</b> %s' % str(db.hash))
-        self._typeLabel.setText('<b>Type:</b> %s' % str(db.type))
-        self._dateLabel.setText('<b>Date:</b> %s' % str(db.date))
+        repo = item.data(Qt.UserRole)
+        self._fileLabel.setText('<b>File:</b> %s' % str(repo.file))
+        self._hashLabel.setText('<b>Hash:</b> %s' % str(repo.hash))
+        self._typeLabel.setText('<b>Type:</b> %s' % str(repo.type))
+        self._dateLabel.setText('<b>Date:</b> %s' % str(repo.date))
 
-        # Display the list of revisions for the selected database
-        revs = [rev for rev in self._revs if rev.hash == db.hash]
-        self._revsTable.setRowCount(len(revs))
-        for i, rev in enumerate(revs):
-            item = QTableWidgetItem(str(rev.uuid))
-            item.setData(Qt.UserRole, rev)
+        # Display the list of branches for the selected repository
+        branches = [br for br in self._branches if br.hash == repo.hash]
+        self._branchesTable.setRowCount(len(branches))
+        for i, branch in enumerate(branches):
+            item = QTableWidgetItem(str(branch.uuid))
+            item.setData(Qt.UserRole, branch)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self._revsTable.setItem(i, 0, item)
-            item = QTableWidgetItem(str(rev.date))
-            item.setData(Qt.UserRole, rev)
+            self._branchesTable.setItem(i, 0, item)
+            item = QTableWidgetItem(str(branch.date))
+            item.setData(Qt.UserRole, branch)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self._revsTable.setItem(i, 1, item)
+            self._branchesTable.setItem(i, 1, item)
 
-    def _revClicked(self, _):
+    def _branchClicked(self, _):
         """
-        Called when a revision item is clicked.
+        Called when a branch item is clicked.
         """
         self._openButton.setEnabled(True)
 
     def getResult(self):
         """
-        Get the result (database, revision) from this dialog.
+        Get the result (repository, branch) from this dialog.
 
         :return: the result
         """
-        db = self._dbsTable.currentItem().data(Qt.UserRole)
-        return db, self._revsTable.currentItem().data(Qt.UserRole)
+        repo = self._reposTable.currentItem().data(Qt.UserRole)
+        return repo, self._branchesTable.currentItem().data(Qt.UserRole)
 
 
 class SaveDialog(QDialog):
     """
-    The save dialog allowing an user to select a remote revision to upload to.
+    The save dialog allowing an user to select a remote database to upload to.
     """
 
-    def __init__(self, plugin, dbs, revs):
+    def __init__(self, plugin, repos, branches):
         """
         Initialize the open dialog.
 
         :param plugin: the plugin instance
-        :param dbs: the list of databases
-        :param revs: the list of revisions
+        :param repos: the list of repositories
+        :param branches: the list of branches
         """
         super(SaveDialog, self).__init__()
         self._plugin = plugin
-        self._dbs = dbs
-        self._revs = revs
+        self._repos = repos
+        self._branches = branches
 
         # General setup of the dialog
         logger.debug("Showing save database dialog")
@@ -169,29 +169,29 @@ class SaveDialog(QDialog):
 
         # Setup the layout and widgets
         layout = QHBoxLayout(self)
-        self._dbsTable = QTableWidget(len(dbs) + 1, 1, self)
-        self._dbsTable.setHorizontalHeaderLabels(('Remote Databases',))
-        for i, db in enumerate(dbs):
-            item = QTableWidgetItem("%s (%s)" % (str(db.file),
-                                                 str(db.hash)))
-            item.setData(Qt.UserRole, db)
+        self._reposTable = QTableWidget(len(repos) + 1, 1, self)
+        self._reposTable.setHorizontalHeaderLabels(('Remote Repositories',))
+        for i, repo in enumerate(repos):
+            item = QTableWidgetItem("%s (%s)" % (str(repo.file),
+                                                 str(repo.hash)))
+            item.setData(Qt.UserRole, repo)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self._dbsTable.setItem(i, 0, item)
-        newItem = QTableWidgetItem("<new database>")
+            self._reposTable.setItem(i, 0, item)
+        newItem = QTableWidgetItem("<new repository>")
         newItem.setData(Qt.UserRole, None)
         newItem.setFlags(newItem.flags() & ~Qt.ItemIsEditable)
-        self._dbsTable.setItem(len(dbs), 0, newItem)
-        self._dbsTable.horizontalHeader().setSectionsClickable(False)
-        self._dbsTable.horizontalHeader().setStretchLastSection(True)
-        self._dbsTable.verticalHeader().setVisible(False)
-        self._dbsTable.setSelectionBehavior(QTableWidget.SelectRows)
-        self._dbsTable.setSelectionMode(QTableWidget.SingleSelection)
-        self._dbsTable.itemClicked.connect(self._dbClicked)
-        minSZ = self._dbsTable.minimumSize()
-        self._dbsTable.setMinimumSize(300, minSZ.height())
-        maxSZ = self._dbsTable.maximumSize()
-        self._dbsTable.setMaximumSize(300, maxSZ.height())
-        layout.addWidget(self._dbsTable)
+        self._reposTable.setItem(len(repos), 0, newItem)
+        self._reposTable.horizontalHeader().setSectionsClickable(False)
+        self._reposTable.horizontalHeader().setStretchLastSection(True)
+        self._reposTable.verticalHeader().setVisible(False)
+        self._reposTable.setSelectionBehavior(QTableWidget.SelectRows)
+        self._reposTable.setSelectionMode(QTableWidget.SingleSelection)
+        self._reposTable.itemClicked.connect(self._repoClicked)
+        minSZ = self._reposTable.minimumSize()
+        self._reposTable.setMinimumSize(300, minSZ.height())
+        maxSZ = self._reposTable.maximumSize()
+        self._reposTable.setMaximumSize(300, maxSZ.height())
+        layout.addWidget(self._reposTable)
 
         rightSide = QWidget(self)
         rightLayout = QVBoxLayout(rightSide)
@@ -209,18 +209,18 @@ class SaveDialog(QDialog):
         infoLayout.setColumnStretch(1, 1)
         rightLayout.addWidget(infoGroup)
 
-        revsGroup = QGroupBox("Revisions", rightSide)
-        revsLayout = QGridLayout(revsGroup)
-        self._revsTable = QTableWidget(0, 2, revsGroup)
-        self._revsTable.setHorizontalHeaderLabels(('Identifier', 'Date'))
-        horizontalHeader = self._revsTable.horizontalHeader()
+        branchesGroup = QGroupBox("Branches", rightSide)
+        branchesLayout = QGridLayout(branchesGroup)
+        self._branchesTable = QTableWidget(0, 2, branchesGroup)
+        self._branchesTable.setHorizontalHeaderLabels(('Identifier', 'Date'))
+        horizontalHeader = self._branchesTable.horizontalHeader()
         horizontalHeader.setSectionsClickable(False)
         horizontalHeader.setSectionResizeMode(0, horizontalHeader.Stretch)
-        self._revsTable.verticalHeader().setVisible(False)
-        self._revsTable.setSelectionBehavior(QTableWidget.SelectRows)
-        self._revsTable.setSelectionMode(QTableWidget.SingleSelection)
-        revsLayout.addWidget(self._revsTable, 0, 0)
-        rightLayout.addWidget(revsGroup)
+        self._branchesTable.verticalHeader().setVisible(False)
+        self._branchesTable.setSelectionBehavior(QTableWidget.SelectRows)
+        self._branchesTable.setSelectionMode(QTableWidget.SingleSelection)
+        branchesLayout.addWidget(self._branchesTable, 0, 0)
+        rightLayout.addWidget(branchesGroup)
 
         buttonsWidget = QWidget(rightSide)
         buttonsLayout = QHBoxLayout(buttonsWidget)
@@ -235,52 +235,52 @@ class SaveDialog(QDialog):
         rightLayout.addWidget(buttonsWidget)
         layout.addWidget(rightSide)
 
-    def _dbClicked(self, item):
+    def _repoClicked(self, item):
         """
-        Called when a database item is clicked, will update the display.
+        Called when a repository item is clicked, will update the display.
 
         :param item: the item clicked
         """
-        db = item.data(Qt.UserRole)
-        db = db if db else Database('', '', '', '')
+        repo = item.data(Qt.UserRole)
+        repo = repo if repo else Repository('', '', '', '')
         self._saveButton.setEnabled(True)
-        self._fileLabel.setText('<b>File:</b> %s' % str(db.file))
-        self._hashLabel.setText('<b>Hash:</b> %s' % str(db.hash))
-        self._typeLabel.setText('<b>Type:</b> %s' % str(db.type))
-        self._dateLabel.setText('<b>Date:</b> %s' % str(db.date))
+        self._fileLabel.setText('<b>File:</b> %s' % str(repo.file))
+        self._hashLabel.setText('<b>Hash:</b> %s' % str(repo.hash))
+        self._typeLabel.setText('<b>Type:</b> %s' % str(repo.type))
+        self._dateLabel.setText('<b>Date:</b> %s' % str(repo.date))
 
-        # Display the list of revisions for the selected database
-        revs = [rev for rev in self._revs if rev.hash == db.hash]
-        self._revsTable.setRowCount(len(revs) + 1)
-        for i, rev in enumerate(revs):
-            item = QTableWidgetItem(str(rev.uuid))
-            item.setData(Qt.UserRole, rev)
+        # Display the list of branches for the selected repository
+        branches = [br for br in self._branches if br.hash == repo.hash]
+        self._branchesTable.setRowCount(len(branches) + 1)
+        for i, br in enumerate(branches):
+            item = QTableWidgetItem(str(br.uuid))
+            item.setData(Qt.UserRole, br)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self._revsTable.setItem(i, 0, item)
-            item = QTableWidgetItem(str(rev.date))
-            item.setData(Qt.UserRole, rev)
+            self._branchesTable.setItem(i, 0, item)
+            item = QTableWidgetItem(str(br.date))
+            item.setData(Qt.UserRole, br)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self._revsTable.setItem(i, 1, item)
-        newItem = QTableWidgetItem("<new revision>")
+            self._branchesTable.setItem(i, 1, item)
+        newItem = QTableWidgetItem("<new branch>")
         item.setData(Qt.UserRole, None)
         newItem.setFlags(newItem.flags() & ~Qt.ItemIsEditable)
-        self._revsTable.setItem(len(revs), 0, newItem)
+        self._branchesTable.setItem(len(branches), 0, newItem)
         newItem = QTableWidgetItem()
         item.setData(Qt.UserRole, None)
         newItem.setFlags(newItem.flags() & ~Qt.ItemIsEditable)
-        self._revsTable.setItem(len(revs), 1, newItem)
+        self._branchesTable.setItem(len(branches), 1, newItem)
 
-    def _revClicked(self, _):
+    def _branchClicked(self, _):
         """
-        Called when a revision item is clicked.
+        Called when a branch item is clicked.
         """
         self._saveButton.setEnabled(True)
 
     def getResult(self):
         """
-        Get the result (database, revision) from this dialog.
+        Get the result (repository, branch) from this dialog.
 
         :return: the result
         """
-        db = self._dbsTable.currentItem().data(Qt.UserRole)
-        return db, self._revsTable.currentItem().data(Qt.UserRole)
+        repo = self._reposTable.currentItem().data(Qt.UserRole)
+        return repo, self._branchesTable.currentItem().data(Qt.UserRole)

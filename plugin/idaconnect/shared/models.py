@@ -13,11 +13,11 @@ class DefaultTable(Default, Table):
         return self
 
 
-class Database(DefaultTable):
+class Repository(DefaultTable):
     """
-    The class representing a database.
+    The class representing a repository.
     """
-    __table__ = 'databases'
+    __table__ = 'repositories'
 
     hash = Field(str, notNull=True, unique=True)
     file = Field(str, notNull=True)
@@ -26,41 +26,41 @@ class Database(DefaultTable):
 
     def __init__(self, hash, file, type, date):
         """
-        Initialize a database.
+        Initialize a repository.
 
         :param hash: the hash of the input file
         :param file: the name of the input file
         :param type: the type of the input file
         :param date: the date of creation
         """
-        super(Database, self).__init__()
+        super(Repository, self).__init__()
         self.hash = hash
         self.file = file
         self.type = type
         self.date = date
 
 
-class Revision(DefaultTable):
+class Branch(DefaultTable):
     """
-    The class representing a revision.
+    The class representing a branch.
     """
-    __table__ = 'revisions'
+    __table__ = 'branches'
 
     uuid = Field(str, notNull=True, unique=True)
     hash = Field(str, notNull=True)
     date = Field(str, notNull=True)
-    bits = Field(str, notNull=True)
+    bits = Field(int, notNull=True)
 
     def __init__(self, uuid, hash, date, bits):
         """
-        Initialize a revision.
+        Initialize a branch.
 
-        :param uuid: the UUID of the revision
+        :param uuid: the UUID of the branch
         :param hash: the hash of the input file
         :param date: the date of creation
-        :param bits: the version (32/64) of IDA
+        :param bits: the bitness (32/64) of IDA
         """
-        super(Revision, self).__init__()
+        super(Branch, self).__init__()
         self.uuid = uuid
         self.hash = hash
         self.date = date

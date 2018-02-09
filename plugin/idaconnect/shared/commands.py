@@ -1,98 +1,98 @@
-from .models import Database, Revision
+from .models import Repository, Branch
 from .packets import (Command, DefaultCommand, ParentCommand,
                       Query as IQuery, Reply as IReply, Container)
 
 
-class GetDatabases(ParentCommand):
-    __command__ = 'get_dbs'
+class GetRepositories(ParentCommand):
+    __command__ = 'get_repos'
 
     class Query(IQuery, DefaultCommand):
 
         def __init__(self, hash=None):
-            super(GetDatabases.Query, self).__init__()
+            super(GetRepositories.Query, self).__init__()
             self.hash = hash
 
     class Reply(IReply, Command):
 
-        def __init__(self, query, dbs):
-            super(GetDatabases.Reply, self).__init__(query)
-            self.dbs = dbs
+        def __init__(self, query, repos):
+            super(GetRepositories.Reply, self).__init__(query)
+            self.repos = repos
 
         def buildCommand(self, dct):
-            dct['dbs'] = [db.build(dict()) for db in self.dbs]
+            dct['repos'] = [repo.build(dict()) for repo in self.repos]
 
         def parseCommand(self, dct):
-            self.dbs = [Database.new(db) for db in dct['dbs']]
+            self.repos = [Repository.new(repo) for repo in dct['repos']]
 
 
-class GetRevisions(ParentCommand):
-    __command__ = 'get_revs'
+class GetBranches(ParentCommand):
+    __command__ = 'get_branches'
 
     class Query(IQuery, DefaultCommand):
 
         def __init__(self, hash=None, uuid=None):
-            super(GetRevisions.Query, self).__init__()
+            super(GetBranches.Query, self).__init__()
             self.hash = hash
             self.uuid = uuid
 
     class Reply(IReply, Command):
 
-        def __init__(self, query, revs):
-            super(GetRevisions.Reply, self).__init__(query)
-            self.revs = revs
+        def __init__(self, query, branches):
+            super(GetBranches.Reply, self).__init__(query)
+            self.branches = branches
 
         def buildCommand(self, dct):
-            dct['revs'] = [rev.build(dict()) for rev in self.revs]
+            dct['branches'] = [br.build(dict()) for br in self.branches]
 
         def parseCommand(self, dct):
-            self.revs = [Revision.new(rev) for rev in dct['revs']]
+            self.branches = [Branch.new(br) for br in dct['branches']]
 
 
-class NewDatabase(ParentCommand):
-    __command__ = 'new_db'
+class NewRepository(ParentCommand):
+    __command__ = 'new_repo'
 
     class Query(IQuery, Command):
 
-        def __init__(self, db):
-            super(NewDatabase.Query, self).__init__()
-            self.db = db
+        def __init__(self, repo):
+            super(NewRepository.Query, self).__init__()
+            self.repo = repo
 
         def buildCommand(self, dct):
-            self.db.build(dct['db'])
+            self.repo.build(dct['repo'])
 
         def parseCommand(self, dct):
-            self.db = Database.new(dct['db'])
+            self.repo = Repository.new(dct['repo'])
 
     class Reply(IReply, Command):
         pass
 
 
-class NewRevision(ParentCommand):
-    __command__ = 'new_rev'
+class NewBranch(ParentCommand):
+    __command__ = 'new_branch'
 
     class Query(IQuery, Command):
 
-        def __init__(self, rev):
-            super(NewRevision.Query, self).__init__()
-            self.rev = rev
+        def __init__(self, branch):
+            super(NewBranch.Query, self).__init__()
+            self.branch = branch
 
         def buildCommand(self, dct):
-            self.rev.build(dct['rev'])
+            self.branch.build(dct['branch'])
 
         def parseCommand(self, dct):
-            self.rev = Revision.new(dct['rev'])
+            self.branch = Branch.new(dct['branch'])
 
     class Reply(IReply, Command):
         pass
 
 
-class UploadFile(ParentCommand):
-    __command__ = 'upload_file'
+class UploadDatabase(ParentCommand):
+    __command__ = 'upload_db'
 
     class Query(IQuery, Container, DefaultCommand):
 
         def __init__(self, hash, uuid):
-            super(UploadFile.Query, self).__init__()
+            super(UploadDatabase.Query, self).__init__()
             self.hash = hash
             self.uuid = uuid
 
@@ -100,13 +100,13 @@ class UploadFile(ParentCommand):
         pass
 
 
-class DownloadFile(ParentCommand):
-    __command__ = 'download_file'
+class DownloadDatabase(ParentCommand):
+    __command__ = 'download_db'
 
     class Query(IQuery, DefaultCommand):
 
         def __init__(self, hash, uuid):
-            super(DownloadFile.Query, self).__init__()
+            super(DownloadDatabase.Query, self).__init__()
             self.hash = hash
             self.uuid = uuid
 

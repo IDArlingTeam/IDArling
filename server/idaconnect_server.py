@@ -6,11 +6,11 @@ import sqlite3
 from twisted.internet import reactor, protocol
 from twisted.python import log
 
-from shared.commands import (GetDatabases, GetRevisions,
-                             NewDatabase, NewRevision,
-                             UploadFile, DownloadFile)
+from shared.commands import (GetRepositories, GetBranches,
+                             NewRepository, NewBranch,
+                             UploadDatabase, DownloadDatabase)
 from shared.mapper import Mapper
-from shared.models import Database, Revision
+from shared.models import Repository, Branch
 from shared.packets import Command, Event as IEvent, _EventFactory
 from shared.protocol import Protocol
 
@@ -88,12 +88,12 @@ class ServerProtocol(Protocol):
 
         # Setup command handlers
         self._handlers = {
-            GetDatabases.Query: self._handleGetDatabases,
-            GetRevisions.Query: self._handleGetRevisions,
-            NewDatabase.Query: self._handleNewDatabase,
-            NewRevision.Query: self._handleNewRevision,
-            UploadFile.Query: self._handleUploadFile,
-            DownloadFile.Query: self._handleDownloadFile
+            GetRepositories.Query: self._handleGetRepositories,
+            GetBranches.Query: self._handleGetBranches,
+            NewRepository.Query: self._handleNewRepository,
+            NewBranch.Query: self._handleNewBranch,
+            UploadDatabase.Query: self._handleUploadDatabase,
+            DownloadDatabase.Query: self._handleDownloadDatabase,
         }
 
     def connectionMade(self):
@@ -143,63 +143,63 @@ class ServerProtocol(Protocol):
             return False
         return True
 
-    def _handleGetDatabases(self, query):
-        d = Database.all(hash=query.hash)
+    def _handleGetRepositories(self, query):
+        d = Repository.all(hash=query.hash)
 
-        def callback(dbs):
-            self.sendPacket(GetDatabases.Reply(query, dbs))
+        def callback(repos):
+            self.sendPacket(GetRepositories.Reply(query, repos))
         d.addCallback(callback)
 
-    def _handleGetRevisions(self, query):
-        d = Revision.all(uuid=query.uuid, hash=query.hash)
+    def _handleGetBranches(self, query):
+        d = Branch.all(uuid=query.uuid, hash=query.hash)
 
-        def callback(revs):
-            self.sendPacket(GetRevisions.Reply(query, revs))
+        def callback(branches):
+            self.sendPacket(GetBranches.Reply(query, branches))
         d.addCallback(callback)
 
-    def _handleNewDatabase(self, query):
-        d = query.db.create()
+    def _handleNewRepository(self, query):
+        d = query.repo.create()
 
         def callback(_):
-            self.sendPacket(NewDatabase.Reply(query))
+            self.sendPacket(NewRepository.Reply(query))
         d.addCallback(callback)
 
-    def _handleNewRevision(self, query):
-        d = query.rev.create()
+    def _handleNewBranch(self, query):
+        d = query.branch.create()
 
         def callback(_):
-            self.sendPacket(NewRevision.Reply(query))
+            self.sendPacket(NewBranch.Reply(query))
         d.addCallback(callback)
 
-    def _handleUploadFile(self, query):
-        def onRevision(rev):
+    def _handleUploadDatabase(self, query):
+        def onBranchQuery(branch):
             filesDir = os.path.join(os.path.dirname(__file__), 'files')
             filesDir = os.path.abspath(filesDir)
             if not os.path.exists(filesDir):
                 os.makedirs(filesDir)
-            fileName = rev.uuid + ('.i64' if rev.bits else '.idb')
+            fileName = branch.uuid + ('.i64' if branch.bits == 64 else '.idb')
             filePath = os.path.join(filesDir, fileName)
 
             # Write the file received to disk
             with open(filePath, 'wb') as outputFile:
                 outputFile.write(query.content)
             logger.info("Saved file %s" % fileName)
-            self.sendPacket(UploadFile.Reply(query))
-        Revision.one(uuid=query.uuid).addCallback(onRevision)
+            self.sendPacket(UploadDatabase.Reply(query))
+        Branch.one(uuid=query.uuid).addCallback(onBranchQuery)
 
-    def _handleDownloadFile(self, query):
-        def onRevision(rev):
+    def _handleDownloadDatabase(self, query):
+        def onBranchQuery(branch):
             filesDir = os.path.join(os.path.dirname(__file__), 'files')
             filesDir = os.path.abspath(filesDir)
-            fileName = rev.uuid + ('.i64' if rev.bits else '.idb')
+            fileName = branch.uuid + ('.i64' if branch.bits == 64 else '.idb')
             filePath = os.path.join(filesDir, fileName)
 
             # Read file from disk and sent it
-            reply = DownloadFile.Reply(query)
+            reply = DownloadDatabase.Reply(query)
             with open(filePath, 'rb') as inputFile:
                 reply.content = inputFile.read()
             self.sendPacket(reply)
-        Revision.one(uuid=query.uuid).addCallback(onRevision)
+        Branch.one(uuid=query.uuid).addCallback(onBranchQuery)
 
 
 class ServerFactory(protocol.Factory, object):
@@ -219,9 +219,9 @@ class ServerFactory(protocol.Factory, object):
         _EventFactory._EVENTS = collections.defaultdict(Event)
 
         # Initialize database and bind mapper
-        databaseDir = os.path.join(os.path.dirname(__file__), 'files')
-        databaseDir = os.path.abspath(databaseDir)
-        databasePath = os.path.join(databaseDir, 'database.db')
+        filesDir = os.path.join(os.path.dirname(__file__), 'files')
+        filesDir = os.path.abspath(filesDir)
+        databasePath = os.path.join(filesDir, 'database.db')
 
         def setRowFactory(db):
             db.row_factory = sqlite3.Row
