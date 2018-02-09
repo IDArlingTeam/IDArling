@@ -18,6 +18,7 @@ from ..shared.commands import (GetRepositories, GetBranches,
                                NewRepository, NewBranch,
                                DownloadDatabase, UploadDatabase)
 from ..shared.models import Repository, Branch
+from ..utilities.misc import localResource
 from dialogs import OpenDialog, SaveDialog
 
 logger = logging.getLogger('IDAConnect.Interface')
@@ -252,13 +253,9 @@ class OpenActionHandler(ActionHandler):
         # Close the progress dialog
         self._progressCallback(progress, 1, 1)
 
-        # FIXME: Make an utility for accessing user directory
-        filesDir = os.path.join(idaapi.get_user_idadir(),
-                                '.idaconnect', 'files')
-        if not os.path.exists(filesDir):
-            os.makedirs(filesDir)
+        # Get the absolute path of the file
         fileName = branch.uuid + ('.i64' if branch.bits == 64 else '.idb')
-        filePath = os.path.join(filesDir, fileName)
+        filePath = localResource('files', fileName)
 
         # Write the packet content to disk
         with open(filePath, 'wb') as outputFile:
@@ -275,10 +272,14 @@ class OpenActionHandler(ActionHandler):
         # success.setWindowIcon(QIcon(iconPath))
         # success.exec_()
 
-        # Save the old and open the new database
+        # Save the current state
+        self._plugin.saveState()
+
+        # Save the old database
         idbPath = idc.GetIdbPath()
         if idbPath:
             idc.save_database(idbPath, ida_loader.DBFL_KILL)
+        # Open the new database
         QProcess.startDetached(qApp.applicationFilePath(), [filePath])
         qApp.quit()  # FIXME: Find an alternative, if any
 

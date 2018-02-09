@@ -4,6 +4,8 @@ import sys
 
 import idaapi
 
+from misc import localResource
+
 
 class LoggerProxy(object):
     """
@@ -55,10 +57,7 @@ def startLogging():
     logger = logging.getLogger('IDAConnect.Plugin')
 
     # Get the absolute path to the log file
-    logDir = os.path.join(idaapi.get_user_idadir(), '.idaconnect', 'logs')
-    if not os.path.exists(logDir):
-        os.makedirs(logDir)
-    logPath = os.path.join(logDir, 'idaconnect.%s.log' % os.getpid())
+    logPath = localResource('logs', 'idaconnect.%s.log' % os.getpid())
 
     # Configure the logger's destination and format
     logging.basicConfig(
