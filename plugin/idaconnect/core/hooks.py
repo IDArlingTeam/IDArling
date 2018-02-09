@@ -1,6 +1,7 @@
 import logging
 
 import ida_idp
+import ida_kernwin
 import idaapi
 import idc
 
@@ -322,6 +323,16 @@ class IDPHooks(Hooks, ida_idp.IDP_Hooks):
         return 0
 
 
+class UIHooks(Hooks, ida_kernwin.UI_Hooks):
+    """
+    The concrete class for UI-related events.
+    """
+
+    def __init__(self, plugin):
+        ida_kernwin.UI_Hooks.__init__(self)
+        Hooks.__init__(self, plugin)
+
+
 class HexRaysHooks(Hooks):
     """
     The concrete class for Hex-Rays-related events.
@@ -329,24 +340,29 @@ class HexRaysHooks(Hooks):
 
     def __init__(self, plugin):
         super(HexRaysHooks, self).__init__(plugin)
-        self._hexrays_available = True
-        if not idaapi.init_hexrays_plugin():
-            self._hexrays_available = False
-            logger.info("Hex-Rays decompiler plugin is not available")
-
-    def __del__(self):
-        if self._hexrays_available:
-            idaapi.term_hexrays_plugin()
+        self._available = None
+        self._installed = False
 
     def hook(self):
-        if self._hexrays_available:
-            idaapi.install_hexrays_callback(self._eventsCallback)
+        if self._available is None:
+            if not idaapi.init_hexrays_plugin():
+                logger.info("Hex-Rays SDK is not available")
+                self._available = False
+            else:
+                idaapi.install_hexrays_callback(self._hxe_callback)
+                self._available = True
+
+        if self._available:
+            self._installed = True
 
     def unhook(self):
-        if self._hexrays_available:
-            idaapi.remove_hexrays_callback(self._eventsCallback)
+        if self._available:
+            self._installed = False
 
-    def _eventsCallback(self, event, *_):
+    def _hxe_callback(self, event, *_):
+        if not self._installed:
+            return 0
+
         if event == idaapi.hxe_func_printed:
             ea = idaapi.get_screen_ea()
             func = idaapi.get_func(ea)
