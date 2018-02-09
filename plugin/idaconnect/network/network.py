@@ -8,7 +8,6 @@ from twisted.internet import reactor
 from ..module import Module
 from client import ClientFactory
 
-
 logger = logging.getLogger('IDAConnect.Network')
 
 

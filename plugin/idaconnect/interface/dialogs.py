@@ -8,7 +8,6 @@ from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout,
 
 from ..shared.models import Database
 
-
 logger = logging.getLogger('IDAConnect.Interface')
 
 

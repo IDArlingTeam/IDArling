@@ -3,7 +3,6 @@ import logging
 from ..module import Module
 from hooks import IDBHooks, IDPHooks, HexRaysHooks
 
-
 logger = logging.getLogger('IDAConnect.Core')
 
 

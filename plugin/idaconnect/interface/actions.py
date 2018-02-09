@@ -20,7 +20,6 @@ from ..shared.commands import (GetDatabases, GetRevisions,
 from ..shared.models import Database, Revision
 from dialogs import OpenDialog, SaveDialog
 
-
 logger = logging.getLogger('IDAConnect.Interface')
 
 
@@ -183,7 +182,7 @@ class OpenActionHandler(ActionHandler):
         :return: refresh or not the IDA windows
         """
         # Ask the server for the list of databases
-        d = self._plugin.network.sendPacket(GetDatabases())
+        d = self._plugin.network.sendPacket(GetDatabases.Query())
         d.addCallback(self._onGetDatabasesReply)
         d.addErrback(logger.exception)
         return 1
@@ -195,7 +194,7 @@ class OpenActionHandler(ActionHandler):
         :param reply: the reply from the server
         """
         # Ask the server for the list of revisions
-        d = self._plugin.network.sendPacket(GetRevisions())
+        d = self._plugin.network.sendPacket(GetRevisions.Query())
         d.addCallback(partial(self._onGetRevisionsReply, reply.dbs))
         d.addErrback(logger.exception)
 
@@ -230,7 +229,7 @@ class OpenActionHandler(ActionHandler):
         progress.setWindowIcon(QIcon(iconPath))
 
         # Sent a packet to download the file
-        packet = DownloadFile(db.hash, rev.uuid)
+        packet = DownloadFile.Query(db.hash, rev.uuid)
         callback = partial(self._progressCallback, progress)
 
         def setDownloadCallback(reply):
@@ -329,7 +328,7 @@ class SaveActionHandler(ActionHandler):
         :return: refresh or not the IDA windows
         """
         # Ask the server for the list of databases
-        d = self._plugin.network.sendPacket(GetDatabases())
+        d = self._plugin.network.sendPacket(GetDatabases.Query())
         d.addCallback(self._onGetDatabasesReply)
         d.addErrback(logger.exception)
         return 1
@@ -341,7 +340,7 @@ class SaveActionHandler(ActionHandler):
         :param reply: the reply from the server
         """
         # Ask the server for the list of revisions
-        d = self._plugin.network.sendPacket(GetRevisions())
+        d = self._plugin.network.sendPacket(GetRevisions.Query())
         d.addCallback(partial(self._onGetRevisionsReply, reply.dbs))
         d.addErrback(logger.exception)
 
@@ -372,7 +371,7 @@ class SaveActionHandler(ActionHandler):
             dateFormat = "%Y/%m/%d %H:%M"
             date = datetime.datetime.now().strftime(dateFormat)
             db = Database(hash, file, type, date)
-            d = self._plugin.network.sendPacket(NewDatabase(db))
+            d = self._plugin.network.sendPacket(NewDatabase.Query(db))
             d.addCallback(partial(self._onNewDatabaseReply, db, rev))
         else:
             self._onNewDatabaseReply(db, rev, None)
@@ -384,14 +383,14 @@ class SaveActionHandler(ActionHandler):
             dateFormat = "%Y/%m/%d %H:%M"
             date = datetime.datetime.now().strftime(dateFormat)
             rev = Revision(uuid_, db.hash, date, idc.__EA64__)
-            d = self._plugin.network.sendPacket(NewRevision(rev))
+            d = self._plugin.network.sendPacket(NewRevision.Query(rev))
             d.addCallback(partial(self._onNewRevisionReply, db, rev))
         else:
             self._onNewRevisionReply(db, rev, None)
 
     def _onNewRevisionReply(self, db, rev, _):
         # Create the packet that will hold the file
-        packet = UploadFile(db.hash, rev.uuid)
+        packet = UploadFile.Query(db.hash, rev.uuid)
         inputPath = idc.GetIdbPath()
         with open(inputPath, 'rb') as inputFile:
             packet.content = inputFile.read()
@@ -406,12 +405,14 @@ class SaveActionHandler(ActionHandler):
         progress.setWindowTitle("Save to server")
         iconPath = self._plugin.resource('upload.png')
         progress.setWindowIcon(QIcon(iconPath))
+        progress.show()
 
         # Send the packet to upload the file
         packet.upback = partial(self._progressCallback, progress)
-        self._plugin.network.sendPacket(packet)
-        progress.show()
+        d = self._plugin.network.sendPacket(packet)
+        d.addCallback(self._onUploadFileReply)
 
+    def _onUploadFileReply(self, _):
         # Show a success dialog
         success = QMessageBox()
         success.setIcon(QMessageBox.Information)

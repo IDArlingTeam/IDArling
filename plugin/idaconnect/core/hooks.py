@@ -6,7 +6,6 @@ import idc
 
 from events import *
 
-
 logger = logging.getLogger('IDAConnect.Core')
 
 

@@ -1,4 +1,5 @@
 import collections
+import itertools
 
 from twisted.internet import defer
 
@@ -75,7 +76,7 @@ class Default(Serializable):
         self.__dict__.update(Default.attrs(dct))
 
 
-class PacketFactory(type):
+class _PacketFactory(type):
     """
     A factory class used to instantiate packets as they come from the network.
     """
@@ -91,10 +92,10 @@ class PacketFactory(type):
         :param attrs: the attributes of the new class
         :return: the newly created class
         """
-        cls = super(PacketFactory, mcs).__new__(mcs, name, bases, attrs)
+        cls = super(_PacketFactory, mcs).__new__(mcs, name, bases, attrs)
         if cls.__type__ is not None \
-                and cls.__type__ not in PacketFactory._PACKETS:
-            PacketFactory._PACKETS[cls.__type__] = cls
+                and cls.__type__ not in _PacketFactory._PACKETS:
+            _PacketFactory._PACKETS[cls.__type__] = cls
         return cls
 
     @classmethod
@@ -105,7 +106,7 @@ class PacketFactory(type):
         :param dct: the dictionary
         :return: the packet class
         """
-        cls = PacketFactory._PACKETS[dct['type']]
+        cls = _PacketFactory._PACKETS[dct['type']]
         if cls.__metaclass__ != mcs:
             cls = cls.__metaclass__.getClass(dct)
         return cls
@@ -116,7 +117,7 @@ class Packet(Serializable):
     The base class for every packet received. Currently, the packet can
     only be of two kinds: either it is an event or a command.
     """
-    __metaclass__ = PacketFactory
+    __metaclass__ = _PacketFactory
 
     __type__ = None
 
@@ -135,7 +136,7 @@ class Packet(Serializable):
         :param dct: the dictionary
         :return: the packet
         """
-        cls = PacketFactory.getClass(dct)
+        cls = _PacketFactory.getClass(dct)
         packet = cls.new(dct)
         if isinstance(packet, Reply):
             packet.triggerInitback()
@@ -158,9 +159,12 @@ class Packet(Serializable):
 
         :return: the representation
         """
-        s = ['{}={}'.format(k, v) for k, v
-             in Default.attrs(self.__dict__).iteritems()]
-        return '{}({})'.format(self.__class__.__name__, ', '.join(s))
+        name = self.__class__.__name__
+        if isinstance(self, Query) or isinstance(self, Reply):
+            name = self.__parent__.__name__ + '.' + name
+        attrs = ['{}={}'.format(k, v) for k, v
+                 in Default.attrs(self.__dict__).iteritems()]
+        return '{}({})'.format(name, ', '.join(attrs))
 
 
 class AlreadyInitedError(Exception):
@@ -227,7 +231,7 @@ class PacketDeferred(defer.Deferred, object):
             self._initback(self._initresult)
 
 
-class EventFactory(PacketFactory):
+class _EventFactory(_PacketFactory):
     """
     A factory class used to instantiate the packets of type event.
     """
@@ -235,18 +239,15 @@ class EventFactory(PacketFactory):
 
     @staticmethod
     def __new__(mcs, name, bases, attrs):
-        cls = super(EventFactory, mcs).__new__(mcs, name, bases, attrs)
+        cls = super(_EventFactory, mcs).__new__(mcs, name, bases, attrs)
         if cls.__event__ is not None \
-                and cls.__event__ not in EventFactory._EVENTS:
-            EventFactory._EVENTS[cls.__event__] = cls
+                and cls.__event__ not in _EventFactory._EVENTS:
+            _EventFactory._EVENTS[cls.__event__] = cls
         return cls
 
     @classmethod
     def getClass(mcs, dct):
-        try:
-            cls = EventFactory._EVENTS[dct['event_type']]
-        except KeyError:
-            cls = AbstractEvent
+        cls = _EventFactory._EVENTS[dct['event_type']]
         if cls.__metaclass__ != mcs:
             cls = cls.__metaclass__.getClass(dct)
         return cls
@@ -256,7 +257,7 @@ class Event(Packet):
     """
     The base class of every packet of type event received.
     """
-    __metaclass__ = EventFactory
+    __metaclass__ = _EventFactory
 
     __type__ = 'event'
     __event__ = None
@@ -291,12 +292,6 @@ class Event(Packet):
         """
         pass
 
-    def __call__(self):
-        """
-        Trigger the event. This will reproduce the action into IDA.
-        """
-        raise NotImplementedError("__call__() not implemented")
-
 
 class DefaultEvent(Default, Event):
     """
@@ -310,20 +305,7 @@ class DefaultEvent(Default, Event):
         self.parseDefault(dct)
 
 
-class AbstractEvent(Event):
-    """
-    A class to represent events as seen by the server. The server relays the
-    events to the interested clients, it doesn't know to interpret them.
-    """
-
-    def buildEvent(self, dct):
-        dct.update(self.__dict__)
-
-    def parseEvent(self, dct):
-        self.__dict__.update(dct)
-
-
-class CommandFactory(PacketFactory):
+class _CommandFactory(_PacketFactory):
     """
     A factory class used to instantiate the packets of type command.
     """
@@ -331,15 +313,24 @@ class CommandFactory(PacketFactory):
 
     @staticmethod
     def __new__(mcs, name, bases, attrs):
-        cls = super(CommandFactory, mcs).__new__(mcs, name, bases, attrs)
+        cls = super(_CommandFactory, mcs).__new__(mcs, name, bases, attrs)
         if cls.__command__ is not None \
-                and cls.__command__ not in CommandFactory._COMMANDS:
-            CommandFactory._COMMANDS[cls.__command__] = cls
+                and cls.__command__ not in _CommandFactory._COMMANDS:
+            if issubclass(cls, ParentCommand):
+                cls.Query.__parent__ = cls
+                cls.Query.__command__ = cls.__command__ + '_query'
+                _CommandFactory._COMMANDS[cls.Query.__command__] = cls.Query
+
+                cls.Reply.__parent__ = cls
+                cls.Reply.__command__ = cls.__command__ + '_reply'
+                _CommandFactory._COMMANDS[cls.Reply.__command__] = cls.Reply
+            else:
+                _CommandFactory._COMMANDS[cls.__command__] = cls
         return cls
 
     @classmethod
     def getClass(mcs, dct):
-        cls = CommandFactory._COMMANDS[dct['command_type']]
+        cls = _CommandFactory._COMMANDS[dct['command_type']]
         if cls.__metaclass__ != mcs:
             cls = cls.__metaclass__.getClass(dct)
         return cls
@@ -349,7 +340,7 @@ class Command(Packet):
     """
     The base class of every packet of type command received.
     """
-    __metaclass__ = CommandFactory
+    __metaclass__ = _CommandFactory
 
     __type__ = 'command'
     __command__ = None
@@ -389,57 +380,113 @@ class DefaultCommand(Default, Command):
     """
     A mix-in class for commands that can be serialized from their attributes.
     """
-    pass
 
     def buildCommand(self, dct):
-        Default.buildDefault(self, dct)
+        self.buildDefault(dct)
 
     def parseCommand(self, dct):
-        Default.parseDefault(self, dct)
+        self.parseDefault(dct)
+
+
+class ParentCommand(Command):
+    """
+    An inner class that must used in order to link queries with replies.
+    """
+    __callbacks__ = {}
+    Query, Reply = None, None
 
 
 class Query(Packet):
     """
     A class that must be inherited by commands expecting a reply.
     """
-    CALLBACKS = []
+    __parent__ = None
 
-    @classmethod
-    def registerCallback(cls, d):
+    _NEXT_ID = itertools.count()
+
+    def __init__(self):
+        """
+        Initialize a query command.
+        """
+        super(Query, self).__init__()
+        self._id = Query._NEXT_ID.next()
+
+    def build(self, dct):
+        super(Query, self).build(dct)
+        dct['__id__'] = self._id
+        return dct
+
+    def parse(self, dct):
+        super(Query, self).parse(dct)
+        self._id = dct['__id__']
+        return self
+
+    @property
+    def id(self):
+        """
+        Get the identifier of the query packet.
+
+        :return: the id
+        """
+        return self._id
+
+    def registerCallback(self, d):
         """
         Register a callback for when the corresponding reply will be received.
 
         :param: the deferred to use
         """
-        cls.CALLBACKS.append(d)
+        self.__parent__.__callbacks__[self._id] = d
 
 
 class Reply(Packet):
     """
     A class that must be inherited by commands sent in response to a query.
     """
-    __query__ = None
+    __parent__ = None
 
-    def __init__(self):
+    def __init__(self, query):
         """
-        Initialize a reply.
+        Initialize a reply command.
+
+        :param query: the query we're replying to
         """
         super(Reply, self).__init__()
-        assert self.__query__ is not None, "__query__ not implemented"
+        self._id = query.id
 
-    def triggerInitback(self):
+    def build(self, dct):
+        super(Reply, self).build(dct)
+        dct['__id__'] = self._id
+        return dct
+
+    def parse(self, dct):
+        super(Reply, self).parse(dct)
+        self._id = dct['__id__']
+        return self
+
+    @property
+    def id(self):
         """
-        Trigger the initialization callback of the corresponding query.
+        Get the identifier of the reply packet.
+
+        :return: the id
         """
-        d = self.__query__.CALLBACKS[0]
-        d.initback(self)
+        return self._id
 
     def triggerCallback(self):
         """
         Trigger the finalization callback of the corresponding query.
         """
-        d = self.__query__.CALLBACKS.pop(0)
+        d = self.__parent__.__callbacks__[self._id]
         d.callback(self)
+        del self.__parent__.__callbacks__[self._id]
+
+    def triggerInitback(self):
+        """
+        Trigger the initialization callback of the corresponding query.
+        """
+        d = self.__parent__.__callbacks__[self._id]
+        d.initback(self)
 
 
 class Container(Command):

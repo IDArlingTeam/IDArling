@@ -6,7 +6,6 @@ from ..module import Module
 from actions import OpenAction, SaveAction
 from widgets import StatusWidget
 
-
 logger = logging.getLogger('IDAConnect.Interface')
 
 

@@ -6,7 +6,6 @@ from twisted.internet.protocol import ClientFactory as Factory
 from ..shared.packets import Command, Event
 from ..shared.protocol import Protocol
 
-
 logger = logging.getLogger('IDAConnect.Network')
 
 

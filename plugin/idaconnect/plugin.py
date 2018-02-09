@@ -7,7 +7,6 @@ from network.network import Network
 from utilities.log import startLogging
 from utilities.misc import pluginResource
 
-
 # Start logging
 logger = startLogging()
 

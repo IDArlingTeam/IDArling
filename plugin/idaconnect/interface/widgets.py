@@ -4,7 +4,6 @@ from PyQt5.QtCore import Qt, QSize, QPoint
 from PyQt5.QtGui import QPixmap, QIcon, QPainter
 from PyQt5.QtWidgets import QWidget, QLabel, QMenu, QAction
 
-
 logger = logging.getLogger('IDAConnect.Interface')
 
 

@@ -1,3 +1,4 @@
+import collections
 import logging
 import os
 import sqlite3
@@ -5,14 +6,12 @@ import sqlite3
 from twisted.internet import reactor, protocol
 from twisted.python import log
 
-from shared.commands import (GetDatabases, GetDatabasesReply,
-                             GetRevisions, GetRevisionsReply,
-                             NewDatabase, NewDatabaseReply,
-                             NewRevision, NewRevisionReply,
-                             UploadFile, DownloadFile, DownloadFileReply)
+from shared.commands import (GetDatabases, GetRevisions,
+                             NewDatabase, NewRevision,
+                             UploadFile, DownloadFile)
 from shared.mapper import Mapper
 from shared.models import Database, Revision
-from shared.packets import Command, AbstractEvent
+from shared.packets import Command, Event as IEvent, _EventFactory
 from shared.protocol import Protocol
 
 
@@ -59,6 +58,20 @@ def startLogging():
 logger = startLogging()
 
 
+class Event(IEvent):
+    """
+    A class to represent events as seen by the server. The server relays the
+    events to the interested clients, it doesn't know to interpret them.
+    """
+    __event__ = 'all'
+
+    def buildEvent(self, dct):
+        dct.update(self.__dict__)
+
+    def parseEvent(self, dct):
+        self.__dict__.update(dct)
+
+
 class ServerProtocol(Protocol):
     """
     The server implementation of the protocol.
@@ -75,12 +88,12 @@ class ServerProtocol(Protocol):
 
         # Setup command handlers
         self._handlers = {
-            GetDatabases: self._handleGetDatabases,
-            GetRevisions: self._handleGetRevisions,
-            NewDatabase: self._handleNewDatabase,
-            NewRevision: self._handleNewRevision,
-            UploadFile: self._handleUploadFile,
-            DownloadFile: self._handleDownloadFile
+            GetDatabases.Query: self._handleGetDatabases,
+            GetRevisions.Query: self._handleGetRevisions,
+            NewDatabase.Query: self._handleNewDatabase,
+            NewRevision.Query: self._handleNewRevision,
+            UploadFile.Query: self._handleUploadFile,
+            DownloadFile.Query: self._handleDownloadFile
         }
 
     def connectionMade(self):
@@ -122,7 +135,7 @@ class ServerProtocol(Protocol):
             # Call the corresponding handler
             self._handlers[packet.__class__](packet)
 
-        elif isinstance(packet, AbstractEvent):
+        elif isinstance(packet, Event):
             # Forward the event to all clients
             self._factory.sendPacketToAll(packet, self)
 
@@ -130,24 +143,35 @@ class ServerProtocol(Protocol):
             return False
         return True
 
-    def _handleGetDatabases(self, packet):
-        d = Database.all(hash=packet.hash)
-        d.addCallback(lambda dbs: self.sendPacket(GetDatabasesReply(dbs)))
+    def _handleGetDatabases(self, query):
+        d = Database.all(hash=query.hash)
 
-    def _handleGetRevisions(self, packet):
-        d = Revision.all(uuid=packet.uuid, hash=packet.hash)
-        d.addCallback(lambda revs:  self.sendPacket(GetRevisionsReply(revs)))
+        def callback(dbs):
+            self.sendPacket(GetDatabases.Reply(query, dbs))
+        d.addCallback(callback)
 
-    def _handleNewDatabase(self, packet):
-        d = packet.db.create()
-        d.addCallback(lambda _: self.sendPacket(NewDatabaseReply()))
+    def _handleGetRevisions(self, query):
+        d = Revision.all(uuid=query.uuid, hash=query.hash)
 
-    def _handleNewRevision(self, packet):
-        d = packet.rev.create()
-        d.addCallback(lambda _: self.sendPacket(NewRevisionReply()))
+        def callback(revs):
+            self.sendPacket(GetRevisions.Reply(query, revs))
+        d.addCallback(callback)
 
-    @staticmethod
-    def _handleUploadFile(packet):
+    def _handleNewDatabase(self, query):
+        d = query.db.create()
+
+        def callback(_):
+            self.sendPacket(NewDatabase.Reply(query))
+        d.addCallback(callback)
+
+    def _handleNewRevision(self, query):
+        d = query.rev.create()
+
+        def callback(_):
+            self.sendPacket(NewRevision.Reply(query))
+        d.addCallback(callback)
+
+    def _handleUploadFile(self, query):
         def onRevision(rev):
             filesDir = os.path.join(os.path.dirname(__file__), 'files')
             filesDir = os.path.abspath(filesDir)
@@ -158,11 +182,12 @@ class ServerProtocol(Protocol):
 
             # Write the file received to disk
             with open(filePath, 'wb') as outputFile:
-                outputFile.write(packet.content)
+                outputFile.write(query.content)
             logger.info("Saved file %s" % fileName)
-        Revision.one(uuid=packet.uuid).addCallback(onRevision)
+            self.sendPacket(UploadFile.Reply(query))
+        Revision.one(uuid=query.uuid).addCallback(onRevision)
 
-    def _handleDownloadFile(self, packet):
+    def _handleDownloadFile(self, query):
         def onRevision(rev):
             filesDir = os.path.join(os.path.dirname(__file__), 'files')
             filesDir = os.path.abspath(filesDir)
@@ -170,11 +195,11 @@ class ServerProtocol(Protocol):
             filePath = os.path.join(filesDir, fileName)
 
             # Read file from disk and sent it
-            packet = DownloadFileReply()
+            reply = DownloadFile.Reply(query)
             with open(filePath, 'rb') as inputFile:
-                packet.content = inputFile.read()
-            self.sendPacket(packet)
-        Revision.one(uuid=packet.uuid).addCallback(onRevision)
+                reply.content = inputFile.read()
+            self.sendPacket(reply)
+        Revision.one(uuid=query.uuid).addCallback(onRevision)
 
 
 class ServerFactory(protocol.Factory, object):
@@ -189,10 +214,18 @@ class ServerFactory(protocol.Factory, object):
         super(ServerFactory, self).__init__()
         self._clients = []
 
+        # Register abstract event as a default
+        # FIXME: Find a better way to do this
+        _EventFactory._EVENTS = collections.defaultdict(Event)
+
         # Initialize database and bind mapper
+        databaseDir = os.path.join(os.path.dirname(__file__), 'files')
+        databaseDir = os.path.abspath(databaseDir)
+        databasePath = os.path.join(databaseDir, 'database.db')
+
         def setRowFactory(db):
             db.row_factory = sqlite3.Row
-        self._db = Mapper('sqlite3', 'database.db', check_same_thread=False,
+        self._db = Mapper('sqlite3', databasePath, check_same_thread=False,
                           cp_openfun=setRowFactory)
         d = self._db.initialize()
         d.addCallback(lambda _: logger.info("Database initialized"))
