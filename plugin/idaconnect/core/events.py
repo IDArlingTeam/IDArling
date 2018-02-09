@@ -512,3 +512,11 @@ class UserDefinedCmtEvent(Event):
         tl.itp = self.itp
         func.set_user_cmt(tl, self.cmt)
         func.save_user_cmts()
+
+        # FIXME: This should probably be somewhere else
+        names = ['Pseudocode-%c' % chr(ord('A') + i) for i in xrange(5)]
+        for name in names:
+            widget = idaapi.find_widget(name)
+            if widget:
+                vu = idaapi.get_widget_vdui(widget)
+                vu.refresh_ctext()
