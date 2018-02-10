@@ -6,6 +6,7 @@ import idaapi
 import idc
 
 from events import *
+from ..utilities.misc import DictDiffer
 
 logger = logging.getLogger('IDAConnect.Core')
 
@@ -345,6 +346,7 @@ class HexRaysHooks(Hooks):
         super(HexRaysHooks, self).__init__(plugin)
         self._available = None
         self._installed = False
+        self._usrDefinedCmts = {}
 
     def hook(self):
         if self._available is None:
@@ -375,6 +377,12 @@ class HexRaysHooks(Hooks):
     def _getUserCmts(self, ea):
         cmts = idaapi.restore_user_cmts(ea)
         if cmts is not None:
-            for tl, cmt in cmts.iteritems():
-                self._sendEvent(UserDefinedCmtEvent(tl.ea, tl.itp, str(cmt)))
+            _usrDefinedCmtsCur = {(tl.ea, tl.itp): str(cmt) for tl, cmt in cmts.iteritems()}
+            dictDiffer = DictDiffer(_usrDefinedCmtsCur,
+                                    self._usrDefinedCmts)
+            for ea, itp in dictDiffer.added():
+                self._sendEvent(UserDefinedCmtEvent(ea, itp, _usrDefinedCmtsCur[(ea, itp)]))
+            for ea, itp in dictDiffer.removed():
+                self._sendEvent(UserDeletedCmtEvent(ea, itp))
+            self._usrDefinedCmts = _usrDefinedCmtsCur
             idaapi.user_cmts_free(cmts)

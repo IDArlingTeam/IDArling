@@ -520,3 +520,30 @@ class UserDefinedCmtEvent(Event):
             if widget:
                 vu = idaapi.get_widget_vdui(widget)
                 vu.refresh_ctext()
+
+
+class UserDeletedCmtEvent(Event):
+    # FIXME : HexRays synchronization doesn't work, have to find a better way.
+    #         Maybe by sending events batch...
+    __event__ = 'user_deleted_cmt'
+
+    def __init__(self, ea, itp):
+        super(UserDeletedCmtEvent, self).__init__()
+        self.ea = ea
+        self.itp = itp
+
+    def __call__(self):
+        func = idaapi.decompile(self.ea)
+        tl = idaapi.treeloc_t()
+        tl.ea = self.ea
+        tl.itp = self.itp
+        func.set_user_cmt(tl, '')
+        func.save_user_cmts()
+
+        # FIXME: This should probably be somewhere else
+        names = ['Pseudocode-%c' % chr(ord('A') + i) for i in xrange(5)]
+        for name in names:
+            widget = idaapi.find_widget(name)
+            if widget:
+                vu = idaapi.get_widget_vdui(widget)
+                vu.refresh_ctext()
