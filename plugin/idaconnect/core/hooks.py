@@ -384,5 +384,7 @@ class HexRaysHooks(Hooks):
                 self._sendEvent(UserDefinedCmtEvent(ea, itp, _usrDefinedCmtsCur[(ea, itp)]))
             for ea, itp in dictDiffer.removed():
                 self._sendEvent(UserDeletedCmtEvent(ea, itp))
+            for ea, itp in dictDiffer.changed():
+                self._sendEvent(UserChangedCmtEvent(ea, itp, _usrDefinedCmtsCur[(ea, itp)]))
             self._usrDefinedCmts = _usrDefinedCmtsCur
             idaapi.user_cmts_free(cmts)

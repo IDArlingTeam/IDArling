@@ -536,3 +536,25 @@ class UserDeletedCmtEvent(Event):
         func.save_user_cmts()
 
         refreshPseudocodeView()
+
+
+class UserChangedCmtEvent(Event):
+    # FIXME : HexRays synchronization doesn't work, have to find a better way.
+    #         Maybe by sending events batch...
+    __event__ = 'user_changed_cmt'
+
+    def __init__(self, ea, itp, cmt):
+        super(UserChangedCmtEvent, self).__init__()
+        self.ea = ea
+        self.itp = itp
+        self.cmt = cmt
+
+    def __call__(self):
+        func = idaapi.decompile(self.ea)
+        tl = idaapi.treeloc_t()
+        tl.ea = self.ea
+        tl.itp = self.itp
+        func.set_user_cmt(tl, self.cmt)
+        func.save_user_cmts()
+
+        refreshPseudocodeView()
