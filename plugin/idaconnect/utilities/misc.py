@@ -32,6 +32,18 @@ def pluginResource(filename):
     return os.path.join(PLUGIN_PATH, 'resources', filename)
 
 
+def refreshPseudocodeView():
+    """
+    Refresh the pseudocode view in IDA
+    """
+    names = ['Pseudocode-%c' % chr(ord('A') + i) for i in xrange(5)]
+    for name in names:
+        widget = idaapi.find_widget(name)
+        if widget:
+            vu = idaapi.get_widget_vdui(widget)
+            vu.refresh_ctext()
+
+
 class DictDiffer(object):
     """
     Calculate the difference between two dictionaries as:
