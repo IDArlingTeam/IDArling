@@ -273,9 +273,6 @@ class OpenActionHandler(ActionHandler):
         # success.setWindowIcon(QIcon(iconPath))
         # success.exec_()
 
-        # Save the current state
-        self._plugin.network.saveState()
-
         # Save the old database
         idbPath = idc.GetIdbPath()
         if idbPath:
@@ -435,3 +432,4 @@ class SaveActionHandler(ActionHandler):
 
         # Subscribe to the new events stream
         self._plugin.network.sendPacket(Subscribe(repo.hash, branch.uuid))
+        self._plugin.core.hookAll()

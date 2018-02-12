@@ -33,7 +33,6 @@ class Core(Module):
         self._hxeHooks = HexRaysHooks(self._plugin)
 
         logger.debug("Installing hooks")
-        self.hookAll()
         return True
 
     def _uninstall(self):
@@ -123,3 +122,4 @@ class Core(Module):
         """
         if self.repo and self.branch:
             self._plugin.network.sendPacket(Subscribe(self.repo, self.branch))
+            self.hookAll()

@@ -45,6 +45,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
 
     def closebase(self):
         self._plugin.network.sendPacket(Unsubscribe())
+        self._plugin.core.unhookAll()
         return 0
 
     def make_code(self, insn):
@@ -344,6 +345,7 @@ class UIHooks(Hooks, ida_kernwin.UI_Hooks):
         if self._plugin.core.repo and self._plugin.core.branch:
             self._plugin.network.sendPacket(Subscribe(
                 self._plugin.core.repo, self._plugin.core.branch))
+            self._plugin.core.hookAll()
 
 
 class HexRaysHooks(Hooks):

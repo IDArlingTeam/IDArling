@@ -144,6 +144,10 @@ class ServerProtocol(Protocol):
             self._handlers[packet.__class__](packet)
 
         elif isinstance(packet, AbstractEvent):
+            if not self._repo or not self._branch:
+                logger.warning("Received a packet from an unsubscribed client")
+                return True
+
             # Forward the event to all clients
             self._factory.broadcastEvent(packet, self)
             # Save the event for later clients

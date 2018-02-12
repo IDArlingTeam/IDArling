@@ -137,6 +137,9 @@ class IDAConnect(idaapi.plugin_t):
         """
         Terminate the plugin and its modules.
         """
+        # Save the current state
+        self.network.saveState()
+
         self._core.uninstall()
         self._interface.uninstall()
         self._network.uninstall()
