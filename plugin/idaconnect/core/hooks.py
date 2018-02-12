@@ -359,6 +359,7 @@ class HexRaysHooks(Hooks):
         self._installed = False
         self._func = None
         self._usrDefinedCmts = {}
+        self._usrDefinedLabels = {}
 
     def hook(self):
         if self._available is None:
@@ -387,6 +388,7 @@ class HexRaysHooks(Hooks):
                 self._usrDefinedCmts = {}
             self._func = func
             self._getUserCmts(func.startEA)
+            self._getUserLabels(func.startEA)
         return 0
 
     def _getUserCmts(self, ea):
@@ -406,3 +408,21 @@ class HexRaysHooks(Hooks):
                     ea, itp, _usrDefinedCmtsCur[(ea, itp)]))
             self._usrDefinedCmts = _usrDefinedCmtsCur
             idaapi.user_cmts_free(cmts)
+
+    def _getUserLabels(self, ea):
+        labels = idaapi.restore_user_labels(ea)
+        if labels is not None:
+            it = idaapi.user_labels_begin(labels)
+            _usrDefinedLabelsCur = {}
+            while it != idaapi.user_labels_end(labels):
+                orgLabel = idaapi.user_labels_first(it)
+                name = idaapi.user_labels_second(it)
+                _usrDefinedLabelsCur[orgLabel] = name
+                it = idaapi.user_labels_next(it)
+            dictDiffer = DictDiffer(_usrDefinedLabelsCur,
+                                    self._usrDefinedLabels)
+            for orgLabel in dictDiffer.added():
+                self._sendEvent(UserDefinedLabelEvent(
+                    ea, orgLabel, _usrDefinedLabelsCur[orgLabel]))
+            self._usrDefinedLabels = _usrDefinedLabelsCur
+            idaapi.user_labels_free(labels)

@@ -496,8 +496,6 @@ class UndefinedEvent(Event):
 
 
 class UserDefinedCmtEvent(Event):
-    # FIXME : HexRays synchronization doesn't work, have to find a better way.
-    #         Maybe by sending events batch...
     __event__ = 'user_defined_cmt'
 
     def __init__(self, ea, itp, cmt):
@@ -515,3 +513,23 @@ class UserDefinedCmtEvent(Event):
         func.save_user_cmts()
 
         refreshPseudocodeView()
+
+
+class UserDefinedLabelEvent(Event):
+    __event__ = 'user_defined_label'
+
+    def __init__(self, ea, orgLabel, name):
+        super(UserDefinedLabelEvent, self).__init__()
+        self.ea = ea
+        self.orgLabel = orgLabel
+        self.name = name
+
+    def __call__(self):
+        labels = idaapi.restore_user_labels(self.ea)
+        if not labels:
+            labels = idaapi.user_labels_new()
+        idaapi.user_labels_insert(labels, self.orgLabel, self.name)
+        idaapi.save_user_labels(self.ea, labels)
+
+        refreshPseudocodeView(True)
+
