@@ -6,6 +6,7 @@ import idaapi
 import idc
 
 from events import *
+from ..shared.commands import Subscribe, Unsubscribe
 from ..utilities.misc import DictDiffer
 
 logger = logging.getLogger('IDAConnect.Core')
@@ -41,6 +42,10 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
     def __init__(self, plugin):
         ida_idp.IDB_Hooks.__init__(self)
         Hooks.__init__(self, plugin)
+
+    def closebase(self):
+        self._plugin.network.sendPacket(Unsubscribe())
+        return 0
 
     def make_code(self, insn):
         self._sendEvent(MakeCodeEvent(insn.ea))
@@ -335,6 +340,10 @@ class UIHooks(Hooks, ida_kernwin.UI_Hooks):
 
     def ready_to_run(self, *_):
         self._plugin.core.loadNetnode()
+        # Subscribe to the events stream if needed
+        if self._plugin.core.repo and self._plugin.core.branch:
+            self._plugin.network.sendPacket(Subscribe(
+                self._plugin.core.repo, self._plugin.core.branch))
 
 
 class HexRaysHooks(Hooks):

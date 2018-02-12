@@ -8,7 +8,8 @@ from twisted.python import log
 
 from shared.commands import (GetRepositories, GetBranches,
                              NewRepository, NewBranch,
-                             UploadDatabase, DownloadDatabase)
+                             UploadDatabase, DownloadDatabase,
+                             Subscribe, Unsubscribe)
 from shared.mapper import Mapper
 from shared.models import Repository, Branch
 from shared.packets import Command, Event as IEvent, _EventFactory
@@ -85,6 +86,8 @@ class ServerProtocol(Protocol):
         """
         super(ServerProtocol, self).__init__(logger)
         self._factory = factory
+        self._repo = None
+        self._branch = None
 
         # Setup command handlers
         self._handlers = {
@@ -94,14 +97,33 @@ class ServerProtocol(Protocol):
             NewBranch.Query: self._handleNewBranch,
             UploadDatabase.Query: self._handleUploadDatabase,
             DownloadDatabase.Query: self._handleDownloadDatabase,
+            Subscribe: self._handleSubscribe,
+            Unsubscribe: self._handleUnsubscribe,
         }
+
+    @property
+    def repo(self):
+        """
+        Get the current repository hash.
+
+        :return: the hash
+        """
+        return self._repo
+
+    @property
+    def branch(self):
+        """
+        Get the current branch UUID.
+
+        :return: the UUID
+        """
+        return self._branch
 
     def connectionMade(self):
         """
         Called when a connection has been established.
         """
         super(ServerProtocol, self).connectionMade()
-        self._factory.addClient(self)
 
         # Add host and port as a prefix to our logger
         peer = self.transport.getPeer()
@@ -121,7 +143,7 @@ class ServerProtocol(Protocol):
         :param reason: the reason of the loss
         """
         super(ServerProtocol, self).connectionLost(reason)
-        self._factory.removeClient(self)
+        self._factory.unregisterClient(self)
         self._logger.info("Disconnected: %s" % reason)
 
     def recvPacket(self, packet):
@@ -137,7 +159,7 @@ class ServerProtocol(Protocol):
 
         elif isinstance(packet, Event):
             # Forward the event to all clients
-            self._factory.sendPacketToAll(packet, self)
+            self._factory.broadcastEvent(packet, self)
 
         else:
             return False
@@ -201,6 +223,16 @@ class ServerProtocol(Protocol):
             self.sendPacket(reply)
         Branch.one(uuid=query.uuid).addCallback(onBranchQuery)
 
+    def _handleSubscribe(self, packet):
+        self._repo = packet.hash
+        self._branch = packet.uuid
+        self._factory.registerClient(self)
+
+    def _handleUnsubscribe(self, _):
+        self._factory.unregisterClient(self)
+        self._repo = None
+        self._branch = None
+
 
 class ServerFactory(protocol.Factory, object):
     """
@@ -212,7 +244,7 @@ class ServerFactory(protocol.Factory, object):
         Initialize the server factory.
         """
         super(ServerFactory, self).__init__()
-        self._clients = []
+        self._clients = collections.defaultdict(list)
 
         # Register abstract event as a default
         # FIXME: Find a better way to do this
@@ -221,6 +253,8 @@ class ServerFactory(protocol.Factory, object):
         # Initialize database and bind mapper
         filesDir = os.path.join(os.path.dirname(__file__), 'files')
         filesDir = os.path.abspath(filesDir)
+        if not os.path.exists(filesDir):
+            os.makedirs(filesDir)
         databasePath = os.path.join(filesDir, 'database.db')
 
         def setRowFactory(db):
@@ -240,31 +274,35 @@ class ServerFactory(protocol.Factory, object):
         """
         return ServerProtocol(self)
 
-    def addClient(self, client):
+    def registerClient(self, client):
         """
         Add a client to the list of connected clients.
 
         :param client: the client
         """
-        self._clients.append(client)
+        clients = self._clients[(client.repo, client.branch)]
+        if client not in clients:
+            clients.append(client)
 
-    def removeClient(self, client):
+    def unregisterClient(self, client):
         """
         Remove a client to the list of connected clients.
 
         :param client: the client
         """
-        self._clients.remove(client)
+        clients = self._clients[(client.repo, client.branch)]
+        if client in clients:
+            clients.remove(client)
 
-    def sendPacketToAll(self, packet, ignore=None):
+    def broadcastEvent(self, packet, sender):
         """
         Send a packet to all connected clients.
 
         :param packet: the packet
-        :param ignore: a client to ignore
+        :param sender: the sender
         """
-        for client in self._clients:
-            if client != ignore:
+        for client in self._clients[(sender.repo, sender.branch)]:
+            if client != sender:
                 client.sendPacket(packet)
 
 

@@ -112,3 +112,16 @@ class DownloadDatabase(ParentCommand):
 
     class Reply(IReply, Container, Command):
         pass
+
+
+class Subscribe(DefaultCommand):
+    __command__ = 'subscribe'
+
+    def __init__(self, hash, uuid):
+        super(Subscribe, self).__init__()
+        self.hash = hash
+        self.uuid = uuid
+
+
+class Unsubscribe(DefaultCommand):
+    __command__ = 'unsubscribe'

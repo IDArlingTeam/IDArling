@@ -3,6 +3,7 @@ import logging
 import idaapi
 
 from ..module import Module
+from ..shared.commands import Subscribe
 from hooks import IDBHooks, IDPHooks, UIHooks, HexRaysHooks
 
 logger = logging.getLogger('IDAConnect.Core')
@@ -115,3 +116,10 @@ class Core(Module):
         node.hashset('hash', self._repo)
         node.hashset('uuid', self._branch)
         logger.debug("Saved netnode: %s, %s" % (self._repo, self._branch))
+
+    def notifyConnecting(self):
+        """
+        If the core has loaded a database, subscribe to the events stream.
+        """
+        if self.repo and self.branch:
+            self._plugin.network.sendPacket(Subscribe(self.repo, self.branch))

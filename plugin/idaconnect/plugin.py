@@ -158,6 +158,7 @@ class IDAConnect(idaapi.plugin_t):
         """
         Notify the plugin that a connection is being established.
         """
+        self._core.notifyConnecting()
         self._interface.notifyConnecting()
 
     def notifyConnected(self):

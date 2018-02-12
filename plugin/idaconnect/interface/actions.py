@@ -16,7 +16,8 @@ from PyQt5.QtWidgets import qApp, QProgressDialog, QMessageBox
 
 from ..shared.commands import (GetRepositories, GetBranches,
                                NewRepository, NewBranch,
-                               DownloadDatabase, UploadDatabase)
+                               DownloadDatabase, UploadDatabase,
+                               Subscribe)
 from ..shared.models import Repository, Branch
 from ..utilities.misc import localResource
 from dialogs import OpenDialog, SaveDialog
@@ -419,9 +420,9 @@ class SaveActionHandler(ActionHandler):
         # Send the packet to upload the file
         packet.upback = partial(self._progressCallback, progress)
         d = self._plugin.network.sendPacket(packet)
-        d.addCallback(self._databaseUploaded)
+        d.addCallback(partial(self._databaseUploaded, repo, branch))
 
-    def _databaseUploaded(self, _):
+    def _databaseUploaded(self, repo, branch, _):
         # Show a success dialog
         success = QMessageBox()
         success.setIcon(QMessageBox.Information)
@@ -431,3 +432,6 @@ class SaveActionHandler(ActionHandler):
         iconPath = self._plugin.resource('upload.png')
         success.setWindowIcon(QIcon(iconPath))
         success.exec_()
+
+        # Subscribe to the new events stream
+        self._plugin.network.sendPacket(Subscribe(repo.hash, branch.uuid))
