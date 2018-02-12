@@ -346,6 +346,7 @@ class HexRaysHooks(Hooks):
         super(HexRaysHooks, self).__init__(plugin)
         self._available = None
         self._installed = False
+        self._func = None
         self._usrDefinedCmts = {}
 
     def hook(self):
@@ -371,20 +372,26 @@ class HexRaysHooks(Hooks):
         if event == idaapi.hxe_func_printed:
             ea = idaapi.get_screen_ea()
             func = idaapi.get_func(ea)
+            if self._func and self._func.startEA != func.startEA:
+                self._usrDefinedCmts = {}
+            self._func = func
             self._getUserCmts(func.startEA)
         return 0
 
     def _getUserCmts(self, ea):
         cmts = idaapi.restore_user_cmts(ea)
         if cmts is not None:
-            _usrDefinedCmtsCur = {(tl.ea, tl.itp): str(cmt) for tl, cmt in cmts.iteritems()}
+            _usrDefinedCmtsCur = {(tl.ea, tl.itp): str(cmt)
+                                  for tl, cmt in cmts.iteritems()}
             dictDiffer = DictDiffer(_usrDefinedCmtsCur,
                                     self._usrDefinedCmts)
             for ea, itp in dictDiffer.added():
-                self._sendEvent(UserDefinedCmtEvent(ea, itp, _usrDefinedCmtsCur[(ea, itp)]))
+                self._sendEvent(UserDefinedCmtEvent(
+                    ea, itp, _usrDefinedCmtsCur[(ea, itp)]))
             for ea, itp in dictDiffer.removed():
                 self._sendEvent(UserDefinedCmtEvent(ea, itp, ''))
             for ea, itp in dictDiffer.changed():
-                self._sendEvent(UserDefinedCmtEvent(ea, itp, _usrDefinedCmtsCur[(ea, itp)]))
+                self._sendEvent(UserDefinedCmtEvent(
+                    ea, itp, _usrDefinedCmtsCur[(ea, itp)]))
             self._usrDefinedCmts = _usrDefinedCmtsCur
             idaapi.user_cmts_free(cmts)
