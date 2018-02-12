@@ -76,7 +76,7 @@ class Default(Serializable):
         self.__dict__.update(Default.attrs(dct))
 
 
-class _PacketFactory(type):
+class PacketFactory(type):
     """
     A factory class used to instantiate packets as they come from the network.
     """
@@ -92,10 +92,10 @@ class _PacketFactory(type):
         :param attrs: the attributes of the new class
         :return: the newly created class
         """
-        cls = super(_PacketFactory, mcs).__new__(mcs, name, bases, attrs)
+        cls = super(PacketFactory, mcs).__new__(mcs, name, bases, attrs)
         if cls.__type__ is not None \
-                and cls.__type__ not in _PacketFactory._PACKETS:
-            _PacketFactory._PACKETS[cls.__type__] = cls
+                and cls.__type__ not in PacketFactory._PACKETS:
+            PacketFactory._PACKETS[cls.__type__] = cls
         return cls
 
     @classmethod
@@ -106,7 +106,7 @@ class _PacketFactory(type):
         :param dct: the dictionary
         :return: the packet class
         """
-        cls = _PacketFactory._PACKETS[dct['type']]
+        cls = PacketFactory._PACKETS[dct['type']]
         if cls.__metaclass__ != mcs:
             cls = cls.__metaclass__.getClass(dct)
         return cls
@@ -117,7 +117,7 @@ class Packet(Serializable):
     The base class for every packet received. Currently, the packet can
     only be of two kinds: either it is an event or a command.
     """
-    __metaclass__ = _PacketFactory
+    __metaclass__ = PacketFactory
 
     __type__ = None
 
@@ -136,7 +136,7 @@ class Packet(Serializable):
         :param dct: the dictionary
         :return: the packet
         """
-        cls = _PacketFactory.getClass(dct)
+        cls = PacketFactory.getClass(dct)
         packet = cls.new(dct)
         if isinstance(packet, Reply):
             packet.triggerInitback()
@@ -231,7 +231,7 @@ class PacketDeferred(defer.Deferred, object):
             self._initback(self._initresult)
 
 
-class _EventFactory(_PacketFactory):
+class EventFactory(PacketFactory):
     """
     A factory class used to instantiate the packets of type event.
     """
@@ -239,15 +239,15 @@ class _EventFactory(_PacketFactory):
 
     @staticmethod
     def __new__(mcs, name, bases, attrs):
-        cls = super(_EventFactory, mcs).__new__(mcs, name, bases, attrs)
+        cls = super(EventFactory, mcs).__new__(mcs, name, bases, attrs)
         if cls.__event__ is not None \
-                and cls.__event__ not in _EventFactory._EVENTS:
-            _EventFactory._EVENTS[cls.__event__] = cls
+                and cls.__event__ not in EventFactory._EVENTS:
+            EventFactory._EVENTS[cls.__event__] = cls
         return cls
 
     @classmethod
     def getClass(mcs, dct):
-        cls = _EventFactory._EVENTS[dct['event_type']]
+        cls = EventFactory._EVENTS[dct['event_type']]
         if cls.__metaclass__ != mcs:
             cls = cls.__metaclass__.getClass(dct)
         return cls
@@ -257,7 +257,7 @@ class Event(Packet):
     """
     The base class of every packet of type event received.
     """
-    __metaclass__ = _EventFactory
+    __metaclass__ = EventFactory
 
     __type__ = 'event'
     __event__ = None
@@ -305,7 +305,7 @@ class DefaultEvent(Default, Event):
         self.parseDefault(dct)
 
 
-class _CommandFactory(_PacketFactory):
+class CommandFactory(PacketFactory):
     """
     A factory class used to instantiate the packets of type command.
     """
@@ -313,24 +313,24 @@ class _CommandFactory(_PacketFactory):
 
     @staticmethod
     def __new__(mcs, name, bases, attrs):
-        cls = super(_CommandFactory, mcs).__new__(mcs, name, bases, attrs)
+        cls = super(CommandFactory, mcs).__new__(mcs, name, bases, attrs)
         if cls.__command__ is not None \
-                and cls.__command__ not in _CommandFactory._COMMANDS:
+                and cls.__command__ not in CommandFactory._COMMANDS:
             if issubclass(cls, ParentCommand):
                 cls.Query.__parent__ = cls
                 cls.Query.__command__ = cls.__command__ + '_query'
-                _CommandFactory._COMMANDS[cls.Query.__command__] = cls.Query
+                CommandFactory._COMMANDS[cls.Query.__command__] = cls.Query
 
                 cls.Reply.__parent__ = cls
                 cls.Reply.__command__ = cls.__command__ + '_reply'
-                _CommandFactory._COMMANDS[cls.Reply.__command__] = cls.Reply
+                CommandFactory._COMMANDS[cls.Reply.__command__] = cls.Reply
             else:
-                _CommandFactory._COMMANDS[cls.__command__] = cls
+                CommandFactory._COMMANDS[cls.__command__] = cls
         return cls
 
     @classmethod
     def getClass(mcs, dct):
-        cls = _CommandFactory._COMMANDS[dct['command_type']]
+        cls = CommandFactory._COMMANDS[dct['command_type']]
         if cls.__metaclass__ != mcs:
             cls = cls.__metaclass__.getClass(dct)
         return cls
@@ -340,7 +340,7 @@ class Command(Packet):
     """
     The base class of every packet of type command received.
     """
-    __metaclass__ = _CommandFactory
+    __metaclass__ = CommandFactory
 
     __type__ = 'command'
     __command__ = None

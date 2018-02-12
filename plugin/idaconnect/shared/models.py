@@ -1,5 +1,7 @@
-from mapper import Field, Table
-from packets import Default
+import json
+
+from mapper import Field, Table, TableFactory
+from packets import Default, Event, EventFactory
 
 
 class DefaultTable(Default, Table):
@@ -65,3 +67,36 @@ class Branch(DefaultTable):
         self.hash = hash
         self.date = date
         self.bits = bits
+
+
+class EventTableFactory(EventFactory, TableFactory):
+    """
+    A meta class for subclassing Event and Table at the same time.
+    """
+    pass
+
+
+class EventTable(Event, Table):
+    """
+    A base class for subclassing Event and Table at the same time.
+    """
+    __metaclass__ = EventTableFactory
+
+
+class AbstractEvent(EventTable):
+    """
+    A class to represent events as seen by the server. The server relays the
+    events to the interested clients, it doesn't know to interpret them.
+    """
+    __event__ = 'all'
+    __table__ = 'events'
+
+    hash = Field(str, notNull=True)
+    uuid = Field(str, notNull=True)
+    dict = Field(str, notNull=True)
+
+    def buildEvent(self, dct):
+        dct.update(json.loads(self.dict))
+
+    def parseEvent(self, dct):
+        self.dict = json.dumps(dct)

@@ -43,7 +43,7 @@ class Field(object):
         return src
 
 
-class _TableFactory(type):
+class TableFactory(type):
     """
     The factory used to create table objects on-the-fly.
     """
@@ -59,15 +59,15 @@ class _TableFactory(type):
         :param attrs: the attributes of the new class
         :return: the newly created class
         """
-        cls = super(_TableFactory, mcs).__new__(mcs, name, bases, attrs)
-        if cls.__table__ and cls.__table__ not in _TableFactory._TABLES:
+        cls = super(TableFactory, mcs).__new__(mcs, name, bases, attrs)
+        if cls.__table__ and cls.__table__ not in TableFactory._TABLES:
             cls.__fields__ = []
             for key, val in cls.__dict__.iteritems():
                 if isinstance(val, Field):
                     val.name = key
                     cls.__fields__.append(val)
                     cls.__fields__.sort(key=operator.attrgetter('order'))
-            _TableFactory._TABLES[cls.__table__] = cls
+            TableFactory._TABLES[cls.__table__] = cls
         return cls
 
     @staticmethod
@@ -77,14 +77,14 @@ class _TableFactory(type):
 
         :return: the classes
         """
-        return _TableFactory._TABLES
+        return TableFactory._TABLES
 
 
 class Table(object):
     """
     An object representing a SQL table.
     """
-    __metaclass__ = _TableFactory
+    __metaclass__ = TableFactory
 
     __table__ = None
     __fields__ = []
@@ -222,8 +222,8 @@ class Mapper(object):
         :return: a deferred to the results
         """
         lst = []
-        for table, model in _TableFactory.getClasses().iteritems():
-            columns = [str(field) for field in Table.fields(model)]
+        for table, model in TableFactory.getClasses().iteritems():
+            columns = [str(field) for field in Table.fields(model).values()]
             sql = 'create table if not exists {} (id integer primary key, {});'
             lst.append(self.execute(lambda txn: None,
                                     sql.format(table, ', '.join(columns))))

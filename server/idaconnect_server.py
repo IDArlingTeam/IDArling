@@ -11,8 +11,8 @@ from shared.commands import (GetRepositories, GetBranches,
                              UploadDatabase, DownloadDatabase,
                              Subscribe, Unsubscribe)
 from shared.mapper import Mapper
-from shared.models import Repository, Branch
-from shared.packets import Command, Event as IEvent, _EventFactory
+from shared.models import Repository, Branch, AbstractEvent
+from shared.packets import Command, EventFactory
 from shared.protocol import Protocol
 
 
@@ -57,20 +57,6 @@ def startLogging():
 
 
 logger = startLogging()
-
-
-class Event(IEvent):
-    """
-    A class to represent events as seen by the server. The server relays the
-    events to the interested clients, it doesn't know to interpret them.
-    """
-    __event__ = 'all'
-
-    def buildEvent(self, dct):
-        dct.update(self.__dict__)
-
-    def parseEvent(self, dct):
-        self.__dict__.update(dct)
 
 
 class ServerProtocol(Protocol):
@@ -157,9 +143,13 @@ class ServerProtocol(Protocol):
             # Call the corresponding handler
             self._handlers[packet.__class__](packet)
 
-        elif isinstance(packet, Event):
+        elif isinstance(packet, AbstractEvent):
             # Forward the event to all clients
             self._factory.broadcastEvent(packet, self)
+            # Save the event for later clients
+            packet.hash = self._repo
+            packet.uuid = self._branch
+            packet.create()
 
         else:
             return False
@@ -247,8 +237,7 @@ class ServerFactory(protocol.Factory, object):
         self._clients = collections.defaultdict(list)
 
         # Register abstract event as a default
-        # FIXME: Find a better way to do this
-        _EventFactory._EVENTS = collections.defaultdict(Event)
+        EventFactory._EVENTS = collections.defaultdict(AbstractEvent)
 
         # Initialize database and bind mapper
         filesDir = os.path.join(os.path.dirname(__file__), 'files')
