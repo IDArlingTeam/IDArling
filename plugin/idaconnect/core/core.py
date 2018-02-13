@@ -1,10 +1,12 @@
 import logging
 
+import ida_idp
+import ida_kernwin
 import idaapi
 
 from ..module import Module
-from ..shared.commands import Subscribe
-from hooks import IDBHooks, IDPHooks, UIHooks, HexRaysHooks
+from ..shared.commands import Subscribe, Unsubscribe
+from hooks import Hooks, IDBHooks, IDPHooks, HexRaysHooks
 
 logger = logging.getLogger('IDAConnect.Core')
 
@@ -20,8 +22,10 @@ class Core(Module):
 
         self._idbHooks = None
         self._idpHooks = None
-        self._uiHooks = None
         self._hxeHooks = None
+
+        self._uiHooksCore = None
+        self._idbHooksCore = None
 
         self._repo = None
         self._branch = None
@@ -29,8 +33,42 @@ class Core(Module):
     def _install(self):
         self._idbHooks = IDBHooks(self._plugin)
         self._idpHooks = IDPHooks(self._plugin)
-        self._uiHooks = UIHooks(self._plugin)
         self._hxeHooks = HexRaysHooks(self._plugin)
+
+        class UIHooksCore(Hooks, ida_kernwin.UI_Hooks):
+            """
+            The concrete class for UI-related events.
+            """
+
+            def __init__(self, plugin):
+                ida_kernwin.UI_Hooks.__init__(self)
+                Hooks.__init__(self, plugin)
+
+            def ready_to_run(self, *_):
+                self._plugin.core.loadNetnode()
+                # Subscribe to the events stream if needed
+                if self._plugin.core.repo and self._plugin.core.branch:
+                    self._plugin.network.sendPacket(Subscribe(
+                        self._plugin.core.repo, self._plugin.core.branch))
+                    self._plugin.core.hookAll()
+        self._uiHooksCore = UIHooksCore(self._plugin)
+        self._uiHooksCore.hook()
+
+        class IDBHooksCore(Hooks, ida_idp.IDB_Hooks):
+            """
+            The concrete class for all IDB-related events.
+            """
+
+            def __init__(self, plugin):
+                ida_idp.IDB_Hooks.__init__(self)
+                Hooks.__init__(self, plugin)
+
+            def closebase(self):
+                self._plugin.network.sendPacket(Unsubscribe())
+                self._plugin.core.unhookAll()
+                return 0
+        self._idbHooksCore = IDBHooksCore(self._plugin)
+        self._idbHooksCore.hook()
 
         logger.debug("Installing hooks")
         return True
@@ -46,7 +84,6 @@ class Core(Module):
         """
         self._idbHooks.hook()
         self._idpHooks.hook()
-        self._uiHooks.hook()
         self._hxeHooks.hook()
 
     def unhookAll(self):
@@ -55,7 +92,6 @@ class Core(Module):
         """
         self._idbHooks.unhook()
         self._idpHooks.unhook()
-        self._uiHooks.unhook()
         self._hxeHooks.unhook()
 
     @property
@@ -116,10 +152,11 @@ class Core(Module):
         node.hashset('uuid', self._branch)
         logger.debug("Saved netnode: %s, %s" % (self._repo, self._branch))
 
-    def notifyConnecting(self):
+    def notifyConnected(self):
         """
         If the core has loaded a database, subscribe to the events stream.
         """
-        if self.repo and self.branch:
-            self._plugin.network.sendPacket(Subscribe(self.repo, self.branch))
+        if self._repo and self._branch:
+            self._plugin.network.sendPacket(
+                Subscribe(self._repo, self._branch))
             self.hookAll()
