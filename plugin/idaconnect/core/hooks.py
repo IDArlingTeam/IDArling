@@ -399,5 +399,11 @@ class HexRaysHooks(Hooks):
             for orgLabel in dictDiffer.added():
                 self._sendEvent(UserDefinedLabelEvent(
                     ea, orgLabel, _usrDefinedLabelsCur[orgLabel]))
+            for orgLabel in dictDiffer.removed():
+                self._sendEvent(UserErasedLabelEvent(
+                    ea, orgLabel))
+            for orgLabel in dictDiffer.changed():
+                self._sendEvent(UserModifiedLabelEvent(
+                    ea, orgLabel, _usrDefinedLabelsCur[orgLabel]))
             self._usrDefinedLabels = _usrDefinedLabelsCur
             idaapi.user_labels_free(labels)

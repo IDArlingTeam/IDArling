@@ -532,3 +532,43 @@ class UserDefinedLabelEvent(Event):
         idaapi.save_user_labels(self.ea, labels)
 
         refreshPseudocodeView(True)
+
+
+class UserModifiedLabelEvent(Event):
+    __event__ = 'user_modified_label'
+
+    def __init__(self, ea, orgLabel, name):
+        super(UserModifiedLabelEvent, self).__init__()
+        self.ea = ea
+        self.orgLabel = orgLabel
+        self.name = name
+
+    def __call__(self):
+        labels = idaapi.restore_user_labels(self.ea)
+        if not labels:
+            labels = idaapi.user_labels_new()
+        it = idaapi.user_labels_find(labels, self.orgLabel)
+        idaapi.user_labels_erase(labels, it)
+        idaapi.user_labels_insert(labels, self.orgLabel, self.name)
+        idaapi.save_user_labels(self.ea, labels)
+
+        refreshPseudocodeView(True)
+
+
+class UserErasedLabelEvent(Event):
+    __event__ = 'user_modified_label'
+
+    def __init__(self, ea, orgLabel):
+        super(UserModifiedLabelEvent, self).__init__()
+        self.ea = ea
+        self.orgLabel = orgLabel
+
+    def __call__(self):
+        labels = idaapi.restore_user_labels(self.ea)
+        if not labels:
+            labels = idaapi.user_labels_new()
+        it = idaapi.user_labels_find(labels, self.orgLabel)
+        idaapi.user_labels_erase(labels, it)
+        idaapi.save_user_labels(self.ea, labels)
+
+        refreshPseudocodeView(True)
