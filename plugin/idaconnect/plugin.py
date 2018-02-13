@@ -109,7 +109,7 @@ class IDAConnect(idaapi.plugin_t):
         self._network.install()
 
         # Load the current state
-        self.network.loadState()
+        self.core.loadState()
 
     def _printBanner(self):
         """
@@ -138,7 +138,7 @@ class IDAConnect(idaapi.plugin_t):
         Terminate the plugin and its modules.
         """
         # Save the current state
-        self.network.saveState()
+        self.core.saveState()
 
         self._core.uninstall()
         self._interface.uninstall()

@@ -532,4 +532,3 @@ class UserDefinedLabelEvent(Event):
         idaapi.save_user_labels(self.ea, labels)
 
         refreshPseudocodeView(True)
-

@@ -1,10 +1,13 @@
+import json
 import logging
+import os
 
 import ida_idp
 import ida_kernwin
 import idaapi
 
 from ..module import Module
+from ..utilities.misc import localResource
 from ..shared.commands import Subscribe, Unsubscribe
 from hooks import Hooks, IDBHooks, IDPHooks, HexRaysHooks
 
@@ -129,6 +132,43 @@ class Core(Module):
         :param uuid: the UUID
         """
         self._branch = uuid
+
+    def loadState(self):
+        """
+        Load the state file if it exists.
+        """
+        statePath = localResource('files', 'state.json')
+        if os.path.isfile(statePath):
+            with open(statePath, 'rb') as stateFile:
+                state = json.loads(stateFile.read())
+                logger.debug("Loaded state: %s" % state)
+                if state['connected']:
+                    self._plugin.network.connect(state['host'], state['port'])
+                if 'cleanup' in state and state['cleanup']:
+                    # Remove unpacked files from parent instance
+                    idbFile, idbExt = os.path.splitext(state['cleanup'])
+                    for extension in ['.id0', '.id1', '.nam', '.seg', '.til']:
+                        if os.path.exists(idbFile + extension):
+                            os.remove(idbFile + extension)
+            os.remove(statePath)
+
+    def saveState(self, cleanup=None):
+        """
+        Save the state file.
+
+        :param cleanup: the path of the file to cleanup
+        """
+        statePath = localResource('files', 'state.json')
+        with open(statePath, 'wb') as stateFile:
+            state = {
+                'connected': self._plugin.network.connected,
+                'host': self._plugin.network.host,
+                'port': self._plugin.network.port,
+            }
+            if cleanup:
+                state['cleanup'] = cleanup
+            logger.debug("Saved state: %s" % state)
+            stateFile.write(json.dumps(state))
 
     def loadNetnode(self):
         """

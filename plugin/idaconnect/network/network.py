@@ -1,6 +1,4 @@
-import json
 import logging
-import os
 
 import qt5reactor
 qt5reactor.install()  # noqa
@@ -8,7 +6,6 @@ qt5reactor.install()  # noqa
 from twisted.internet import reactor
 
 from ..module import Module
-from ..utilities.misc import localResource
 from client import ClientFactory
 
 logger = logging.getLogger('IDAConnect.Network')
@@ -107,30 +104,3 @@ class Network(Module):
         if self.connected:
             return self._factory.sendPacket(packet)
         return None
-
-    def loadState(self):
-        """
-        Load the state file if it exists.
-        """
-        statePath = localResource('files', 'state.json')
-        if os.path.isfile(statePath):
-            with open(statePath, 'rb') as stateFile:
-                state = json.loads(stateFile.read())
-                logger.debug("Loaded state: %s" % state)
-                if state['connected']:
-                    self.connect(state['host'], state['port'])
-            os.remove(statePath)
-
-    def saveState(self):
-        """
-        Save the state file.
-        """
-        statePath = localResource('files', 'state.json')
-        with open(statePath, 'wb') as stateFile:
-            state = {
-                'connected': self.connected,
-                'host': self._host,
-                'port': self._port,
-            }
-            logger.debug("Saved state: %s" % state)
-            stateFile.write(json.dumps(state))
