@@ -2,7 +2,9 @@ import logging
 
 import ida_enum
 import ida_funcs
+import ida_hexrays
 import ida_name
+import ida_pro
 import idaapi
 import idc
 
@@ -555,3 +557,75 @@ class UserIflagsEvent(Event):
             cfunc.set_user_iflags(cl, f)
         cfunc.save_user_iflags()
         refreshPseudocodeView()
+
+
+class UserLvarSettingsEvent(Event):
+    __event__ = 'user_lvar_settings'
+
+    def __init__(self, ea, lvar_settings):
+        super(UserLvarSettingsEvent, self).__init__()
+        self.ea = ea
+        self.lvar_settings = lvar_settings
+
+    def __call__(self):
+        lvinf = idaapi.lvar_uservec_t()
+        lvinf.lvvec = ida_hexrays.lvar_saved_infos_t()
+        for lv in self.lvar_settings['lvvec']:
+            lvinf.lvvec.push_back(UserLvarSettingsEvent._getLvarSavedInfo(lv))
+        lvinf.sizes = ida_pro.intvec_t()
+        for i in self.lvar_settings['sizes']:
+            lvinf.sizes.push_back(i)
+        lvinf.lmaps = ida_hexrays.lvar_mapping_t()
+        for key, val in self.lvar_settings['lmaps'].iteritems():
+            key = UserLvarSettingsEvent._getLvarLocator(key)
+            val = UserLvarSettingsEvent._getLvarLocator(val)
+            idaapi.lvar_mapping_insert(lvinf.lmaps, key, val)
+        lvinf.stkoff_delta = self.lvar_settings['stkoff_delta']
+        lvinf.ulv_flags = self.lvar_settings['ulv_flags']
+        idaapi.save_user_lvar_settings(self.ea, lvinf)
+        refreshPseudocodeView()
+
+    @staticmethod
+    def _getLvarSavedInfo(dct):
+        lv = ida_hexrays.lvar_saved_info_t()
+        lv.ll = UserLvarSettingsEvent._getLvarLocator(dct['ll'])
+        lv.name = dct['name']
+        lv.type = UserLvarSettingsEvent._getTinfo(dct['type'])
+        lv.cmt = dct['cmt']
+        lv.flags = dct['flags']
+        return lv
+
+    @staticmethod
+    def _getTinfo(dct):
+        type = idaapi.tinfo_t()
+        if dct[0] is not None:
+            type.deserialize(None, *dct)
+        return type
+
+    @staticmethod
+    def _getLvarLocator(dct):
+        ll = ida_hexrays.lvar_locator_t()
+        ll.location = UserLvarSettingsEvent._getVdloc(dct['location'])
+        ll.defea = dct['defea']
+        return ll
+
+    @staticmethod
+    def _getVdloc(dct):
+        location = ida_hexrays.vdloc_t()
+        if dct['atype'] == idaapi.ALOC_NONE:
+            pass
+        elif dct['atype'] == idaapi.ALOC_STACK:
+            location.set_stkoff(dct['stkoff'])
+        elif dct['atype'] == idaapi.ALOC_DIST:
+            pass  # Not supported (yet)
+        elif dct['atype'] == idaapi.ALOC_REG1:
+            location.set_reg1(dct['reg1'])
+        elif dct['atype'] == idaapi.ALOC_REG2:
+            location.set_reg2(dct['reg1'], dct['reg2'])
+        elif dct['atype'] == idaapi.ALOC_RREL:
+            pass  # Not supported (yet)
+        elif dct['atype'] == idaapi.ALOC_STATIC:
+            location.set_ea(dct['ea'])
+        elif dct['atype'] == idaapi.ALOC_CUSTOM:
+            pass  # Not supported (yet)
+        return location

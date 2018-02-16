@@ -5,7 +5,6 @@ import idaapi
 import idc
 
 from events import *
-from ..utilities.misc import DictDiffer
 
 logger = logging.getLogger('IDAConnect.Core')
 
@@ -336,6 +335,7 @@ class HexRaysHooks(Hooks):
         self._labels = {}
         self._cmts = {}
         self._iflags = {}
+        self._lvar_settings = {}
 
     def hook(self):
         if self._available is None:
@@ -365,9 +365,12 @@ class HexRaysHooks(Hooks):
                 self._labels = HexRaysHooks._getUserLabels(self._funcEA)
                 self._cmts = HexRaysHooks._getUserCmts(self._funcEA)
                 self._iflags = HexRaysHooks._getUserIflags(self._funcEA)
+                self._lvar_settings = \
+                    HexRaysHooks._getUserLvarSettings(self._funcEA)
             self._sendUserLabels(func.startEA)
             self._sendUserCmts(func.startEA)
             self._sendUserIflags(func.startEA)
+            self._sendUserLvarSettings(func.startEA)
         return 0
 
     @staticmethod
@@ -440,3 +443,64 @@ class HexRaysHooks(Hooks):
         if iflags != self._iflags:
             self._sendEvent(UserIflagsEvent(ea, iflags))
             self._iflags = iflags
+
+    @staticmethod
+    def _getUserLvarSettings(ea):
+        dct = {}
+        lvinf = idaapi.lvar_uservec_t()
+        if idaapi.restore_user_lvar_settings(lvinf, ea):
+            dct['lvvec'] = []
+            for lv in lvinf.lvvec:
+                dct['lvvec'].append(HexRaysHooks._getLvarSavedInfo(lv))
+            dct['sizes'] = list(lvinf.sizes)
+            dct['lmaps'] = {}
+            it = idaapi.lvar_mapping_begin(lvinf.lmaps)
+            while it != idaapi.lvar_mapping_end(lvinf.lmaps):
+                key = idaapi.lvar_mapping_first(it)
+                key = HexRaysHooks._getLvarLocator(key)
+                val = idaapi.lvar_mapping_second(it)
+                val = HexRaysHooks._getLvarLocator(val)
+                dct['lmaps'][key] = val
+                it = idaapi.lvar_mapping_next(it)
+            dct['stkoff_delta'] = lvinf.stkoff_delta
+            dct['ulv_flags'] = lvinf.ulv_flags
+        return dct
+
+    @staticmethod
+    def _getLvarSavedInfo(lv):
+        return {
+            'll': HexRaysHooks._getLvarLocator(lv.ll),
+            'name': lv.name,
+            'type': HexRaysHooks._getTinfo(lv.type),
+            'cmt': lv.cmt,
+            'flags': lv.flags,
+        }
+
+    @staticmethod
+    def _getTinfo(type):
+        if type.empty():
+            return None, None, None
+        return type.serialize()
+
+    @staticmethod
+    def _getLvarLocator(ll):
+        return {
+            'location': HexRaysHooks._getVdloc(ll.location),
+            'defea': ll.defea,
+        }
+
+    @staticmethod
+    def _getVdloc(location):
+        return {
+            'atype': location.atype(),
+            'reg1': location.reg1(),
+            'reg2': location.reg2(),
+            'stkoff': location.stkoff(),
+            'ea': location.get_ea()
+        }
+
+    def _sendUserLvarSettings(self, ea):
+        lvar_settings = HexRaysHooks._getUserLvarSettings(ea)
+        if lvar_settings != self._lvar_settings:
+            self._sendEvent(UserLvarSettingsEvent(ea, lvar_settings))
+            self._lvar_settings = lvar_settings
