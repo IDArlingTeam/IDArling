@@ -495,94 +495,63 @@ class UndefinedEvent(Event):
         idc.del_items(self.ea)
 
 
-class UserDefinedCmtEvent(Event):
-    __event__ = 'user_defined_cmt'
+class UserLabelsEvent(Event):
+    __event__ = 'user_labels'
 
-    def __init__(self, ea, itp, cmt):
-        super(UserDefinedCmtEvent, self).__init__()
+    def __init__(self, ea, labels):
+        super(UserLabelsEvent, self).__init__()
         self.ea = ea
-        self.itp = itp
-        self.cmt = cmt
+        self.labels = labels
 
     def __call__(self):
-        func = idaapi.decompile(self.ea)
-        tl = idaapi.treeloc_t()
-        tl.ea = self.ea
-        tl.itp = self.itp
-        func.set_user_cmt(tl, self.cmt)
-        func.save_user_cmts()
+        labels = idaapi.user_labels_new()
+        for org_label, name in self.labels:
+            idaapi.user_labels_insert(labels, org_label, name)
+        idaapi.save_user_labels(self.ea, labels)
         refreshPseudocodeView()
 
 
-class UserDefinedLabelEvent(Event):
-    __event__ = 'user_defined_label'
+class UserCmtsEvent(Event):
+    __event__ = 'user_cmts'
 
-    def __init__(self, ea, org_label, name):
-        super(UserDefinedLabelEvent, self).__init__()
+    def __init__(self, ea, cmts):
+        super(UserCmtsEvent, self).__init__()
         self.ea = ea
-        self.org_label = org_label
-        self.name = name
+        self.cmts = cmts
 
     def __call__(self):
-        labels = idaapi.restore_user_labels(self.ea)
-        if not labels:
-            labels = idaapi.user_labels_new()
-        idaapi.user_labels_insert(labels, self.org_label, self.name)
-        idaapi.save_user_labels(self.ea, labels)
-        refreshPseudocodeView(True)
+        cmts = idaapi.user_cmts_new()
+        for (tl_ea, tl_itp), cmt in self.cmts:
+            tl = idaapi.treeloc_t()
+            tl.ea = tl_ea
+            tl.itp = tl_itp
+            cmts.insert(tl, idaapi.citem_cmt_t(cmt))
+        idaapi.save_user_cmts(self.ea, cmts)
+        refreshPseudocodeView()
 
 
-class UserModifiedLabelEvent(Event):
-    __event__ = 'user_modified_label'
+class UserIflagsEvent(Event):
+    __event__ = 'user_iflags'
 
-    def __init__(self, ea, org_label, name):
-        super(UserModifiedLabelEvent, self).__init__()
+    def __init__(self, ea, iflags):
+        super(UserIflagsEvent, self).__init__()
         self.ea = ea
-        self.org_label = org_label
-        self.name = name
+        self.iflags = iflags
 
     def __call__(self):
-        labels = idaapi.restore_user_labels(self.ea)
-        if not labels:
-            labels = idaapi.user_labels_new()
-        it = idaapi.user_labels_find(labels, self.org_label)
-        idaapi.user_labels_erase(labels, it)
-        idaapi.user_labels_insert(labels, self.org_label, self.name)
-        idaapi.save_user_labels(self.ea, labels)
-        refreshPseudocodeView(True)
+        # FIXME: Hey-Rays bindings are broken
+        # iflags = idaapi.user_iflags_new()
+        # for (cl_ea, cl_op), f in self.iflags:
+        #     cl = idaapi.citem_locator_t(cl_ea, cl_op)
+        #     iflags.insert(cl, f)
+        # idaapi.save_user_iflags(self.ea, iflags)
 
+        idaapi.save_user_iflags(self.ea, idaapi.user_iflags_new())
+        refreshPseudocodeView()
 
-class UserErasedLabelEvent(Event):
-    __event__ = 'user_erased_label'
-
-    def __init__(self, ea, org_label):
-        super(UserErasedLabelEvent, self).__init__()
-        self.ea = ea
-        self.org_label = org_label
-
-    def __call__(self):
-        labels = idaapi.restore_user_labels(self.ea)
-        if not labels:
-            labels = idaapi.user_labels_new()
-        it = idaapi.user_labels_find(labels, self.org_label)
-        idaapi.user_labels_erase(labels, it)
-        idaapi.save_user_labels(self.ea, labels)
-        refreshPseudocodeView(True)
-
-
-class UserDefinedIflagsEvent(Event):
-    __event__ = 'user_defined_iflags'
-
-    def __init__(self, ea, cl_ea, cl_op, f):
-        super(UserDefinedIflagsEvent, self).__init__()
-        self.ea = ea
-        self.cl_ea = cl_ea
-        self.cl_op = cl_op
-        self.f = f
-
-    def __call__(self):
         cfunc = idaapi.decompile(self.ea)
-        cl = idaapi.citem_locator_t(self.cl_ea, self.cl_op)
-        cfunc.set_user_iflags(cl, self.f)
+        for (cl_ea, cl_op), f in self.iflags:
+            cl = idaapi.citem_locator_t(cl_ea, cl_op)
+            cfunc.set_user_iflags(cl, f)
         cfunc.save_user_iflags()
         refreshPseudocodeView()

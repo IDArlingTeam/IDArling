@@ -332,7 +332,7 @@ class HexRaysHooks(Hooks):
         super(HexRaysHooks, self).__init__(plugin)
         self._available = None
         self._installed = False
-        self._func = None
+        self._funcEA = idaapi.BADADDR
         self._labels = {}
         self._cmts = {}
         self._iflags = {}
@@ -360,63 +360,64 @@ class HexRaysHooks(Hooks):
         if event == idaapi.hxe_func_printed:
             ea = idaapi.get_screen_ea()
             func = idaapi.get_func(ea)
-            if self._func and self._func.startEA != func.startEA:
-                self._cmts = {}
-            self._func = func
-            self._getUserLabels(func.startEA)
-            self._getUserCmts(func.startEA)
-            self._getUserIflags(func.startEA)
+            if self._funcEA != func.startEA:
+                self._funcEA = func.startEA
+                self._labels = HexRaysHooks._getUserLabels(self._funcEA)
+                self._cmts = HexRaysHooks._getUserCmts(self._funcEA)
+                self._iflags = HexRaysHooks._getUserIflags(self._funcEA)
+            self._sendUserLabels(func.startEA)
+            self._sendUserCmts(func.startEA)
+            self._sendUserIflags(func.startEA)
         return 0
 
-    def _getUserLabels(self, ea):
+    @staticmethod
+    def _getUserLabels(ea):
         user_labels = idaapi.restore_user_labels(ea)
         if user_labels is None:
             user_labels = idaapi.user_labels_new()
-        labels = {}
+        labels = []
         it = idaapi.user_labels_begin(user_labels)
         while it != idaapi.user_labels_end(user_labels):
             org_label = idaapi.user_labels_first(it)
             name = idaapi.user_labels_second(it)
-            labels[org_label] = name
+            labels.append((org_label, name))
             it = idaapi.user_labels_next(it)
-        diff = DictDiffer(labels, self._labels)
-        for org_label in diff.added():
-            self._sendEvent(
-                UserDefinedLabelEvent(ea, org_label, labels[org_label]))
-        for org_label in diff.removed():
-            self._sendEvent(UserErasedLabelEvent(ea, org_label))
-        for org_label in diff.changed():
-            self._sendEvent(
-                UserModifiedLabelEvent(ea, org_label, labels[org_label]))
-        self._labels = labels
         idaapi.user_labels_free(user_labels)
+        return labels
 
-    def _getUserCmts(self, ea):
+    def _sendUserLabels(self, ea):
+        labels = HexRaysHooks._getUserLabels(ea)
+        if labels != self._labels:
+            self._sendEvent(UserLabelsEvent(ea, labels))
+            self._labels = labels
+
+    @staticmethod
+    def _getUserCmts(ea):
         user_cmts = idaapi.restore_user_cmts(ea)
         if user_cmts is None:
             user_cmts = idaapi.user_cmts_new()
-        cmts = {}
+        cmts = []
         it = idaapi.user_cmts_begin(user_cmts)
         while it != idaapi.user_cmts_end(user_cmts):
             tl = idaapi.user_cmts_first(it)
             cmt = idaapi.user_cmts_second(it)
-            cmts[(tl.ea, tl.itp)] = str(cmt)
+            cmts.append(((tl.ea, tl.itp), str(cmt)))
             it = idaapi.user_cmts_next(it)
-        diff = DictDiffer(cmts, self._cmts)
-        for ea, itp in diff.added():
-            self._sendEvent(UserDefinedCmtEvent(ea, itp, cmts[(ea, itp)]))
-        for ea, itp in diff.removed():
-            self._sendEvent(UserDefinedCmtEvent(ea, itp, ''))
-        for ea, itp in diff.changed():
-            self._sendEvent(UserDefinedCmtEvent(ea, itp, cmts[(ea, itp)]))
-        self._cmts = cmts
         idaapi.user_cmts_free(user_cmts)
+        return cmts
 
-    def _getUserIflags(self, ea):
+    def _sendUserCmts(self, ea):
+        cmts = HexRaysHooks._getUserCmts(ea)
+        if cmts != self._cmts:
+            self._sendEvent(UserCmtsEvent(ea, cmts))
+            self._cmts = cmts
+
+    @staticmethod
+    def _getUserIflags(ea):
         user_iflags = idaapi.restore_user_iflags(ea)
         if user_iflags is None:
             user_iflags = idaapi.user_iflags_new()
-        iflags = {}
+        iflags = []
         it = idaapi.user_iflags_begin(user_iflags)
         while it != idaapi.user_iflags_end(user_iflags):
             cl = idaapi.user_iflags_first(it)
@@ -429,16 +430,13 @@ class HexRaysHooks(Hooks):
                 buf = ctypes.string_at(id(obj), 4)
                 return struct.unpack('I', buf)[0]
             f = read_type_sign(f)
-            iflags[(cl.ea, cl.op)] = f
+            iflags.append(((cl.ea, cl.op), f))
             it = idaapi.user_iflags_next(it)
-        diff = DictDiffer(iflags, self._iflags)
-        for cl_ea, cl_op in diff.added():
-            self._sendEvent(UserDefinedIflagsEvent(ea, cl_ea, cl_op,
-                                                   iflags[(cl_ea, cl_op)]))
-        for cl_ea, cl_op in diff.removed():
-            self._sendEvent(UserDefinedIflagsEvent(ea, cl_ea, cl_op, 0))
-        for cl_ea, cl_op in diff.changed():
-            self._sendEvent(UserDefinedIflagsEvent(ea, cl_ea, cl_op,
-                                                   iflags[(cl_ea, cl_op)]))
-        self._iflags = iflags
         idaapi.user_iflags_free(user_iflags)
+        return iflags
+
+    def _sendUserIflags(self, ea):
+        iflags = HexRaysHooks._getUserIflags(ea)
+        if iflags != self._iflags:
+            self._sendEvent(UserIflagsEvent(ea, iflags))
+            self._iflags = iflags

@@ -32,7 +32,7 @@ def pluginResource(filename):
     return os.path.join(PLUGIN_PATH, 'resources', filename)
 
 
-def refreshPseudocodeView(force=False):
+def refreshPseudocodeView():
     """
     Refresh the pseudocode view in IDA
     """
@@ -41,9 +41,7 @@ def refreshPseudocodeView(force=False):
         widget = idaapi.find_widget(name)
         if widget:
             vu = idaapi.get_widget_vdui(widget)
-            vu.refresh_ctext()
-            if force:
-                vu.refresh_view(True)
+            vu.refresh_view(True)
 
 
 class DictDiffer(object):
