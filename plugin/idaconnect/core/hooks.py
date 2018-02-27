@@ -77,13 +77,9 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         self._sendEvent(FuncTailDeletedEvent(func.startEA, tail_ea))
         return 0
 
-    # Broken API in the reception side
-    # set_tail_owner always return false
-    # Don't know how to trigger this event...
-    #def tail_owner_changed(self, tail, owner_func, old_owner):
-    #    self._sendEvent(TailOwnerChangedEvent(tail.startEA, owner_func,
-    #                                          old_owner))
-    #    return 0
+    def tail_owner_changed(self, tail, owner_func, old_owner):
+        self._sendEvent(TailOwnerChangedEvent(tail.startEA, owner_func))
+        return 0
 
     def cmt_changed(self, ea, repeatable_cmt):
         cmt = idc.get_cmt(ea, repeatable_cmt)
@@ -319,6 +315,10 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
 
     def segm_class_changed(self, s, sclass):
         self._sendEvent(SegmClassChangedEvent(s.start_ea, sclass))
+        return 0
+
+    def byte_patched(self, ea, old_value):
+        self._sendEvent(BytePatchedEvent(ea, idc.Byte(ea)))
         return 0
 
 
