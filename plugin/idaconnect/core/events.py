@@ -124,6 +124,19 @@ class FuncTailAppendedEvent(Event):
                                    self.end_ea_tail)
 
 
+class FuncTailDeletedEvent(Event):
+    __event__ = 'func_tail_deleted'
+
+    def __init__(self, start_ea_func, tail_ea):
+        super(FuncTailDeletedEvent, self).__init__()
+        self.start_ea_func = start_ea_func
+        self.tail_ea = tail_ea
+
+    def __call__(self):
+        ida_funcs.remove_func_tail(idaapi.get_func(self.start_ea_func),
+                                   self.tail_ea)
+
+
 class CmtChangedEvent(Event):
     __event__ = 'cmt_changed'
 

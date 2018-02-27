@@ -74,6 +74,10 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                                               tail.endEA))
         return 0
 
+    def func_tail_deleted(self, func, tail_ea):
+        self._sendEvent(FuncTailDeletedEvent(func.startEA, tail_ea))
+        return 0
+
     def cmt_changed(self, ea, repeatable_cmt):
         cmt = idc.get_cmt(ea, repeatable_cmt)
         cmt = '' if not cmt else cmt
