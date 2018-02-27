@@ -137,6 +137,24 @@ class FuncTailDeletedEvent(Event):
                                    self.tail_ea)
 
 
+#class TailOwnerChangedEvent(Event):
+#    Broken API, set_tail_owner always return false...
+#    __event__ = 'tail_owner_changed'
+#
+#    def __init__(self, tail_start_ea, tail_end_ea, owner_func, old_owner):
+#        super(FuncTailDeletedEvent, self).__init__()
+#        self.tail_start_ea = tail_start_ea
+#        self.tail_end_ea = tail_end_ea
+#        self.owner_func = owner_func
+#        self.old_owner = old_owner
+#
+#    def __call__(self):
+#        fn_iter = ida_funcs.func_tail_iterator_t(idaapi.get_func(self.tail_ea))
+#        if fn_iter.chunk().startEA != self.tail_ea:
+#            fn_iter.next()
+#        ida_funcs.set_tail_owner(fn_iter.chunk(), self.owner_func)
+
+
 class CmtChangedEvent(Event):
     __event__ = 'cmt_changed'
 

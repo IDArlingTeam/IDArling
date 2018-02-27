@@ -49,7 +49,6 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         return 0
 
     def renamed(self, ea, new_name, local_name):
-        print("renamed")
         self._sendEvent(RenamedEvent(ea, new_name, local_name))
         return 0
 
@@ -77,6 +76,14 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
     def func_tail_deleted(self, func, tail_ea):
         self._sendEvent(FuncTailDeletedEvent(func.startEA, tail_ea))
         return 0
+
+    # Broken API in the reception side
+    # set_tail_owner always return false
+    # Don't know how to trigger this event...
+    #def tail_owner_changed(self, tail, owner_func, old_owner):
+    #    self._sendEvent(TailOwnerChangedEvent(tail.startEA, owner_func,
+    #                                          old_owner))
+    #    return 0
 
     def cmt_changed(self, ea, repeatable_cmt):
         cmt = idc.get_cmt(ea, repeatable_cmt)
