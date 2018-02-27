@@ -49,6 +49,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         return 0
 
     def renamed(self, ea, new_name, local_name):
+        print("renamed")
         self._sendEvent(RenamedEvent(ea, new_name, local_name))
         return 0
 
@@ -66,6 +67,11 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
 
     def set_func_end(self, func, new_end):
         self._sendEvent(SetFuncEndEvent(func.startEA, new_end))
+        return 0
+
+    def func_tail_appended(self, func, tail):
+        self._sendEvent(FuncTailAppendedEvent(func.startEA, tail.startEA,
+                                              tail.endEA))
         return 0
 
     def cmt_changed(self, ea, repeatable_cmt):

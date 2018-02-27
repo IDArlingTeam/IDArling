@@ -109,6 +109,21 @@ class SetFuncEndEvent(Event):
         ida_funcs.set_func_end(self.start_ea, self.new_end)
 
 
+class FuncTailAppendedEvent(Event):
+    __event__ = 'func_tail_appended'
+
+    def __init__(self, start_ea_func, start_ea_tail, end_ea_tail):
+        super(FuncTailAppendedEvent, self).__init__()
+        self.start_ea_func = start_ea_func
+        self.start_ea_tail = start_ea_tail
+        self.end_ea_tail = end_ea_tail
+
+    def __call__(self):
+        ida_funcs.append_func_tail(idaapi.get_func(self.start_ea_func),
+                                   self.start_ea_tail,
+                                   self.end_ea_tail)
+
+
 class CmtChangedEvent(Event):
     __event__ = 'cmt_changed'
 
