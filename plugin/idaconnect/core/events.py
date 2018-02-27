@@ -136,6 +136,7 @@ class FuncTailDeletedEvent(Event):
         ida_funcs.remove_func_tail(idaapi.get_func(self.start_ea_func),
                                    self.tail_ea)
 
+
 # Thanks neat \o/
 class TailOwnerChangedEvent(Event):
     __event__ = 'tail_owner_changed'
