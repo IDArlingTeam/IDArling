@@ -2,8 +2,6 @@ import logging
 import os
 import sys
 
-import idaapi
-
 from misc import localResource
 
 

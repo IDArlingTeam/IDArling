@@ -11,7 +11,7 @@ from utilities.misc import pluginResource
 logger = startLogging()
 
 
-class IDAConnect(idaapi.plugin_t):
+class Plugin(idaapi.plugin_t):
     """
     The IDAConnect plugin.
     """
@@ -34,8 +34,8 @@ class IDAConnect(idaapi.plugin_t):
 
         :return: the description
         """
-        return "{} v{}".format(IDAConnect.PLUGIN_NAME,
-                               IDAConnect.PLUGIN_VERSION)
+        return "{} v{}".format(Plugin.PLUGIN_NAME,
+                               Plugin.PLUGIN_VERSION)
 
     @staticmethod
     def resource(filename):
@@ -90,8 +90,9 @@ class IDAConnect(idaapi.plugin_t):
         """
         try:
             self._init()
-        except Exception:
-            logger.exception("Failed to initialize")
+        except Exception as e:
+            logger.error("Failed to initialize")
+            logger.exception(e)
             skip = idaapi.PLUGIN_SKIP
             return skip
 
@@ -128,8 +129,10 @@ class IDAConnect(idaapi.plugin_t):
         """
         try:
             self._term()
-        except Exception:
-            logger.exception("Failed to terminate properly")
+        except Exception as e:
+            logger.error("Failed to terminate properly")
+            logger.exception(e)
+            return
 
         logger.info("Terminated properly")
 

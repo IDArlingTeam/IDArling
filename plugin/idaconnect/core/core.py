@@ -32,6 +32,7 @@ class Core(Module):
 
         self._repo = None
         self._branch = None
+        self._timestamp = 0
 
     def _install(self):
         self._idbHooks = IDBHooks(self._plugin)
@@ -52,7 +53,8 @@ class Core(Module):
                 # Subscribe to the events stream if needed
                 if self._plugin.core.repo and self._plugin.core.branch:
                     self._plugin.network.sendPacket(Subscribe(
-                        self._plugin.core.repo, self._plugin.core.branch))
+                        self._plugin.core.repo, self._plugin.core.branch,
+                        self._plugin.core.timestamp))
                     self._plugin.core.hookAll()
         self._uiHooksCore = UIHooksCore(self._plugin)
         self._uiHooksCore.hook()
@@ -133,6 +135,24 @@ class Core(Module):
         """
         self._branch = uuid
 
+    @property
+    def timestamp(self):
+        """
+        Get the current timestamp.
+
+        :return: the timestamp
+        """
+        return self._timestamp
+
+    @timestamp.setter
+    def timestamp(self, timestamp):
+        """
+        Set the current timestamp.
+
+        :param timestamp: the timestamp
+        """
+        self._timestamp = timestamp
+
     def loadState(self):
         """
         Load the state file if it exists.
@@ -179,7 +199,9 @@ class Core(Module):
             return  # node doesn't exists
         self._repo = node.hashval('hash')
         self._branch = node.hashval('uuid')
-        logger.debug("Loaded netnode: %s, %s" % (self._repo, self._branch))
+        self._timestamp = int(node.hashval('timestamp'))
+        logger.debug("Loaded netnode: repo=%s, branch=%s, timestamp=%d"
+                     % (self._repo, self._branch, self._timestamp))
 
     def saveNetnode(self):
         """
@@ -190,7 +212,9 @@ class Core(Module):
             pass  # node already exists
         node.hashset('hash', self._repo)
         node.hashset('uuid', self._branch)
-        logger.debug("Saved netnode: %s, %s" % (self._repo, self._branch))
+        node.hashset('timestamp', str(self._timestamp))
+        logger.debug("Saved netnode: repo=%s, branch=%s, timestamp=%d"
+                     % (self._repo, self._branch, self._timestamp))
 
     def notifyConnected(self):
         """
@@ -198,5 +222,5 @@ class Core(Module):
         """
         if self._repo and self._branch:
             self._plugin.network.sendPacket(
-                Subscribe(self._repo, self._branch))
+                Subscribe(self._repo, self._branch, self._timestamp))
             self.hookAll()

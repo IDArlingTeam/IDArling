@@ -265,14 +265,17 @@ class Event(Packet):
     def __init__(self):
         super(Event, self).__init__()
         assert self.__event__ is not None, "__event__ not implemented"
+        self._timestamp = 0
 
     def build(self, dct):
         dct['type'] = self.__type__
         dct['event_type'] = self.__event__
+        dct['timestamp'] = self._timestamp
         self.buildEvent(dct)
         return dct
 
     def parse(self, dct):
+        self._timestamp = dct['timestamp']
         self.parseEvent(dct)
         return self
 
@@ -291,6 +294,24 @@ class Event(Packet):
         :param dct: the dictionary
         """
         pass
+
+    @property
+    def timestamp(self):
+        """
+        Get the timestamp of the event.
+
+        :return: the timestamp
+        """
+        return self._timestamp
+
+    @timestamp.setter
+    def timestamp(self, timestamp):
+        """
+        Set the timestamp of the event.
+
+        :param timestamp: the timestamp
+        """
+        self._timestamp = timestamp
 
 
 class DefaultEvent(Default, Event):

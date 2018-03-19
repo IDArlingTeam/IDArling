@@ -62,7 +62,7 @@ class Protocol(basic.LineReceiver, object):
             packet = Packet.parsePacket(dct)
         except Exception as e:
             self._logger.warning("Invalid packet received: %s" % line)
-            self._logger.exception(str(e))
+            self._logger.exception(e)
             return
 
         # Wait for raw data if it is a container

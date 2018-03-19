@@ -1,4 +1,4 @@
-from idaconnect.plugin import IDAConnect
+from idaconnect.plugin import Plugin
 
 
 def PLUGIN_ENTRY():
@@ -7,4 +7,4 @@ def PLUGIN_ENTRY():
 
     :return: the plugin instance
     """
-    return IDAConnect()
+    return Plugin()

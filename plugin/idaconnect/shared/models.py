@@ -1,10 +1,13 @@
 import json
 
-from mapper import Field, Table, TableFactory
-from packets import Default, Event, EventFactory
+from packets import Default, Event
 
 
-class DefaultTable(Default, Table):
+class Model(Default):
+    """
+    An object that can be serialized before being sent over the network,
+    but that can also be saved into the server SQL database.
+    """
 
     def build(self, dct):
         self.buildDefault(dct)
@@ -14,17 +17,21 @@ class DefaultTable(Default, Table):
         self.parseDefault(dct)
         return self
 
+    def __repr__(self):
+        """
+        Return a textual representation of the object. It will mainly be used
+        for pretty-printing into the console.
+        :return: the representation
+        """
+        attrs = ', '.join(['{}={}'.format(key, val) for key, val in
+                           Default.attrs(self.__dict__).iteritems()])
+        return '{}({})'.format(self.__class__.__name__, attrs)
 
-class Repository(DefaultTable):
+
+class Repository(Model):
     """
     The class representing a repository.
     """
-    __table__ = 'repositories'
-
-    hash = Field(str, notNull=True, unique=True)
-    file = Field(str, notNull=True)
-    type = Field(str, notNull=True)
-    date = Field(str, notNull=True)
 
     def __init__(self, hash, file, type, date):
         """
@@ -42,16 +49,10 @@ class Repository(DefaultTable):
         self.date = date
 
 
-class Branch(DefaultTable):
+class Branch(Model):
     """
     The class representing a branch.
     """
-    __table__ = 'branches'
-
-    uuid = Field(str, notNull=True, unique=True)
-    hash = Field(str, notNull=True)
-    date = Field(str, notNull=True)
-    bits = Field(int, notNull=True)
 
     def __init__(self, uuid, hash, date, bits):
         """
@@ -69,31 +70,17 @@ class Branch(DefaultTable):
         self.bits = bits
 
 
-class EventTableFactory(EventFactory, TableFactory):
-    """
-    A meta class for subclassing Event and Table at the same time.
-    """
-    pass
-
-
-class EventTable(Event, Table):
-    """
-    A base class for subclassing Event and Table at the same time.
-    """
-    __metaclass__ = EventTableFactory
-
-
-class AbstractEvent(EventTable):
+class AbstractEvent(Event, Model):
     """
     A class to represent events as seen by the server. The server relays the
     events to the interested clients, it doesn't know to interpret them.
     """
-    __event__ = 'all'
-    __table__ = 'events'
 
-    hash = Field(str, notNull=True)
-    uuid = Field(str, notNull=True)
-    dict = Field(str, notNull=True)
+    def __init__(self, hash, uuid, dict):
+        super(AbstractEvent, self).__init__()
+        self.hash = hash
+        self.uuid = uuid
+        self.dict = dict
 
     def buildEvent(self, dct):
         dct.update(json.loads(self.dict))

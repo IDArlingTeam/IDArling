@@ -1,11 +1,9 @@
 import datetime
 import logging
-import os
 import uuid
 from functools import partial
 
 import ida_kernwin
-import ida_loader
 import idaapi
 import idautils
 import idc
@@ -374,6 +372,7 @@ class SaveActionHandler(ActionHandler):
             repo = Repository(hash, file, type, date)
             d = self._plugin.network.sendPacket(NewRepository.Query(repo))
             d.addCallback(partial(self._onNewRepositoryReply, repo, branch))
+            d.addErrback(logger.exception)
         else:
             self._onNewRepositoryReply(repo, branch, None)
 
@@ -388,6 +387,7 @@ class SaveActionHandler(ActionHandler):
             branch = Branch(uuid_, repo.hash, date, 64 if idc.__EA64__ else 32)
             d = self._plugin.network.sendPacket(NewBranch.Query(branch))
             d.addCallback(partial(self._onNewBranchReply, repo, branch))
+            d.addErrback(logger.exception)
         else:
             self._onNewBranchReply(repo, branch, None)
 
@@ -420,6 +420,7 @@ class SaveActionHandler(ActionHandler):
         packet.upback = partial(self._progressCallback, progress)
         d = self._plugin.network.sendPacket(packet)
         d.addCallback(partial(self._databaseUploaded, repo, branch))
+        d.addErrback(logger.exception)
 
     def _databaseUploaded(self, repo, branch, _):
         # Show a success dialog
@@ -433,5 +434,6 @@ class SaveActionHandler(ActionHandler):
         success.exec_()
 
         # Subscribe to the new events stream
-        self._plugin.network.sendPacket(Subscribe(repo.hash, branch.uuid))
+        self._plugin.network.sendPacket(Subscribe(repo.hash, branch.uuid,
+                                                  self._plugin.core.timestamp))
         self._plugin.core.hookAll()
