@@ -46,6 +46,8 @@ This project is inspired by [Sol[IDA]rity](https://solidarity.re/). It started a
 * Previous plugins, namely [CollabREate](https://github.com/cseagle/collabREate), [IDASynergy](https://github.com/CubicaLabs/IDASynergy), [YaCo](https://github.com/DGA-MI-SSI/YaCo), were studied during the development process;
 * The icons are edited and combined versions from the sites [freeiconshop.com](http://freeiconshop.com/) and [www.iconsplace.com](http://www.iconsplace.com).
 
+Thanks to Quarkslab for allowing this release.
+
 # Authors
 
 * Alexandre Adamski <<aadamski@quarkslab.com>>
