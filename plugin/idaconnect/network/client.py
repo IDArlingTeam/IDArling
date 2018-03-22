@@ -63,8 +63,8 @@ class ClientProtocol(Protocol):
             def callEvent(event):
                 self._plugin.core.unhookAll()
                 event()
-                self._plugin.core.timestamp = \
-                    max(self.plugin.core.timestamp, event.timestamp) + 1
+                self._plugin.core.tick = \
+                    max(self._plugin.core.tick, event.tick)
                 self._plugin.core.hookAll()
 
             d = task.deferLater(reactor, 0.0, callEvent, packet)
@@ -75,8 +75,8 @@ class ClientProtocol(Protocol):
 
     def sendPacket(self, packet):
         if isinstance(packet, Event):
-            self._plugin.core.timestamp += 1
-            packet.timestamp = self._plugin.core.timestamp
+            self._plugin.core.tick += 1
+            packet.tick = self._plugin.core.tick
         return super(ClientProtocol, self).sendPacket(packet)
 
 

@@ -131,11 +131,11 @@ class DownloadDatabase(ParentCommand):
 class Subscribe(DefaultCommand):
     __command__ = 'subscribe'
 
-    def __init__(self, hash, uuid, timestamp):
+    def __init__(self, hash, uuid, tick):
         super(Subscribe, self).__init__()
         self.hash = hash
         self.uuid = uuid
-        self.timestamp = timestamp
+        self.tick = tick
 
 
 class Unsubscribe(DefaultCommand):

@@ -12,13 +12,14 @@
 #
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
+import json
 import sqlite3
 
 from twisted.enterprise import adbapi
 
 from utils import localFile
 from shared.models import Repository, Branch
-from shared.packets import Default
+from shared.packets import Default, DefaultEvent
 
 
 class Database(object):
@@ -60,6 +61,7 @@ class Database(object):
             Database._create(txn, 'events', [
                 'hash text',
                 'uuid text',
+                'tick integer',
                 'dict text',
                 'foreign key(hash) references repos(hash)',
                 'foreign key(uuid) references branches(uuid)'
@@ -139,14 +141,42 @@ class Database(object):
             return [Branch(*result) for result in results]
         return self._conn.runInteraction(fetchRows)
 
-    def insertEvent(self, event):
+    def insertEvent(self, client, event):
         """
-        Inserts a new branch into the database.
+        Inserts a new event into the database.
 
+        :param client: the client
         :param event: the event
         :return: a deferred triggered when the operation is done
         """
-        return self._insert('events', Default.attrs(event.__dict__))
+        dct = DefaultEvent.attrs(event.__dict__)
+        return self._insert('events', {
+            'hash': client.repo,
+            'uuid': client.branch,
+            'tick': dct.pop('tick'),
+            'dict': json.dumps(dct)
+        })
+
+    def selectEvents(self, hash, uuid, tick):
+        """
+        Get all events sent after the given ticks count.
+
+        :param hash: the repository
+        :param uuid: the branch
+        :param tick: the ticks count
+        :return: the list of events
+        """
+        def fetchRows(txn):
+            sql = 'select * from events where hash = ? and uuid = ? ' \
+                  'and tick > ? order by tick asc;'
+            txn.execute(sql, [hash, uuid, tick])
+            events = []
+            for result in txn.fetchall():
+                dct = json.loads(result['dict'])
+                dct['tick'] = result['tick']
+                events.append(DefaultEvent.new(dct))
+            return events
+        return self._conn.runInteraction(fetchRows)
 
     @staticmethod
     def _create(txn, table, cols):

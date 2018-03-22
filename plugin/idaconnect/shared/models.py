@@ -12,9 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
-import json
-
-from packets import Default, Event
+from packets import Default
 
 
 class Model(Default):
@@ -82,22 +80,3 @@ class Branch(Model):
         self.hash = hash
         self.date = date
         self.bits = bits
-
-
-class AbstractEvent(Event, Model):
-    """
-    A class to represent events as seen by the server. The server relays the
-    events to the interested clients, it doesn't know to interpret them.
-    """
-
-    def __init__(self, hash, uuid, dict):
-        super(AbstractEvent, self).__init__()
-        self.hash = hash
-        self.uuid = uuid
-        self.dict = dict
-
-    def buildEvent(self, dct):
-        dct.update(json.loads(self.dict))
-
-    def parseEvent(self, dct):
-        self.dict = json.dumps(dct)

@@ -279,17 +279,17 @@ class Event(Packet):
     def __init__(self):
         super(Event, self).__init__()
         assert self.__event__ is not None, "__event__ not implemented"
-        self._timestamp = 0
+        self._tick = 0
 
     def build(self, dct):
         dct['type'] = self.__type__
         dct['event_type'] = self.__event__
-        dct['timestamp'] = self._timestamp
+        dct['tick'] = self._tick
         self.buildEvent(dct)
         return dct
 
     def parse(self, dct):
-        self._timestamp = dct['timestamp']
+        self._tick = dct['tick']
         self.parseEvent(dct)
         return self
 
@@ -310,22 +310,22 @@ class Event(Packet):
         pass
 
     @property
-    def timestamp(self):
+    def tick(self):
         """
-        Get the timestamp of the event.
+        Get the tick of the event.
 
-        :return: the timestamp
+        :return: the tick
         """
-        return self._timestamp
+        return self._tick
 
-    @timestamp.setter
-    def timestamp(self, timestamp):
+    @tick.setter
+    def tick(self, tick):
         """
-        Set the timestamp of the event.
+        Set the tick of the event.
 
-        :param timestamp: the timestamp
+        :param tick: the tick
         """
-        self._timestamp = timestamp
+        self._tick = tick
 
 
 class DefaultEvent(Default, Event):

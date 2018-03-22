@@ -46,12 +46,14 @@ class Core(Module):
 
         self._repo = None
         self._branch = None
-        self._timestamp = 0
+        self._tick = 0
 
     def _install(self):
         self._idbHooks = IDBHooks(self._plugin)
         self._idpHooks = IDPHooks(self._plugin)
         self._hxeHooks = HexRaysHooks(self._plugin)
+
+        core = self
 
         class UIHooksCore(Hooks, ida_kernwin.UI_Hooks):
             """
@@ -63,13 +65,12 @@ class Core(Module):
                 Hooks.__init__(self, plugin)
 
             def ready_to_run(self, *_):
-                self._plugin.core.loadNetnode()
+                core.loadNetnode()
                 # Subscribe to the events stream if needed
-                if self._plugin.core.repo and self._plugin.core.branch:
+                if core.repo and core.branch:
                     self._plugin.network.sendPacket(Subscribe(
-                        self._plugin.core.repo, self._plugin.core.branch,
-                        self._plugin.core.timestamp))
-                    self._plugin.core.hookAll()
+                        core.repo, core.branch, core.tick))
+                    core.hookAll()
         self._uiHooksCore = UIHooksCore(self._plugin)
         self._uiHooksCore.hook()
 
@@ -84,7 +85,9 @@ class Core(Module):
 
             def closebase(self):
                 self._plugin.network.sendPacket(Unsubscribe())
-                self._plugin.core.unhookAll()
+                core.unhookAll()
+                core.repo = None
+                core.branch = None
                 return 0
         self._idbHooksCore = IDBHooksCore(self._plugin)
         self._idbHooksCore.hook()
@@ -150,22 +153,22 @@ class Core(Module):
         self._branch = uuid
 
     @property
-    def timestamp(self):
+    def tick(self):
         """
-        Get the current timestamp.
+        Get the current tick.
 
-        :return: the timestamp
+        :return: the tick
         """
-        return self._timestamp
+        return self._tick
 
-    @timestamp.setter
-    def timestamp(self, timestamp):
+    @tick.setter
+    def tick(self, tick):
         """
-        Set the current timestamp.
+        Set the current tick.
 
-        :param timestamp: the timestamp
+        :param tick: the tick
         """
-        self._timestamp = timestamp
+        self._tick = tick
 
     def loadState(self):
         """
@@ -213,9 +216,9 @@ class Core(Module):
             return  # node doesn't exists
         self._repo = node.hashval('hash')
         self._branch = node.hashval('uuid')
-        self._timestamp = int(node.hashval('timestamp'))
-        logger.debug("Loaded netnode: repo=%s, branch=%s, timestamp=%d"
-                     % (self._repo, self._branch, self._timestamp))
+        self._tick = int(node.hashval('tick'))
+        logger.debug("Loaded netnode: repo=%s, branch=%s, tick=%d"
+                     % (self._repo, self._branch, self._tick))
 
     def saveNetnode(self):
         """
@@ -226,9 +229,9 @@ class Core(Module):
             pass  # node already exists
         node.hashset('hash', self._repo)
         node.hashset('uuid', self._branch)
-        node.hashset('timestamp', str(self._timestamp))
-        logger.debug("Saved netnode: repo=%s, branch=%s, timestamp=%d"
-                     % (self._repo, self._branch, self._timestamp))
+        node.hashset('tick', str(self._tick))
+        logger.debug("Saved netnode: repo=%s, branch=%s, tick=%d"
+                     % (self._repo, self._branch, self._tick))
 
     def notifyConnected(self):
         """
@@ -236,5 +239,5 @@ class Core(Module):
         """
         if self._repo and self._branch:
             self._plugin.network.sendPacket(
-                Subscribe(self._repo, self._branch, self._timestamp))
+                Subscribe(self._repo, self._branch, self._tick))
             self.hookAll()

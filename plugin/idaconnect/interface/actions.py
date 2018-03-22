@@ -449,5 +449,5 @@ class SaveActionHandler(ActionHandler):
 
         # Subscribe to the new events stream
         self._plugin.network.sendPacket(Subscribe(repo.hash, branch.uuid,
-                                                  self._plugin.core.timestamp))
+                                                  self._plugin.core.tick))
         self._plugin.core.hookAll()

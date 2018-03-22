@@ -23,8 +23,7 @@ from shared.commands import (GetRepositories, GetBranches,
                              NewRepository, NewBranch,
                              UploadDatabase, DownloadDatabase,
                              Subscribe, Unsubscribe)
-from shared.models import AbstractEvent
-from shared.packets import Command, EventFactory
+from shared.packets import Command, EventFactory, DefaultEvent
 from shared.protocol import Protocol
 
 from utils import startLogging
@@ -115,18 +114,21 @@ class ServerProtocol(Protocol):
             # Call the corresponding handler
             self._handlers[packet.__class__](packet)
 
-        elif isinstance(packet, AbstractEvent):
+        elif isinstance(packet, DefaultEvent):
             if not self._repo or not self._branch:
                 self._logger.warning(
                     "Received a packet from an unsubscribed client")
                 return True
 
-            # Fill the current repo and branch
-            packet.hash = self._repo
-            packet.uuid = self._branch
+            # Save the event into the database
+            self._factory.db.insertEvent(self, packet)
 
-            # Forward the event to the factory
-            self._factory.broadcastEvent(packet, self)
+            # Forward the event to the other clients
+            def shouldForward(client):
+                return client.repo == self._repo \
+                       and client.branch == self._branch and client != self
+            for client in self._factory.getClients(shouldForward):
+                client.sendPacket(packet)
         else:
             return False
         return True
@@ -190,10 +192,23 @@ class ServerProtocol(Protocol):
         self._branch = packet.uuid
         self._factory.registerClient(self)
 
+        # Send all missed events
+        def sendEvents(events):
+            self._logger.debug('Sending %d missed events' % len(events))
+            for event in events:
+                self.sendPacket(event)
+        d = self._factory.db.selectEvents(self._repo, self._branch,
+                                          packet.tick)
+        d.addCallback(sendEvents).addErrback(self._logger.exception)
+
     def _handleUnsubscribe(self, _):
         self._factory.unregisterClient(self)
         self._repo = None
         self._branch = None
+
+    def __repr__(self):
+        peer = self.transport.getPeer()
+        return 'ServerProtocol(host=%s, port=%s)' % (peer.host, peer.port)
 
 
 class ServerFactory(protocol.Factory, object):
@@ -201,21 +216,25 @@ class ServerFactory(protocol.Factory, object):
     The server factory implementation.
     """
 
-    def __init__(self, logger):
+    def __init__(self, port, logger):
         """
         Initialize the server factory.
+
+        :param port: the port to listen on
+        :param logger: the parent logger
         """
         super(ServerFactory, self).__init__()
+        self._port = port
         self._logger = logger
-        self._clients = collections.defaultdict(list)
+        self._clients = []
 
         # Initialize the database
         self._db = Database()
         d = self._db.initialize()
         d.addErrback(logger.exception)
 
-        # Register abstract event as a default
-        EventFactory._EVENTS = collections.defaultdict(lambda: AbstractEvent)
+        # Register default event
+        EventFactory._EVENTS = collections.defaultdict(lambda: DefaultEvent)
 
     def buildProtocol(self, addr):
         """
@@ -232,9 +251,8 @@ class ServerFactory(protocol.Factory, object):
 
         :param client: the client
         """
-        clients = self._clients[(client.repo, client.branch)]
-        if client not in clients:
-            clients.append(client)
+        if client not in self._clients:
+            self._clients.append(client)
 
     def unregisterClient(self, client):
         """
@@ -242,21 +260,26 @@ class ServerFactory(protocol.Factory, object):
 
         :param client: the client
         """
-        clients = self._clients[(client.repo, client.branch)]
-        if client in clients:
-            clients.remove(client)
+        if client in self._clients:
+            self._clients.remove(client)
 
-    def broadcastEvent(self, event, sender):
+    def getClients(self, func):
         """
-        Send a packet to all connected clients.
+        Get all the clients matching the specified criterion.
 
-        :param event: the event
-        :param sender: the sender
+        :param func: the filtering function
+        :return: the matching clients
         """
-        self._db.insertEvent(event)
-        for client in self._clients[(sender.repo, sender.branch)]:
-            if client != sender:
-                client.sendPacket(event)
+        return filter(func, self._clients)
+
+    @property
+    def port(self):
+        """
+        Get the server's port.
+
+        :return: the port
+        """
+        return self._port
 
     @property
     def db(self):
@@ -266,6 +289,9 @@ class ServerFactory(protocol.Factory, object):
         :return: the database
         """
         return self._db
+
+    def __repr__(self):
+        return 'ServerFactory(port=%d)' % self._port
 
 
 class Server(object):
@@ -278,6 +304,6 @@ class Server(object):
         Instantiate the server and start listening.
         """
         logger = startLogging()
-        factory = ServerFactory(logger)
-        reactor.listenTCP(31013, factory)
+        factory = ServerFactory(31013, logger)
+        reactor.listenTCP(factory.port, factory)
         reactor.run()

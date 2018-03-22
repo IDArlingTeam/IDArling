@@ -12,6 +12,8 @@
 #
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 class Module(object):
     """
     This is the base class of every module in the plugin.
