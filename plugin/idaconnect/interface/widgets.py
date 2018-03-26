@@ -16,7 +16,9 @@ import logging
 
 from PyQt5.QtCore import Qt, QSize, QPoint
 from PyQt5.QtGui import QPixmap, QIcon, QPainter
-from PyQt5.QtWidgets import QWidget, QLabel, QMenu, QAction
+from PyQt5.QtWidgets import QWidget, QLabel, QMenu, QActionGroup, QAction
+
+from dialogs import NetworkSettingsDialog
 
 logger = logging.getLogger('IDAConnect.Interface')
 
@@ -43,7 +45,7 @@ class StatusWidget(QWidget):
 
         self._state = self.STATE_DISCONNECTED
         self._server = self.SERVER_DISCONNECTED
-        self._servers = ['127.0.0.1']
+        self._servers = self._plugin.core._servers
 
         # Set a custom context menu policy
         self.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -97,26 +99,40 @@ class StatusWidget(QWidget):
         settings = QAction('Network Settings', menu)
         iconPath = self._plugin.resource('settings.png')
         settings.setIcon(QIcon(iconPath))
+
+        # Add a handler on the action
+        def settingsActionTriggered():
+            dialog = NetworkSettingsDialog(self._plugin)
+            dialog.exec_()
+
+        settings.triggered.connect(settingsActionTriggered)
         menu.addAction(settings)
 
         # Add each of the servers
         if self._servers:
             menu.addSeparator()
+            serverGroup = QActionGroup(self)
+
+            def serverActionTriggered(serverAction):
+                if not self._plugin.network.connected and \
+                       serverAction.isChecked():
+                    self._plugin.network.connect(
+                                    str(serverAction.objectName()),
+                                    int(serverAction._port))
+                else:
+                    self._plugin.network.disconnect()
+
             for server in self._servers:
                 isConnected = self._plugin.network.connected \
-                              and server == self._plugin.network.host
-                serverAction = QAction(server, menu, checkable=True)
+                              and server.host == self._plugin.network.host
+                serverAction = QAction(server.host, menu, checkable=True)
+                serverAction.setObjectName(server.host)
+                serverAction._port = server.port
                 serverAction.setChecked(isConnected)
+                serverGroup.addAction(serverAction)
 
-                # Add a handler on the action
-                def serverActionToggled(checked=False):
-                    if checked:
-                        self._plugin.network.connect(server, 31013)
-                    else:
-                        self._plugin.network.disconnect()
-
-                serverAction.toggled.connect(serverActionToggled)
-                menu.addAction(serverAction)
+            menu.addActions(serverGroup.actions())
+            serverGroup.triggered.connect(serverActionTriggered)
 
         # Show the context menu
         menu.exec_(self.mapToGlobal(point))

@@ -535,3 +535,18 @@ class HexRaysHooks(Hooks):
         if lvar_settings != self._lvar_settings:
             self._sendEvent(UserLvarSettingsEvent(ea, lvar_settings))
             self._lvar_settings = lvar_settings
+
+
+class UIHooks(Hooks, idaapi.View_Hooks):
+    """
+    The concrete class for UI-related events.
+    """
+
+    def __init__(self, plugin):
+        idaapi.View_Hooks.__init__(self)
+        Hooks.__init__(self, plugin)
+
+    # for the next feature
+    def view_loc_changed(self, view, now, was):
+        pass
+        # print(now.plce.toea())

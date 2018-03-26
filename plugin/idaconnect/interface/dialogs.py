@@ -13,12 +13,15 @@
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
 import logging
+from collections import namedtuple
+from functools import partial
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout,
                              QGridLayout, QWidget, QTableWidget,
-                             QTableWidgetItem, QGroupBox, QLabel, QPushButton)
+                             QTableWidgetItem, QGroupBox, QLabel, QPushButton,
+                             QLineEdit)
 
 from ..shared.models import Repository
 
@@ -163,7 +166,7 @@ class SaveDialog(QDialog):
 
     def __init__(self, plugin, repos, branches):
         """
-        Initialize the open dialog.
+        Initialize the save dialog.
 
         :param plugin: the plugin instance
         :param repos: the list of repositories
@@ -298,3 +301,165 @@ class SaveDialog(QDialog):
         """
         repo = self._reposTable.currentItem().data(Qt.UserRole)
         return repo, self._branchesTable.currentItem().data(Qt.UserRole)
+
+
+class NetworkSettingsDialog(QDialog):
+    """
+    The network settings dialog allowing an user to select a remote server to
+    connect to.
+    """
+
+    def __init__(self, plugin):
+        """
+        Initialize the network settings dialog.
+
+        :param plugin: the plugin instance
+        """
+        super(NetworkSettingsDialog, self).__init__()
+        self._plugin = plugin
+        self._servers = self._plugin.core._servers
+
+        # General setup of the dialog
+        logger.debug("Showing network settings dialog")
+        self.setWindowTitle("Network Settings")
+        iconPath = self._plugin.resource('settings.png')
+        self.setWindowIcon(QIcon(iconPath))
+        self.resize(300, 300)
+
+        layout = QVBoxLayout(self)
+        self._serversTable = QTableWidget(len(self._servers), 1, self)
+        self._serversTable.setHorizontalHeaderLabels(('Server list',))
+        for i, server in enumerate(self._servers):
+            item = QTableWidgetItem("%s" % (str(server.host)))
+            item.setData(Qt.UserRole, server)
+            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+            self._serversTable.setItem(i, 0, item)
+
+        self._serversTable.horizontalHeader().setSectionsClickable(False)
+        self._serversTable.horizontalHeader().setStretchLastSection(True)
+        self._serversTable.verticalHeader().setVisible(False)
+        self._serversTable.setSelectionBehavior(QTableWidget.SelectRows)
+        self._serversTable.setSelectionMode(QTableWidget.SingleSelection)
+        self._serversTable.itemClicked.connect(self._serverClicked)
+        minSZ = self._serversTable.minimumSize()
+        self._serversTable.setMinimumSize(300, minSZ.height())
+        maxSZ = self._serversTable.maximumSize()
+        self._serversTable.setMaximumSize(300, maxSZ.height())
+        layout.addWidget(self._serversTable)
+
+        buttonsWidget = QWidget(self)
+        buttonsLayout = QHBoxLayout(buttonsWidget)
+
+        # Add server button
+        self._addButton = QPushButton("Add Server")
+        self._addButton.clicked.connect(self._addButtonClicked)
+        buttonsLayout.addWidget(self._addButton)
+
+        # Delete server button
+        self._deleteButton = QPushButton("Delete Server")
+        self._deleteButton.setEnabled(False)
+        self._deleteButton.clicked.connect(self._deleteButtonClicked)
+        buttonsLayout.addWidget(self._deleteButton)
+
+        # Cancel button
+        self._quitButton = QPushButton("Quit")
+        self._quitButton.clicked.connect(self.reject)
+        buttonsLayout.addWidget(self._quitButton)
+
+        buttonsLayout.addWidget(buttonsWidget)
+        layout.addWidget(buttonsWidget)
+
+    def _serverClicked(self, item):
+        """
+        Called when a server item is clicked.
+        """
+        self._itemClicked = item
+        self._deleteButton.setEnabled(True)
+
+    def _addButtonClicked(self, _):
+        """
+        Called when the add button is clicked.
+        """
+        dialog = AddServerDialog(self._plugin)
+        dialog.accepted.connect(partial(self._dialogAccepted, dialog))
+        dialog.exec_()
+
+    def _dialogAccepted(self, dialog):
+        """
+        Called when the add server dialog is accepted by the user.
+
+        :param dialog: the add server dialog
+        """
+        host, port = dialog.getResult()
+        Server = namedtuple('Server', ['host', 'port'])
+        server = Server(host, port)
+        self._servers += [server]
+        rowCount = self._serversTable.rowCount()
+        self._serversTable.insertRow(rowCount)
+        newServer = QTableWidgetItem(server.host)
+        self._serversTable.setItem(rowCount, 0, newServer)
+        self.update()
+
+    def _deleteButtonClicked(self, _):
+        """
+        Called when the delete button is clicked.
+        """
+        self._servers.remove(self._itemClicked.data(Qt.UserRole))
+        self._serversTable.removeRow(self._itemClicked.row())
+        self.update()
+
+
+class AddServerDialog(QDialog):
+    """
+    The add server dialog allowing an user to add a remote server to connect to.
+    """
+
+    def __init__(self, plugin):
+        """
+        Initialize the network setting dialog.
+
+        :param plugin: the plugin instance
+        """
+        super(AddServerDialog, self).__init__()
+        self._plugin = plugin
+
+        # General setup of the dialog
+        logger.debug("Add server settings dialog")
+        self.setWindowTitle("Add server")
+        iconPath = self._plugin.resource('settings.png')
+        self.setWindowIcon(QIcon(iconPath))
+        self.resize(100, 100)
+
+        layout = QVBoxLayout(self)
+
+        self._serverNameLabel = QLabel('<b>Server name or IP</b>')
+        layout.addWidget(self._serverNameLabel)
+        self._serverName = QLineEdit()
+        self._serverName.setPlaceholderText('Server name or IP')
+        layout.addWidget(self._serverName)
+
+        self._serverNameLabel = QLabel('<b>Server port</b>')
+        layout.addWidget(self._serverNameLabel)
+        self._serverPort = QLineEdit()
+        self._serverPort.setPlaceholderText('Server port')
+        layout.addWidget(self._serverPort)
+
+        downSide = QWidget(self)
+        buttonsLayout = QHBoxLayout(downSide)
+        self._addButton = QPushButton("Add")
+        self._addButton.clicked.connect(self.accept)
+        buttonsLayout.addWidget(self._addButton)
+        self._cancelButton = QPushButton("Cancel")
+        self._cancelButton.clicked.connect(self.reject)
+        buttonsLayout.addWidget(self._cancelButton)
+        layout.addWidget(downSide)
+
+    def getResult(self):
+        """
+        Get the result (server, port) from this dialog.
+
+        :return: the result
+        """
+        return self._serverName.text(), self._serverPort.text()
+
+

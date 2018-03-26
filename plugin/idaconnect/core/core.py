@@ -12,6 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
+from collections import namedtuple
 import json
 import logging
 import os
@@ -23,7 +24,7 @@ import idaapi
 from ..module import Module
 from ..utilities.misc import localResource
 from ..shared.commands import Subscribe, Unsubscribe
-from hooks import Hooks, IDBHooks, IDPHooks, HexRaysHooks
+from hooks import Hooks, IDBHooks, IDPHooks, HexRaysHooks, UIHooks
 
 logger = logging.getLogger('IDAConnect.Core')
 
@@ -40,6 +41,7 @@ class Core(Module):
         self._idbHooks = None
         self._idpHooks = None
         self._hxeHooks = None
+        self._UIHooks = None
 
         self._uiHooksCore = None
         self._idbHooksCore = None
@@ -47,11 +49,13 @@ class Core(Module):
         self._repo = None
         self._branch = None
         self._tick = 0
+        self._servers = []
 
     def _install(self):
         self._idbHooks = IDBHooks(self._plugin)
         self._idpHooks = IDPHooks(self._plugin)
         self._hxeHooks = HexRaysHooks(self._plugin)
+        self._UIHooks = UIHooks(self._plugin)
 
         core = self
 
@@ -107,6 +111,7 @@ class Core(Module):
         self._idbHooks.hook()
         self._idpHooks.hook()
         self._hxeHooks.hook()
+        self._UIHooks.hook()
 
     def unhookAll(self):
         """
@@ -115,6 +120,7 @@ class Core(Module):
         self._idbHooks.unhook()
         self._idpHooks.unhook()
         self._hxeHooks.unhook()
+        self._UIHooks.unhook()
 
     @property
     def repo(self):
@@ -170,6 +176,24 @@ class Core(Module):
         """
         self._tick = tick
 
+    @property
+    def servers(self):
+        """
+        Get the current servers.
+
+        :return: the servers
+        """
+        return self._servers
+
+    @servers.setter
+    def servers(self, servers):
+        """
+        Set the current servers.
+
+        :param timestamp: the timestamp
+        """
+        self._servers = servers
+
     def loadState(self):
         """
         Load the state file if it exists.
@@ -179,6 +203,9 @@ class Core(Module):
             with open(statePath, 'rb') as stateFile:
                 state = json.loads(stateFile.read())
                 logger.debug("Loaded state: %s" % state)
+                servers = state['servers']
+                Server = namedtuple('Server', ['host', 'port'])
+                self._servers = [Server(host, port) for host, port in servers]
                 if state['connected']:
                     self._plugin.network.connect(state['host'], state['port'])
                 if 'cleanup' in state and state['cleanup']:
@@ -201,6 +228,7 @@ class Core(Module):
                 'connected': self._plugin.network.connected,
                 'host': self._plugin.network.host,
                 'port': self._plugin.network.port,
+                'servers': [(s.host, s.port) for s in self._servers],
             }
             if cleanup:
                 state['cleanup'] = cleanup
@@ -230,8 +258,9 @@ class Core(Module):
         node.hashset('hash', self._repo)
         node.hashset('uuid', self._branch)
         node.hashset('tick', str(self._tick))
-        logger.debug("Saved netnode: repo=%s, branch=%s, tick=%d"
-                     % (self._repo, self._branch, self._tick))
+        node.hashset('servers', self._servers)
+        logger.debug("Saved netnode: repo=%s, branch=%s, tick=%d, server=%s"
+                     % (self._repo, self._branch, self._tick, self._servers))
 
     def notifyConnected(self):
         """

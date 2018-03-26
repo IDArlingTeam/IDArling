@@ -120,11 +120,12 @@ class Plugin(idaapi.plugin_t):
         Initialize the plugin and all its modules.
         """
         self._core.install()
-        self._interface.install()
         self._network.install()
 
         # Load the current state
         self.core.loadState()
+
+        self._interface.install()
 
     def _printBanner(self):
         """
