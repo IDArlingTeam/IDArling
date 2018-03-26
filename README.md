@@ -56,3 +56,9 @@ Thanks to Quarkslab for allowing this release.
 
 * Alexandre Adamski <<aadamski@quarkslab.com>>
 * Joffrey Guilbon <<jguilbon@quarkslab.com>>
+
+# Contact
+
+If you have any questions not worthy of a bug report, feel free to ping us at
+#idaconnect on Freenode and ask away. Click
+[here](https://kiwiirc.com/client/irc.freenode.net/idaconnect) to connect.
