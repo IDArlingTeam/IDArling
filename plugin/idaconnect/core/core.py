@@ -41,7 +41,7 @@ class Core(Module):
         self._idbHooks = None
         self._idpHooks = None
         self._hxeHooks = None
-        self._UIHooks = None
+        self._uiHooks = None
 
         self._uiHooksCore = None
         self._idbHooksCore = None
@@ -55,7 +55,7 @@ class Core(Module):
         self._idbHooks = IDBHooks(self._plugin)
         self._idpHooks = IDPHooks(self._plugin)
         self._hxeHooks = HexRaysHooks(self._plugin)
-        self._UIHooks = UIHooks(self._plugin)
+        self._uiHooks = UIHooks(self._plugin)
 
         core = self
 
@@ -111,7 +111,7 @@ class Core(Module):
         self._idbHooks.hook()
         self._idpHooks.hook()
         self._hxeHooks.hook()
-        self._UIHooks.hook()
+        self._uiHooks.hook()
 
     def unhookAll(self):
         """
@@ -120,7 +120,7 @@ class Core(Module):
         self._idbHooks.unhook()
         self._idpHooks.unhook()
         self._hxeHooks.unhook()
-        self._UIHooks.unhook()
+        self._uiHooks.unhook()
 
     @property
     def repo(self):
@@ -258,9 +258,8 @@ class Core(Module):
         node.hashset('hash', self._repo)
         node.hashset('uuid', self._branch)
         node.hashset('tick', str(self._tick))
-        node.hashset('servers', self._servers)
-        logger.debug("Saved netnode: repo=%s, branch=%s, tick=%d, server=%s"
-                     % (self._repo, self._branch, self._tick, self._servers))
+        logger.debug("Saved netnode: repo=%s, branch=%s, tick=%d"
+                     % (self._repo, self._branch, self._tick))
 
     def notifyConnected(self):
         """
