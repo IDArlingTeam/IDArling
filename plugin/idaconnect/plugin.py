@@ -121,11 +121,11 @@ class Plugin(idaapi.plugin_t):
         """
         self._core.install()
         self._network.install()
+        self._interface.install()
 
         # Load the current state
         self.core.loadState()
 
-        self._interface.install()
 
     def _printBanner(self):
         """

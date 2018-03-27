@@ -45,7 +45,6 @@ class StatusWidget(QWidget):
 
         self._state = self.STATE_DISCONNECTED
         self._server = self.SERVER_DISCONNECTED
-        self._servers = self._plugin.core._servers
 
         # Set a custom context menu policy
         self.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -109,7 +108,7 @@ class StatusWidget(QWidget):
         menu.addAction(settings)
 
         # Add each of the servers
-        if self._servers:
+        if self._plugin.core.servers:
             menu.addSeparator()
             serverGroup = QActionGroup(self)
 
@@ -122,7 +121,7 @@ class StatusWidget(QWidget):
                 else:
                     self._plugin.network.disconnect()
 
-            for server in self._servers:
+            for server in self._plugin.core.servers:
                 isConnected = self._plugin.network.connected \
                               and server.host == self._plugin.network.host
                 serverAction = QAction(server.host, menu, checkable=True)

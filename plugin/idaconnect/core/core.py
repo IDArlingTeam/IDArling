@@ -205,7 +205,7 @@ class Core(Module):
                 logger.debug("Loaded state: %s" % state)
                 servers = state['servers']
                 Server = namedtuple('Server', ['host', 'port'])
-                self._servers = [Server(host, port) for host, port in servers]
+                self._servers = [Server(server[0], server[1]) for server in servers]
                 if state['connected']:
                     self._plugin.network.connect(state['host'], state['port'])
                 if 'cleanup' in state and state['cleanup']:
@@ -228,7 +228,7 @@ class Core(Module):
                 'connected': self._plugin.network.connected,
                 'host': self._plugin.network.host,
                 'port': self._plugin.network.port,
-                'servers': [(s.host, s.port) for s in self._servers],
+                'servers': [[s.host, s.port] for s in self._servers],
             }
             if cleanup:
                 state['cleanup'] = cleanup
@@ -244,7 +244,11 @@ class Core(Module):
             return  # node doesn't exists
         self._repo = node.hashval('hash')
         self._branch = node.hashval('uuid')
-        self._tick = int(node.hashval('tick'))
+        self._tick = node.hashval('tick')
+        if self._tick:
+            self._tick = int(self._tick)
+        else:
+            self._tick = 0
         logger.debug("Loaded netnode: repo=%s, branch=%s, tick=%d"
                      % (self._repo, self._branch, self._tick))
 
