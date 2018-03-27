@@ -1,17 +1,15 @@
-# Copyright (C) 2018 Alexandre Adamski
-# Copyright (C) 2018 Joffrey Guilbon
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <http://www.gnu.org/licenses/>.
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
 import logging
 from collections import namedtuple
 from functools import partial
@@ -305,8 +303,7 @@ class SaveDialog(QDialog):
 
 class NetworkSettingsDialog(QDialog):
     """
-    The network settings dialog allowing an user to select a remote server to
-    connect to.
+    The dialog allowing an user to select a remote server to connect to.
     """
 
     def __init__(self, plugin):
@@ -411,7 +408,7 @@ class NetworkSettingsDialog(QDialog):
 
 class AddServerDialog(QDialog):
     """
-    The add server dialog allowing an user to add a remote server to connect to.
+    The dialog allowing an user to add a remote server to connect to.
     """
 
     def __init__(self, plugin):
@@ -461,5 +458,3 @@ class AddServerDialog(QDialog):
         :return: the result
         """
         return self._serverName.text(), self._serverPort.text()
-
-
