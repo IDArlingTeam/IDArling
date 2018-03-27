@@ -213,7 +213,6 @@ class Core(Module):
                     for extension in ['.id0', '.id1', '.nam', '.seg', '.til']:
                         if os.path.exists(idbFile + extension):
                             os.remove(idbFile + extension)
-            os.remove(statePath)
 
     def saveState(self, cleanup=None):
         """
