@@ -17,7 +17,7 @@ import idaapi
 LOCAL_PATH = os.path.join(idaapi.get_user_idadir(), '.idaconnect')
 
 
-def localResource(dirname, filename):
+def local_resource(dirname, filename):
     """
     Get the absolute path of a local resource.
 
@@ -34,19 +34,19 @@ def localResource(dirname, filename):
 PLUGIN_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 
-def pluginResource(filename):
+def plugin_resource(filename):
     """
     Get the absolute path of a plugin resource.
 
-    :param filename: the fil ename
+    :param filename: the filename
     :return: the path
     """
     return os.path.join(PLUGIN_PATH, 'resources', filename)
 
 
-def refreshPseudocodeView():
+def refresh_pseudocode_view():
     """
-    Refresh the pseudocode view in IDA
+    Refresh the pseudocode view in IDA.
     """
     names = ['Pseudocode-%c' % chr(ord('A') + i) for i in range(5)]
     for name in names:

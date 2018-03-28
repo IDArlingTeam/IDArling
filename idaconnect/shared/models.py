@@ -10,7 +10,7 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from packets import Default
+from .packets import Default
 
 
 class Model(Default):
@@ -20,21 +20,22 @@ class Model(Default):
     """
 
     def build(self, dct):
-        self.buildDefault(dct)
+        self.build_default(dct)
         return dct
 
     def parse(self, dct):
-        self.parseDefault(dct)
+        self.parse_default(dct)
         return self
 
     def __repr__(self):
         """
         Return a textual representation of the object. It will mainly be used
         for pretty-printing into the console.
+
         :return: the representation
         """
         attrs = ', '.join(['{}={}'.format(key, val) for key, val in
-                           Default.attrs(self.__dict__).iteritems()])
+                           Default.attrs(self.__dict__).items()])
         return '{}({})'.format(self.__class__.__name__, attrs)
 
 

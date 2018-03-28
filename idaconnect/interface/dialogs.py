@@ -66,7 +66,7 @@ class OpenDialog(QDialog):
         self._reposTable.verticalHeader().setVisible(False)
         self._reposTable.setSelectionBehavior(QTableWidget.SelectRows)
         self._reposTable.setSelectionMode(QTableWidget.SingleSelection)
-        self._reposTable.itemClicked.connect(self._repoClicked)
+        self._reposTable.itemClicked.connect(self._repo_clicked)
         minSZ = self._reposTable.minimumSize()
         self._reposTable.setMinimumSize(300, minSZ.height())
         maxSZ = self._reposTable.maximumSize()
@@ -99,7 +99,7 @@ class OpenDialog(QDialog):
         self._branchesTable.verticalHeader().setVisible(False)
         self._branchesTable.setSelectionBehavior(QTableWidget.SelectRows)
         self._branchesTable.setSelectionMode(QTableWidget.SingleSelection)
-        self._branchesTable.itemClicked.connect(self._branchClicked)
+        self._branchesTable.itemClicked.connect(self._branch_clicked)
         branchesLayout.addWidget(self._branchesTable, 0, 0)
         rightLayout.addWidget(branchesGroup)
 
@@ -116,7 +116,7 @@ class OpenDialog(QDialog):
         rightLayout.addWidget(buttonsWidget)
         layout.addWidget(rightSide)
 
-    def _repoClicked(self, item):
+    def _repo_clicked(self, item):
         """
         Called when a repository item is clicked, will update the display.
 
@@ -141,13 +141,13 @@ class OpenDialog(QDialog):
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             self._branchesTable.setItem(i, 1, item)
 
-    def _branchClicked(self, _):
+    def _branch_clicked(self, _):
         """
         Called when a branch item is clicked.
         """
         self._openButton.setEnabled(True)
 
-    def getResult(self):
+    def get_result(self):
         """
         Get the result (repository, branch) from this dialog.
 
@@ -201,7 +201,7 @@ class SaveDialog(QDialog):
         self._reposTable.verticalHeader().setVisible(False)
         self._reposTable.setSelectionBehavior(QTableWidget.SelectRows)
         self._reposTable.setSelectionMode(QTableWidget.SingleSelection)
-        self._reposTable.itemClicked.connect(self._repoClicked)
+        self._reposTable.itemClicked.connect(self._repo_clicked)
         minSZ = self._reposTable.minimumSize()
         self._reposTable.setMinimumSize(300, minSZ.height())
         maxSZ = self._reposTable.maximumSize()
@@ -250,7 +250,7 @@ class SaveDialog(QDialog):
         rightLayout.addWidget(buttonsWidget)
         layout.addWidget(rightSide)
 
-    def _repoClicked(self, item):
+    def _repo_clicked(self, item):
         """
         Called when a repository item is clicked, will update the display.
 
@@ -285,13 +285,13 @@ class SaveDialog(QDialog):
         newItem.setFlags(newItem.flags() & ~Qt.ItemIsEditable)
         self._branchesTable.setItem(len(branches), 1, newItem)
 
-    def _branchClicked(self, _):
+    def _branch_clicked(self, _):
         """
         Called when a branch item is clicked.
         """
         self._saveButton.setEnabled(True)
 
-    def getResult(self):
+    def get_result(self):
         """
         Get the result (repository, branch) from this dialog.
 
@@ -314,7 +314,6 @@ class NetworkSettingsDialog(QDialog):
         """
         super(NetworkSettingsDialog, self).__init__()
         self._plugin = plugin
-        self._servers = self._plugin.core._servers
 
         # General setup of the dialog
         logger.debug("Showing network settings dialog")
@@ -324,10 +323,11 @@ class NetworkSettingsDialog(QDialog):
         self.resize(300, 300)
 
         layout = QVBoxLayout(self)
-        self._serversTable = QTableWidget(len(self._servers), 1, self)
-        self._serversTable.setHorizontalHeaderLabels(('Server list',))
-        for i, server in enumerate(self._servers):
-            item = QTableWidgetItem("%s" % (str(server.host)))
+        servers = self._plugin.core.servers
+        self._serversTable = QTableWidget(len(servers), 1, self)
+        self._serversTable.setHorizontalHeaderLabels(("Server List",))
+        for i, server in enumerate(servers):
+            item = QTableWidgetItem('%s:%d' % (server.host, server.port))
             item.setData(Qt.UserRole, server)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             self._serversTable.setItem(i, 0, item)
@@ -337,7 +337,7 @@ class NetworkSettingsDialog(QDialog):
         self._serversTable.verticalHeader().setVisible(False)
         self._serversTable.setSelectionBehavior(QTableWidget.SelectRows)
         self._serversTable.setSelectionMode(QTableWidget.SingleSelection)
-        self._serversTable.itemClicked.connect(self._serverClicked)
+        self._serversTable.itemClicked.connect(self._server_clicked)
         minSZ = self._serversTable.minimumSize()
         self._serversTable.setMinimumSize(300, minSZ.height())
         maxSZ = self._serversTable.maximumSize()
@@ -349,59 +349,61 @@ class NetworkSettingsDialog(QDialog):
 
         # Add server button
         self._addButton = QPushButton("Add Server")
-        self._addButton.clicked.connect(self._addButtonClicked)
+        self._addButton.clicked.connect(self._add_button_clicked)
         buttonsLayout.addWidget(self._addButton)
 
         # Delete server button
         self._deleteButton = QPushButton("Delete Server")
         self._deleteButton.setEnabled(False)
-        self._deleteButton.clicked.connect(self._deleteButtonClicked)
+        self._deleteButton.clicked.connect(self._delete_button_clicked)
         buttonsLayout.addWidget(self._deleteButton)
 
         # Cancel button
-        self._quitButton = QPushButton("Quit")
+        self._quitButton = QPushButton("Close")
         self._quitButton.clicked.connect(self.reject)
         buttonsLayout.addWidget(self._quitButton)
 
         buttonsLayout.addWidget(buttonsWidget)
         layout.addWidget(buttonsWidget)
 
-    def _serverClicked(self, item):
+    def _server_clicked(self, item):
         """
         Called when a server item is clicked.
         """
         self._itemClicked = item
         self._deleteButton.setEnabled(True)
 
-    def _addButtonClicked(self, _):
+    def _add_button_clicked(self, _):
         """
         Called when the add button is clicked.
         """
         dialog = AddServerDialog(self._plugin)
-        dialog.accepted.connect(partial(self._dialogAccepted, dialog))
+        dialog.accepted.connect(partial(self._dialog_accepted, dialog))
         dialog.exec_()
 
-    def _dialogAccepted(self, dialog):
+    def _dialog_accepted(self, dialog):
         """
         Called when the add server dialog is accepted by the user.
 
         :param dialog: the add server dialog
         """
-        host, port = dialog.getResult()
+        host, port = dialog.get_result()
         Server = namedtuple('Server', ['host', 'port'])
         server = Server(host, port)
-        self._servers += [server]
+        self._plugin.core.servers.append(server)
         rowCount = self._serversTable.rowCount()
         self._serversTable.insertRow(rowCount)
-        newServer = QTableWidgetItem(server.host)
+        newServer = QTableWidgetItem('%s:%d' % (server.host, server.port))
+        newServer.setData(Qt.UserRole, server)
         self._serversTable.setItem(rowCount, 0, newServer)
         self.update()
 
-    def _deleteButtonClicked(self, _):
+    def _delete_button_clicked(self, _):
         """
         Called when the delete button is clicked.
         """
-        self._servers.remove(self._itemClicked.data(Qt.UserRole))
+        server = self._itemClicked.data(Qt.UserRole)
+        self._plugin.core.servers.remove(server)
         self._serversTable.removeRow(self._itemClicked.row())
         self.update()
 
@@ -422,23 +424,23 @@ class AddServerDialog(QDialog):
 
         # General setup of the dialog
         logger.debug("Add server settings dialog")
-        self.setWindowTitle("Add server")
+        self.setWindowTitle("Add Server")
         iconPath = self._plugin.resource('settings.png')
         self.setWindowIcon(QIcon(iconPath))
         self.resize(100, 100)
 
         layout = QVBoxLayout(self)
 
-        self._serverNameLabel = QLabel('<b>Server name or IP</b>')
+        self._serverNameLabel = QLabel("<b>Server Host</b>")
         layout.addWidget(self._serverNameLabel)
         self._serverName = QLineEdit()
-        self._serverName.setPlaceholderText('Server name or IP')
+        self._serverName.setPlaceholderText("127.0.0.1")
         layout.addWidget(self._serverName)
 
-        self._serverNameLabel = QLabel('<b>Server port</b>')
+        self._serverNameLabel = QLabel("<b>Server Port</b>")
         layout.addWidget(self._serverNameLabel)
         self._serverPort = QLineEdit()
-        self._serverPort.setPlaceholderText('Server port')
+        self._serverPort.setPlaceholderText("31013")
         layout.addWidget(self._serverPort)
 
         downSide = QWidget(self)
@@ -451,10 +453,10 @@ class AddServerDialog(QDialog):
         buttonsLayout.addWidget(self._cancelButton)
         layout.addWidget(downSide)
 
-    def getResult(self):
+    def get_result(self):
         """
         Get the result (server, port) from this dialog.
 
         :return: the result
         """
-        return self._serverName.text(), self._serverPort.text()
+        return self._serverName.text(), int(self._serverPort.text())

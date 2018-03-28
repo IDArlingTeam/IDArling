@@ -21,7 +21,7 @@ import idaapi
 import idc
 
 from ..shared.packets import DefaultEvent
-from ..utilities.misc import refreshPseudocodeView
+from ..utilities.misc import refresh_pseudocode_view
 
 logger = logging.getLogger('IDAConnect.Core')
 
@@ -71,7 +71,8 @@ class RenamedEvent(Event):
 
     def __call__(self):
         flags = ida_name.SN_LOCAL if self.local_name else 0
-        idc.set_name(self.ea, self.new_name, flags | ida_name.SN_NOWARN)
+        idc.set_name(self.ea, self.new_name.encode('utf8'),
+                     flags | ida_name.SN_NOWARN)
 
 
 class FuncAddedEvent(Event):
@@ -149,7 +150,6 @@ class FuncTailDeletedEvent(Event):
                                    self.tail_ea)
 
 
-# Thanks neat \o/
 class TailOwnerChangedEvent(Event):
     __event__ = 'tail_owner_changed'
 
@@ -173,7 +173,7 @@ class CmtChangedEvent(Event):
         self.rptble = rptble
 
     def __call__(self):
-        idc.set_cmt(self.ea, self.comment, self.rptble)
+        idc.set_cmt(self.ea, self.comment.encode('utf-8'), self.rptble)
 
 
 class ExtraCmtChangedEvent(Event):
@@ -190,7 +190,7 @@ class ExtraCmtChangedEvent(Event):
         isprev = 1 if self.line_idx - 1000 < 1000 else 0
         if not self.cmt:
             return 0
-        idaapi.add_extra_cmt(self.ea, isprev, self.cmt)
+        idaapi.add_extra_cmt(self.ea, isprev, self.cmt.encode('utf-8'))
 
 
 class TiChangedEvent(Event):
@@ -240,7 +240,7 @@ class EnumCreatedEvent(Event):
         self.name = name
 
     def __call__(self):
-        idc.add_enum(self.enum, self.name, 0)
+        idc.add_enum(self.enum, self.name.encode('utf-8'), 0)
 
 
 class EnumDeletedEvent(Event):
@@ -263,7 +263,7 @@ class EnumRenamedEvent(Event):
         self.new_name = new_name
 
     def __call__(self):
-        idaapi.set_enum_name(self.tid, self.new_name)
+        idaapi.set_enum_name(self.tid, self.new_name.encode('utf-8'))
 
 
 class EnumBfChangedEvent(Event):
@@ -288,7 +288,8 @@ class EnumCmtChangedEvent(Event):
         self.repeatable_cmt = repeatable_cmt
 
     def __call__(self):
-        idaapi.set_enum_cmt(self.tid, self.cmt, self.repeatable_cmt)
+        idaapi.set_enum_cmt(self.tid, self.cmt.encode('utf-8'),
+                            self.repeatable_cmt)
 
 
 class EnumMemberCreatedEvent(Event):
@@ -302,7 +303,8 @@ class EnumMemberCreatedEvent(Event):
         self.bmask = bmask
 
     def __call__(self):
-        idaapi.add_enum_member(self.id, self.name, self.value, self.bmask)
+        idaapi.add_enum_member(self.id, self.name.encode('utf-8'),
+                               self.value, self.bmask)
 
 
 class EnumMemberDeletedEvent(Event):
@@ -329,7 +331,7 @@ class StrucCreatedEvent(Event):
         self.is_union = is_union
 
     def __call__(self):
-        idc.add_struc(self.struc, self.name, self.is_union)
+        idc.add_struc(self.struc, self.name.encode('utf-8'), self.is_union)
 
 
 class StrucDeletedEvent(Event):
@@ -352,7 +354,7 @@ class StrucRenamedEvent(Event):
         self.new_name = new_name
 
     def __call__(self):
-        idaapi.set_struc_name(self.sid, self.new_name)
+        idaapi.set_struc_name(self.sid, self.new_name.encode('utf-8'))
 
 
 class StrucCmtChangedEvent(Event):
@@ -365,7 +367,8 @@ class StrucCmtChangedEvent(Event):
         self.repeatable_cmt = repeatable_cmt
 
     def __call__(self):
-        idaapi.set_struc_cmt(self.tid, self.cmt, self.repeatable_cmt)
+        idaapi.set_struc_cmt(self.tid, self.cmt.encode('utf-8'),
+                             self.repeatable_cmt)
 
 
 class StrucMemberCreatedEvent(Event):
@@ -391,8 +394,8 @@ class StrucMemberCreatedEvent(Event):
         if idaapi.isASCII(self.flag):
             mt.strtype = self.extra['strtype']
         sptr = idaapi.get_struc(self.sid)
-        idaapi.add_struc_member(sptr, self.fieldname, self.offset,
-                                self.flag, mt, self.nbytes)
+        idaapi.add_struc_member(sptr, self.fieldname.encode('utf-8'),
+                                self.offset, self.flag, mt, self.nbytes)
 
 
 class StrucMemberChangedEvent(Event):
@@ -475,7 +478,7 @@ class SegmAddedEvent(Event):
         s.perm = self.perm
         s.bitness = self.bitness
         s.flags = self.flags
-        idaapi.add_segm_ex(s, self.name, self.class_,
+        idaapi.add_segm_ex(s, self.name.encode('utf-8'), self.class_,
                            idaapi.ADDSEG_QUIET | idaapi.ADDSEG_NOSREG)
 
 
@@ -524,7 +527,7 @@ class SegmNameChangedEvent(Event):
 
     def __call__(self):
         s = idaapi.getseg(self.ea)
-        idaapi.set_segm_name(s, self.name)
+        idaapi.set_segm_name(s, self.name.encode('utf-8'))
 
 
 class SegmClassChangedEvent(Event):
@@ -576,7 +579,7 @@ class UserLabelsEvent(Event):
         for org_label, name in self.labels:
             idaapi.user_labels_insert(labels, org_label, name)
         idaapi.save_user_labels(self.ea, labels)
-        refreshPseudocodeView()
+        refresh_pseudocode_view()
 
 
 class UserCmtsEvent(Event):
@@ -595,7 +598,7 @@ class UserCmtsEvent(Event):
             tl.itp = tl_itp
             cmts.insert(tl, idaapi.citem_cmt_t(cmt))
         idaapi.save_user_cmts(self.ea, cmts)
-        refreshPseudocodeView()
+        refresh_pseudocode_view()
 
 
 class UserIflagsEvent(Event):
@@ -615,14 +618,14 @@ class UserIflagsEvent(Event):
         # idaapi.save_user_iflags(self.ea, iflags)
 
         idaapi.save_user_iflags(self.ea, idaapi.user_iflags_new())
-        refreshPseudocodeView()
+        refresh_pseudocode_view()
 
         cfunc = idaapi.decompile(self.ea)
         for (cl_ea, cl_op), f in self.iflags:
             cl = idaapi.citem_locator_t(cl_ea, cl_op)
             cfunc.set_user_iflags(cl, f)
         cfunc.save_user_iflags()
-        refreshPseudocodeView()
+        refresh_pseudocode_view()
 
 
 class UserLvarSettingsEvent(Event):
@@ -637,46 +640,47 @@ class UserLvarSettingsEvent(Event):
         lvinf = idaapi.lvar_uservec_t()
         lvinf.lvvec = ida_hexrays.lvar_saved_infos_t()
         for lv in self.lvar_settings['lvvec']:
-            lvinf.lvvec.push_back(UserLvarSettingsEvent._getLvarSavedInfo(lv))
+            lvinf.lvvec.push_back(
+                UserLvarSettingsEvent._get_lvar_saved_info(lv))
         lvinf.sizes = ida_pro.intvec_t()
         for i in self.lvar_settings['sizes']:
             lvinf.sizes.push_back(i)
         lvinf.lmaps = ida_hexrays.lvar_mapping_t()
-        for key, val in self.lvar_settings['lmaps'].iteritems():
-            key = UserLvarSettingsEvent._getLvarLocator(key)
-            val = UserLvarSettingsEvent._getLvarLocator(val)
+        for key, val in self.lvar_settings['lmaps'].items():
+            key = UserLvarSettingsEvent._get_lvar_locator(key)
+            val = UserLvarSettingsEvent._get_lvar_locator(val)
             idaapi.lvar_mapping_insert(lvinf.lmaps, key, val)
         lvinf.stkoff_delta = self.lvar_settings['stkoff_delta']
         lvinf.ulv_flags = self.lvar_settings['ulv_flags']
         idaapi.save_user_lvar_settings(self.ea, lvinf)
-        refreshPseudocodeView()
+        refresh_pseudocode_view()
 
     @staticmethod
-    def _getLvarSavedInfo(dct):
+    def _get_lvar_saved_info(dct):
         lv = ida_hexrays.lvar_saved_info_t()
-        lv.ll = UserLvarSettingsEvent._getLvarLocator(dct['ll'])
+        lv.ll = UserLvarSettingsEvent._get_lvar_locator(dct['ll'])
         lv.name = dct['name']
-        lv.type = UserLvarSettingsEvent._getTinfo(dct['type'])
+        lv.type = UserLvarSettingsEvent._get_tinfo(dct['type'])
         lv.cmt = dct['cmt']
         lv.flags = dct['flags']
         return lv
 
     @staticmethod
-    def _getTinfo(dct):
+    def _get_tinfo(dct):
         type = idaapi.tinfo_t()
         if dct[0] is not None:
             type.deserialize(None, *dct)
         return type
 
     @staticmethod
-    def _getLvarLocator(dct):
+    def _get_lvar_locator(dct):
         ll = ida_hexrays.lvar_locator_t()
-        ll.location = UserLvarSettingsEvent._getVdloc(dct['location'])
+        ll.location = UserLvarSettingsEvent._get_vdloc(dct['location'])
         ll.defea = dct['defea']
         return ll
 
     @staticmethod
-    def _getVdloc(dct):
+    def _get_vdloc(dct):
         location = ida_hexrays.vdloc_t()
         if dct['atype'] == idaapi.ALOC_NONE:
             pass

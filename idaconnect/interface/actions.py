@@ -29,8 +29,8 @@ from ..shared.commands import (GetRepositories, GetBranches,
                                DownloadDatabase, UploadDatabase,
                                Subscribe)
 from ..shared.models import Repository, Branch
-from ..utilities.misc import localResource
-from dialogs import OpenDialog, SaveDialog
+from ..utilities.misc import local_resource
+from .dialogs import OpenDialog, SaveDialog
 
 logger = logging.getLogger('IDAConnect.Interface')
 
@@ -71,13 +71,9 @@ class Action(object):
         self._iconId = idaapi.load_custom_icon(data=iconData)
 
         # Create the action description
-        actionDesc = idaapi.action_desc_t(
-            self._ACTION_ID,
-            self._text,
-            self._handler,
-            None,
-            self._tooltip,
-            self._iconId)
+        actionDesc = idaapi.action_desc_t(self._ACTION_ID, self._text,
+                                          self._handler, None, self._tooltip,
+                                          self._iconId)
 
         # Register the action using its description
         result = idaapi.register_action(actionDesc)
@@ -85,10 +81,8 @@ class Action(object):
             raise RuntimeError("Failed to register action")
 
         # Attach the action to the chosen menu
-        result = idaapi.attach_action_to_menu(
-            self._menu,
-            self._ACTION_ID,
-            idaapi.SETMENU_APP)
+        result = idaapi.attach_action_to_menu(self._menu, self._ACTION_ID,
+                                              idaapi.SETMENU_APP)
         if not result:
             raise RuntimeError("Failed to attach action")
 
@@ -102,9 +96,7 @@ class Action(object):
         :return: did the uninstall succeed
         """
         # Detach the action from the chosen menu
-        result = idaapi.detach_action_from_menu(
-            self._menu,
-            self._ACTION_ID)
+        result = idaapi.detach_action_from_menu(self._menu, self._ACTION_ID)
         if not result:
             return False
 
@@ -175,7 +167,7 @@ class OpenActionHandler(ActionHandler):
     """
 
     @staticmethod
-    def _progressCallback(progress, count, total):
+    def _progress_callback(progress, count, total):
         """
         Called when some data from the file has been received.
 
@@ -194,23 +186,23 @@ class OpenActionHandler(ActionHandler):
         :return: refresh or not the IDA windows
         """
         # Ask the server for the list of repositories
-        d = self._plugin.network.sendPacket(GetRepositories.Query())
-        d.addCallback(self._onGetRepositoriesReply)
+        d = self._plugin.network.send_packet(GetRepositories.Query())
+        d.addCallback(self._on_get_repository_reply)
         d.addErrback(logger.exception)
         return 1
 
-    def _onGetRepositoriesReply(self, reply):
+    def _on_get_repository_reply(self, reply):
         """
         Called when the list of repositories is received.
 
         :param reply: the reply from the server
         """
         # Ask the server for the list of branches
-        d = self._plugin.network.sendPacket(GetBranches.Query())
-        d.addCallback(partial(self._onGetBranchesReply, reply.repos))
+        d = self._plugin.network.send_packet(GetBranches.Query())
+        d.addCallback(partial(self._on_get_branches_reply, reply.repos))
         d.addErrback(logger.exception)
 
-    def _onGetBranchesReply(self, repos, reply):
+    def _on_get_branches_reply(self, repos, reply):
         """
         Called when the list of branches is received.
 
@@ -218,16 +210,16 @@ class OpenActionHandler(ActionHandler):
         :param reply: the reply from the server
         """
         dialog = OpenDialog(self._plugin, repos, reply.branches)
-        dialog.accepted.connect(partial(self._dialogAccepted, dialog))
+        dialog.accepted.connect(partial(self._dialog_accepted, dialog))
         dialog.exec_()
 
-    def _dialogAccepted(self, dialog):
+    def _dialog_accepted(self, dialog):
         """
         Called when the open dialog is accepted by the user.
 
         :param dialog: the open dialog
         """
-        repo, branch = dialog.getResult()
+        repo, branch = dialog.get_result()
 
         # Create the progress dialog
         text = "Downloading database from server, please wait..."
@@ -242,18 +234,18 @@ class OpenActionHandler(ActionHandler):
 
         # Send a packet to download the database
         packet = DownloadDatabase.Query(repo.hash, branch.uuid)
-        callback = partial(self._progressCallback, progress)
+        callback = partial(self._progress_callback, progress)
 
         def setDownloadCallback(reply):
             reply.downback = callback
 
-        d = self._plugin.network.sendPacket(packet)
-        d.addInitback(setDownloadCallback)
-        d.addCallback(partial(self._databaseDownloaded, branch, progress))
+        d = self._plugin.network.send_packet(packet)
+        d.add_initback(setDownloadCallback)
+        d.addCallback(partial(self._database_downloaded, branch, progress))
         d.addErrback(logger.exception)
         progress.show()
 
-    def _databaseDownloaded(self, branch, progress, reply):
+    def _database_downloaded(self, branch, progress, reply):
         """
         Called when the file has been downloaded.
 
@@ -262,11 +254,11 @@ class OpenActionHandler(ActionHandler):
         :param reply: the reply from the server
         """
         # Close the progress dialog
-        self._progressCallback(progress, 1, 1)
+        self._progress_callback(progress, 1, 1)
 
         # Get the absolute path of the file
         fileName = branch.uuid + ('.i64' if branch.bits == 64 else '.idb')
-        filePath = localResource('files', fileName)
+        filePath = local_resource('files', fileName)
 
         # Write the packet content to disk
         with open(filePath, 'wb') as outputFile:
@@ -288,7 +280,7 @@ class OpenActionHandler(ActionHandler):
         if idbPath:
             idc.save_database(idbPath, 0)
         # Save the current state
-        self._plugin.core.saveState(idbPath)
+        self._plugin.core.save_state(idbPath)
         # Open the new database
         QProcess.startDetached(qApp.applicationFilePath(), [filePath])
         qApp.quit()  # FIXME: Find an alternative, if any
@@ -315,7 +307,7 @@ class SaveActionHandler(ActionHandler):
     """
 
     @staticmethod
-    def _progressCallback(progress, count, total):
+    def _progress_callback(progress, count, total):
         """
         Called when some data from the file has been sent.
 
@@ -339,23 +331,23 @@ class SaveActionHandler(ActionHandler):
         :return: refresh or not the IDA windows
         """
         # Ask the server for the list of repositories
-        d = self._plugin.network.sendPacket(GetRepositories.Query())
-        d.addCallback(self._onGetRepositoriesReply)
+        d = self._plugin.network.send_packet(GetRepositories.Query())
+        d.addCallback(self._on_get_repository_reply)
         d.addErrback(logger.exception)
         return 1
 
-    def _onGetRepositoriesReply(self, reply):
+    def _on_get_repository_reply(self, reply):
         """
         Called when the list of repositories is received.
 
         :param reply: the reply from the server
         """
         # Ask the server for the list of branches
-        d = self._plugin.network.sendPacket(GetBranches.Query())
-        d.addCallback(partial(self._onGetBranchesReply, reply.repos))
+        d = self._plugin.network.send_packet(GetBranches.Query())
+        d.addCallback(partial(self._on_get_branches_reply, reply.repos))
         d.addErrback(logger.exception)
 
-    def _onGetBranchesReply(self, repos, reply):
+    def _on_get_branches_reply(self, repos, reply):
         """
         Called when the list of branches is received.
 
@@ -363,16 +355,16 @@ class SaveActionHandler(ActionHandler):
         :param reply: the reply from the server
         """
         dialog = SaveDialog(self._plugin, repos, reply.branches)
-        dialog.accepted.connect(partial(self._dialogAccepted, dialog))
+        dialog.accepted.connect(partial(self._dialog_accepted, dialog))
         dialog.exec_()
 
-    def _dialogAccepted(self, dialog):
+    def _dialog_accepted(self, dialog):
         """
         Called when the save dialog is accepted by the user.
 
         :param dialog: the save dialog
         """
-        repo, branch = dialog.getResult()
+        repo, branch = dialog.get_result()
 
         # Create new repository if necessary
         if not repo:
@@ -382,13 +374,13 @@ class SaveActionHandler(ActionHandler):
             dateFormat = "%Y/%m/%d %H:%M"
             date = datetime.datetime.now().strftime(dateFormat)
             repo = Repository(hash, file, type, date)
-            d = self._plugin.network.sendPacket(NewRepository.Query(repo))
-            d.addCallback(partial(self._onNewRepositoryReply, repo, branch))
+            d = self._plugin.network.send_packet(NewRepository.Query(repo))
+            d.addCallback(partial(self._on_new_repository_reply, repo, branch))
             d.addErrback(logger.exception)
         else:
-            self._onNewRepositoryReply(repo, branch, None)
+            self._on_new_repository_reply(repo, branch, None)
 
-    def _onNewRepositoryReply(self, repo, branch, _):
+    def _on_new_repository_reply(self, repo, branch, _):
         self._plugin.core.repo = repo.hash
 
         # Create new branch if necessary
@@ -397,17 +389,17 @@ class SaveActionHandler(ActionHandler):
             dateFormat = "%Y/%m/%d %H:%M"
             date = datetime.datetime.now().strftime(dateFormat)
             branch = Branch(uuid_, repo.hash, date, 64 if idc.__EA64__ else 32)
-            d = self._plugin.network.sendPacket(NewBranch.Query(branch))
-            d.addCallback(partial(self._onNewBranchReply, repo, branch))
+            d = self._plugin.network.send_packet(NewBranch.Query(branch))
+            d.addCallback(partial(self._on_new_branch_reply, repo, branch))
             d.addErrback(logger.exception)
         else:
-            self._onNewBranchReply(repo, branch, None)
+            self._on_new_branch_reply(repo, branch, None)
 
-    def _onNewBranchReply(self, repo, branch, _):
+    def _on_new_branch_reply(self, repo, branch, _):
         self._plugin.core.branch = branch.uuid
 
         # Save the current database
-        self._plugin.core.saveNetnode()
+        self._plugin.core.save_netnode()
         idc.save_database(idc.GetIdbPath(), 0)
 
         # Create the packet that will hold the database
@@ -429,12 +421,12 @@ class SaveActionHandler(ActionHandler):
         progress.show()
 
         # Send the packet to upload the file
-        packet.upback = partial(self._progressCallback, progress)
-        d = self._plugin.network.sendPacket(packet)
-        d.addCallback(partial(self._databaseUploaded, repo, branch))
+        packet.upback = partial(self._progress_callback, progress)
+        d = self._plugin.network.send_packet(packet)
+        d.addCallback(partial(self._database_uploaded, repo, branch))
         d.addErrback(logger.exception)
 
-    def _databaseUploaded(self, repo, branch, _):
+    def _database_uploaded(self, repo, branch, _):
         # Show a success dialog
         success = QMessageBox()
         success.setIcon(QMessageBox.Information)
@@ -446,6 +438,6 @@ class SaveActionHandler(ActionHandler):
         success.exec_()
 
         # Subscribe to the new events stream
-        self._plugin.network.sendPacket(Subscribe(repo.hash, branch.uuid,
-                                                  self._plugin.core.tick))
-        self._plugin.core.hookAll()
+        self._plugin.network.send_packet(Subscribe(repo.hash, branch.uuid,
+                                                   self._plugin.core.tick))
+        self._plugin.core.hook_all()

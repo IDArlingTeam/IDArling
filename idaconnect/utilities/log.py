@@ -14,7 +14,7 @@ import logging
 import os
 import sys
 
-from misc import localResource
+from .misc import local_resource
 
 
 class LoggerProxy(object):
@@ -57,24 +57,32 @@ class LoggerProxy(object):
         pass
 
 
-def startLogging():
+def start_logging():
     """
     Set up the main logger to write to a log file with a specific format and
     intercept both standard output and standard error output.
 
     :return: the main logger
     """
-    logger = logging.getLogger('IDAConnect.Plugin')
+    logger = logging.getLogger('IDAConnect')
 
     # Get the absolute path to the log file
-    logPath = localResource('logs', 'idaconnect.%s.log' % os.getpid())
+    logPath = local_resource('logs', 'idaconnect.%s.log' % os.getpid())
 
-    # Configure the logger's destination and format
-    logging.basicConfig(
-        filename=logPath,
-        format='[%(asctime)s][%(levelname)s] %(message)s',
-        datefmt='%H:%M:%S',
-        level=logging.DEBUG)
+    # Configure the logger
+    logger.setLevel(logging.DEBUG)
+    logFormat = '[%(asctime)s][%(levelname)s] %(message)s'
+    formatter = logging.Formatter(fmt=logFormat, datefmt='%H:%M:%S')
+
+    # Log to the console
+    streamHandler = logging.StreamHandler()
+    streamHandler.setFormatter(formatter)
+    logger.addHandler(streamHandler)
+
+    # Log to the log file
+    fileHandler = logging.FileHandler(logPath)
+    fileHandler.setFormatter(formatter)
+    logger.addHandler(fileHandler)
 
     # Redirect standard output to logger
     stdoutLogger = logging.getLogger('IDAConnect.STDOUT')

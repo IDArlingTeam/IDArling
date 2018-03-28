@@ -30,10 +30,10 @@ class GetRepositories(ParentCommand):
             super(GetRepositories.Reply, self).__init__(query)
             self.repos = repos
 
-        def buildCommand(self, dct):
+        def build_command(self, dct):
             dct['repos'] = [repo.build(dict()) for repo in self.repos]
 
-        def parseCommand(self, dct):
+        def parse_command(self, dct):
             self.repos = [Repository.new(repo) for repo in dct['repos']]
 
 
@@ -53,10 +53,10 @@ class GetBranches(ParentCommand):
             super(GetBranches.Reply, self).__init__(query)
             self.branches = branches
 
-        def buildCommand(self, dct):
+        def build_command(self, dct):
             dct['branches'] = [br.build(dict()) for br in self.branches]
 
-        def parseCommand(self, dct):
+        def parse_command(self, dct):
             self.branches = [Branch.new(br) for br in dct['branches']]
 
 
@@ -69,10 +69,10 @@ class NewRepository(ParentCommand):
             super(NewRepository.Query, self).__init__()
             self.repo = repo
 
-        def buildCommand(self, dct):
+        def build_command(self, dct):
             self.repo.build(dct['repo'])
 
-        def parseCommand(self, dct):
+        def parse_command(self, dct):
             self.repo = Repository.new(dct['repo'])
 
     class Reply(IReply, Command):
@@ -88,10 +88,10 @@ class NewBranch(ParentCommand):
             super(NewBranch.Query, self).__init__()
             self.branch = branch
 
-        def buildCommand(self, dct):
+        def build_command(self, dct):
             self.branch.build(dct['branch'])
 
-        def parseCommand(self, dct):
+        def parse_command(self, dct):
             self.branch = Branch.new(dct['branch'])
 
     class Reply(IReply, Command):

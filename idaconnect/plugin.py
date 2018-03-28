@@ -12,15 +12,14 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import idaapi
 
-from core.core import Core
-from interface.interface import Interface
-from network.network import Network
-
-from utilities.log import startLogging
-from utilities.misc import pluginResource
+from .core.core import Core
+from .interface.interface import Interface
+from .network.network import Network
+from .utilities.log import start_logging
+from .utilities.misc import plugin_resource
 
 # Start logging
-logger = startLogging()
+logger = start_logging()
 
 
 class Plugin(idaapi.plugin_t):
@@ -57,7 +56,7 @@ class Plugin(idaapi.plugin_t):
         :param filename: the filename
         :return: the path
         """
-        return pluginResource(filename)
+        return plugin_resource(filename)
 
     def __init__(self):
         """
@@ -108,7 +107,7 @@ class Plugin(idaapi.plugin_t):
             skip = idaapi.PLUGIN_SKIP
             return skip
 
-        self._printBanner()
+        self._print_banner()
         logger.info("Successfully initialized")
         keep = idaapi.PLUGIN_KEEP
         return keep
@@ -122,18 +121,17 @@ class Plugin(idaapi.plugin_t):
         self._interface.install()
 
         # Load the current state
-        self.core.loadState()
+        self.core.load_state()
 
-    def _printBanner(self):
+    def _print_banner(self):
         """
         Print the banner into the console.
         """
         copyright = "(c) %s" % self.PLUGIN_AUTHORS
 
-        prefix = '[IDAConnect] '
-        print(prefix + ("-" * 75))
-        print(prefix + "%s - %s" % (self.description(), copyright))
-        print(prefix + ("-" * 75))
+        logger.info("-" * 75)
+        logger.info("%s - %s" % (self.description(), copyright))
+        logger.info("-" * 75)
 
     def term(self):
         """
@@ -153,7 +151,7 @@ class Plugin(idaapi.plugin_t):
         Terminate the plugin and its modules.
         """
         # Save the current state
-        self.core.saveState()
+        self.core.save_state()
 
         self._core.uninstall()
         self._interface.uninstall()
@@ -166,21 +164,26 @@ class Plugin(idaapi.plugin_t):
         idaapi.warning("IDAConnect cannot be run as a script")
         return False
 
-    def notifyDisconnected(self):
+    def notify_disconnected(self):
         """
         Notify the plugin that a disconnection has occurred.
         """
-        self._interface.notifyDisconnected()
+        self._core.notify_disconnected()
+        self._interface.notify_disconnected()
+        self._network.notify_disconnected()
 
-    def notifyConnecting(self):
+    def notify_connecting(self):
         """
         Notify the plugin that a connection is being established.
         """
-        self._interface.notifyConnecting()
+        self._core.notify_connecting()
+        self._interface.notify_connecting()
+        self._network.notify_connecting()
 
-    def notifyConnected(self):
+    def notify_connected(self):
         """
         Notify the plugin that a connection has been established.
         """
-        self._core.notifyConnected()
-        self._interface.notifyConnected()
+        self._core.notify_connected()
+        self._interface.notify_connected()
+        self._network.notify_connected()

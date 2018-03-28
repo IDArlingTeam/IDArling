@@ -1,3 +1,0 @@
-twisted
-qt5reactor
-pypiwin32

@@ -16,6 +16,24 @@ import itertools
 from twisted.internet import defer
 
 
+def with_metaclass(meta, *bases):
+    """
+    Python 2 and 3 compatible way to add a meta-class.
+
+    :param meta: the meta class
+    :param bases: the base classes
+    :return: the new type
+    """
+    class metaclass(type):
+        def __new__(cls, name, this_bases, d):
+            return meta(name, bases, d)
+
+        @classmethod
+        def __prepare__(cls, name, this_bases):
+            return meta.__prepare__(name, bases)
+    return type.__new__(metaclass, 'temporary_class', (), {})
+
+
 class Serializable(object):
     """
     A base class for an object than can be serialized. More specifically,
@@ -68,10 +86,10 @@ class Default(Serializable):
         :param dct: the dictionary
         :return: the filtered dictionary
         """
-        return {key: val for key, val in dct.iteritems()
+        return {key: val for key, val in dct.items()
                 if not key.startswith('_')}
 
-    def buildDefault(self, dct):
+    def build_default(self, dct):
         """
         Write the object to the dictionary using its attributes dictionary.
 
@@ -79,7 +97,7 @@ class Default(Serializable):
         """
         dct.update(Default.attrs(self.__dict__))
 
-    def parseDefault(self, dct):
+    def parse_default(self, dct):
         """
         Read the object from the dictionary using its attributes dictionary.
 
@@ -111,7 +129,7 @@ class PacketFactory(type):
         return cls
 
     @classmethod
-    def getClass(mcs, dct):
+    def get_class(mcs, dct):
         """
         Get the class corresponding to the given dictionary.
 
@@ -119,18 +137,16 @@ class PacketFactory(type):
         :return: the packet class
         """
         cls = PacketFactory._PACKETS[dct['type']]
-        if cls.__metaclass__ != mcs:
-            cls = cls.__metaclass__.getClass(dct)
+        if type(cls) != mcs:
+            cls = type(cls).get_class(dct)
         return cls
 
 
-class Packet(Serializable):
+class Packet(with_metaclass(PacketFactory, Serializable)):
     """
     The base class for every packet received. Currently, the packet can
     only be of two kinds: either it is an event or a command.
     """
-    __metaclass__ = PacketFactory
-
     __type__ = None
 
     def __init__(self):
@@ -141,20 +157,20 @@ class Packet(Serializable):
         assert self.__type__ is not None, "__type__ not implemented"
 
     @staticmethod
-    def parsePacket(dct):
+    def parse_packet(dct):
         """
         Parse a packet from a dictionary.
 
         :param dct: the dictionary
         :return: the packet
         """
-        cls = PacketFactory.getClass(dct)
+        cls = PacketFactory.get_class(dct)
         packet = cls.new(dct)
         if isinstance(packet, Reply):
-            packet.triggerInitback()
+            packet.trigger_initback()
         return packet
 
-    def buildPacket(self):
+    def build_packet(self):
         """
         Build a packet into a dictionary.
 
@@ -175,7 +191,7 @@ class Packet(Serializable):
         if isinstance(self, Query) or isinstance(self, Reply):
             name = self.__parent__.__name__ + '.' + name
         attrs = ['{}={}'.format(k, v) for k, v
-                 in Default.attrs(self.__dict__).iteritems()]
+                 in Default.attrs(self.__dict__).items()]
         return '{}({})'.format(name, ', '.join(attrs))
 
 
@@ -203,7 +219,7 @@ class PacketDeferred(defer.Deferred, object):
         self._initback = None
         self._initresult = None
 
-    def addInitback(self, initback):
+    def add_initback(self, initback):
         """
         Register a callback to the initialization event.
 
@@ -212,7 +228,7 @@ class PacketDeferred(defer.Deferred, object):
         """
         self._initback = initback
         if self._inited:
-            self._runInitback()
+            self._run_initback()
         return self
 
     def initback(self, result):
@@ -221,9 +237,9 @@ class PacketDeferred(defer.Deferred, object):
 
         :param result: the result
         """
-        self._startRunInitback(result)
+        self._start_run_initback(result)
 
-    def _startRunInitback(self, result):
+    def _start_run_initback(self, result):
         """
         This function guards the one below it.
 
@@ -233,9 +249,9 @@ class PacketDeferred(defer.Deferred, object):
             raise AlreadyInitedError()
         self._inited = True
         self._initresult = result
-        self._runInitback()
+        self._run_initback()
 
-    def _runInitback(self):
+    def _run_initback(self):
         """
         This function will actually trigger the callback.
         """
@@ -258,19 +274,17 @@ class EventFactory(PacketFactory):
         return cls
 
     @classmethod
-    def getClass(mcs, dct):
+    def get_class(mcs, dct):
         cls = EventFactory._EVENTS[dct['event_type']]
-        if cls.__metaclass__ != mcs:
-            cls = cls.__metaclass__.getClass(dct)
+        if type(cls) != mcs:
+            cls = type(cls).get_class(dct)
         return cls
 
 
-class Event(Packet):
+class Event(with_metaclass(EventFactory, Packet)):
     """
     The base class of every packet of type event received.
     """
-    __metaclass__ = EventFactory
-
     __type__ = 'event'
     __event__ = None
 
@@ -283,15 +297,15 @@ class Event(Packet):
         dct['type'] = self.__type__
         dct['event_type'] = self.__event__
         dct['tick'] = self._tick
-        self.buildEvent(dct)
+        self.build_event(dct)
         return dct
 
     def parse(self, dct):
         self._tick = dct['tick']
-        self.parseEvent(dct)
+        self.parse_event(dct)
         return self
 
-    def buildEvent(self, dct):
+    def build_event(self, dct):
         """
         Event subclasses should implement this method.
 
@@ -299,7 +313,7 @@ class Event(Packet):
         """
         pass
 
-    def parseEvent(self, dct):
+    def parse_event(self, dct):
         """
         Event subclasses should implement this method.
 
@@ -331,11 +345,11 @@ class DefaultEvent(Default, Event):
     A mix-in class for events that can be serialized from their attributes.
     """
 
-    def buildEvent(self, dct):
-        self.buildDefault(dct)
+    def build_event(self, dct):
+        self.build_default(dct)
 
-    def parseEvent(self, dct):
-        self.parseDefault(dct)
+    def parse_event(self, dct):
+        self.parse_default(dct)
 
 
 class CommandFactory(PacketFactory):
@@ -362,19 +376,17 @@ class CommandFactory(PacketFactory):
         return cls
 
     @classmethod
-    def getClass(mcs, dct):
+    def get_class(mcs, dct):
         cls = CommandFactory._COMMANDS[dct['command_type']]
-        if cls.__metaclass__ != mcs:
-            cls = cls.__metaclass__.getClass(dct)
+        if type(cls) != mcs:
+            cls = type(cls).get_class(dct)
         return cls
 
 
-class Command(Packet):
+class Command(with_metaclass(CommandFactory, Packet)):
     """
     The base class of every packet of type command received.
     """
-    __metaclass__ = CommandFactory
-
     __type__ = 'command'
     __command__ = None
 
@@ -385,14 +397,14 @@ class Command(Packet):
     def build(self, dct):
         dct['type'] = self.__type__
         dct['command_type'] = self.__command__
-        self.buildCommand(dct)
+        self.build_command(dct)
         return dct
 
     def parse(self, dct):
-        self.parseCommand(dct)
+        self.parse_command(dct)
         return self
 
-    def buildCommand(self, dct):
+    def build_command(self, dct):
         """
         Command subclasses should implement this method.
 
@@ -400,7 +412,7 @@ class Command(Packet):
         """
         pass
 
-    def parseCommand(self, dct):
+    def parse_command(self, dct):
         """
         Command subclasses should implement this method.
 
@@ -414,11 +426,11 @@ class DefaultCommand(Default, Command):
     A mix-in class for commands that can be serialized from their attributes.
     """
 
-    def buildCommand(self, dct):
-        self.buildDefault(dct)
+    def build_command(self, dct):
+        self.build_default(dct)
 
-    def parseCommand(self, dct):
-        self.parseDefault(dct)
+    def parse_command(self, dct):
+        self.parse_default(dct)
 
 
 class ParentCommand(Command):
@@ -463,7 +475,7 @@ class Query(Packet):
         """
         return self._id
 
-    def registerCallback(self, d):
+    def register_callback(self, d):
         """
         Register a callback for when the corresponding reply will be received.
 
@@ -506,7 +518,7 @@ class Reply(Packet):
         """
         return self._id
 
-    def triggerCallback(self):
+    def trigger_callback(self):
         """
         Trigger the finalization callback of the corresponding query.
         """
@@ -514,7 +526,7 @@ class Reply(Packet):
         d.callback(self)
         del self.__parent__.__callbacks__[self._id]
 
-    def triggerInitback(self):
+    def trigger_initback(self):
         """
         Trigger the initialization callback of the corresponding query.
         """

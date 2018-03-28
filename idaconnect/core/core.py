@@ -10,7 +10,7 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from collections import namedtuple
+import collections
 import json
 import logging
 import os
@@ -20,9 +20,9 @@ import ida_kernwin
 import idaapi
 
 from ..module import Module
-from ..utilities.misc import localResource
+from ..utilities.misc import local_resource
 from ..shared.commands import Subscribe, Unsubscribe
-from hooks import Hooks, IDBHooks, IDPHooks, HexRaysHooks, UIHooks
+from .hooks import Hooks, IDBHooks, IDPHooks, HexRaysHooks
 
 logger = logging.getLogger('IDAConnect.Core')
 
@@ -39,7 +39,6 @@ class Core(Module):
         self._idbHooks = None
         self._idpHooks = None
         self._hxeHooks = None
-        self._uiHooks = None
 
         self._uiHooksCore = None
         self._idbHooksCore = None
@@ -53,13 +52,12 @@ class Core(Module):
         self._idbHooks = IDBHooks(self._plugin)
         self._idpHooks = IDPHooks(self._plugin)
         self._hxeHooks = HexRaysHooks(self._plugin)
-        self._uiHooks = UIHooks(self._plugin)
 
         core = self
 
         class UIHooksCore(Hooks, ida_kernwin.UI_Hooks):
             """
-            The concrete class for UI-related events.
+            The concrete class for all core UI-related events.
             """
 
             def __init__(self, plugin):
@@ -67,18 +65,20 @@ class Core(Module):
                 Hooks.__init__(self, plugin)
 
             def ready_to_run(self, *_):
-                core.loadNetnode()
+                core.load_netnode()
+
                 # Subscribe to the events stream if needed
                 if core.repo and core.branch:
-                    self._plugin.network.sendPacket(Subscribe(
+                    self._plugin.network.send_packet(Subscribe(
                         core.repo, core.branch, core.tick))
-                    core.hookAll()
+                    core.hook_all()
+
         self._uiHooksCore = UIHooksCore(self._plugin)
         self._uiHooksCore.hook()
 
         class IDBHooksCore(Hooks, ida_idp.IDB_Hooks):
             """
-            The concrete class for all IDB-related events.
+            The concrete class for all core IDB-related events.
             """
 
             def __init__(self, plugin):
@@ -86,11 +86,12 @@ class Core(Module):
                 Hooks.__init__(self, plugin)
 
             def closebase(self):
-                self._plugin.network.sendPacket(Unsubscribe())
-                core.unhookAll()
+                self._plugin.network.send_packet(Unsubscribe())
+                core.unhook_all()
                 core.repo = None
                 core.branch = None
                 return 0
+
         self._idbHooksCore = IDBHooksCore(self._plugin)
         self._idbHooksCore.hook()
 
@@ -99,26 +100,24 @@ class Core(Module):
 
     def _uninstall(self):
         logger.debug("Uninstalling hooks")
-        self.unhookAll()
+        self.unhook_all()
         return True
 
-    def hookAll(self):
+    def hook_all(self):
         """
         Add the hooks to be notified of incoming IDA events.
         """
         self._idbHooks.hook()
         self._idpHooks.hook()
         self._hxeHooks.hook()
-        self._uiHooks.hook()
 
-    def unhookAll(self):
+    def unhook_all(self):
         """
         Remove the hooks to not be notified of incoming IDA events.
         """
         self._idbHooks.unhook()
         self._idpHooks.unhook()
         self._hxeHooks.unhook()
-        self._uiHooks.unhook()
 
     @property
     def repo(self):
@@ -177,7 +176,7 @@ class Core(Module):
     @property
     def servers(self):
         """
-        Get the current servers.
+        Get the list of servers.
 
         :return: the servers
         """
@@ -186,41 +185,44 @@ class Core(Module):
     @servers.setter
     def servers(self, servers):
         """
-        Set the current servers.
+        Set the list of servers.
 
-        :param timestamp: the timestamp
+        :param servers: the list of server
         """
         self._servers = servers
 
-    def loadState(self):
+    def load_state(self):
         """
         Load the state file if it exists.
         """
-        statePath = localResource('files', 'state.json')
+        statePath = local_resource('files', 'state.json')
         if os.path.isfile(statePath):
             with open(statePath, 'rb') as stateFile:
                 state = json.loads(stateFile.read())
                 logger.debug("Loaded state: %s" % state)
-                servers = state['servers']
-                Server = namedtuple('Server', ['host', 'port'])
-                self._servers = [Server(server[0], server[1])
-                                 for server in servers]
-                if state['connected']:
-                    self._plugin.network.connect(state['host'], state['port'])
+
+                # Load the server list from state
+                Server = collections.namedtuple('Server', ['host', 'port'])
+                self._servers = [Server(*s) for s in state['servers']]
+
+                # Remove unpacked files from parent instance
                 if 'cleanup' in state and state['cleanup']:
-                    # Remove unpacked files from parent instance
                     idbFile, idbExt = os.path.splitext(state['cleanup'])
                     for extension in ['.id0', '.id1', '.nam', '.seg', '.til']:
                         if os.path.exists(idbFile + extension):
                             os.remove(idbFile + extension)
 
-    def saveState(self, cleanup=None):
+                # Reconnect to the same server as parent instance
+                if state['connected']:
+                    self._plugin.network.connect(state['host'], state['port'])
+
+    def save_state(self, cleanup=None):
         """
         Save the state file.
 
         :param cleanup: the path of the file to cleanup
         """
-        statePath = localResource('files', 'state.json')
+        statePath = local_resource('files', 'state.json')
         with open(statePath, 'wb') as stateFile:
             state = {
                 'connected': self._plugin.network.connected,
@@ -228,46 +230,47 @@ class Core(Module):
                 'port': self._plugin.network.port,
                 'servers': [[s.host, s.port] for s in self._servers],
             }
+
+            # Remember to cleanup the temp files
             if cleanup:
                 state['cleanup'] = cleanup
+
             logger.debug("Saved state: %s" % state)
             stateFile.write(json.dumps(state))
 
-    def loadNetnode(self):
+    def load_netnode(self):
         """
-        Load the netnode if it exists.
+        Load the netnode from the IDA database.
         """
         node = idaapi.netnode()
         if node.create(Core.NETNODE_NAME):
             return  # node doesn't exists
+
         self._repo = node.hashval('hash')
         self._branch = node.hashval('uuid')
         self._tick = node.hashval('tick')
-        if self._tick:
-            self._tick = int(self._tick)
-        else:
-            self._tick = 0
+        self._tick = int(self._tick) if self._tick else 0
+
         logger.debug("Loaded netnode: repo=%s, branch=%s, tick=%d"
                      % (self._repo, self._branch, self._tick))
 
-    def saveNetnode(self):
+    def save_netnode(self):
         """
-        Save the netnode.
+        Save the netnode in the IDA database.
         """
         node = idaapi.netnode()
         if not node.create(Core.NETNODE_NAME):
             pass  # node already exists
+
         node.hashset('hash', self._repo)
         node.hashset('uuid', self._branch)
         node.hashset('tick', str(self._tick))
+
         logger.debug("Saved netnode: repo=%s, branch=%s, tick=%d"
                      % (self._repo, self._branch, self._tick))
 
-    def notifyConnected(self):
-        """
-        If the core has loaded a database, subscribe to the events stream.
-        """
+    def notify_connected(self):
         if self._repo and self._branch:
-            self._plugin.network.sendPacket(
+            self._plugin.network.send_packet(
                 Subscribe(self._repo, self._branch, self._tick))
-            self.hookAll()
+            self.hook_all()

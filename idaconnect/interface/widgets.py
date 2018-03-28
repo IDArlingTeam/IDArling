@@ -16,7 +16,7 @@ from PyQt5.QtCore import Qt, QSize, QPoint
 from PyQt5.QtGui import QPixmap, QIcon, QPainter
 from PyQt5.QtWidgets import QWidget, QLabel, QMenu, QActionGroup, QAction
 
-from dialogs import NetworkSettingsDialog
+from .dialogs import NetworkSettingsDialog
 
 logger = logging.getLogger('IDAConnect.Interface')
 
@@ -46,7 +46,7 @@ class StatusWidget(QWidget):
 
         # Set a custom context menu policy
         self.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.customContextMenuRequested.connect(self._contextMenu)
+        self.customContextMenuRequested.connect(self._context_menu)
         self._update()
 
     def _update(self):
@@ -83,7 +83,7 @@ class StatusWidget(QWidget):
         self.setMaximumSize(size)
         self.repaint()
 
-    def _contextMenu(self, point):
+    def _context_menu(self, point):
         """
         Called when the widget is right-clicked to display the context menu.
 
@@ -113,18 +113,17 @@ class StatusWidget(QWidget):
             def serverActionTriggered(serverAction):
                 if not self._plugin.network.connected and \
                        serverAction.isChecked():
-                    self._plugin.network.connect(
-                                    str(serverAction.objectName()),
-                                    int(serverAction._port))
+                    self._plugin.network.connect(serverAction._server.host,
+                                                 serverAction._server.port)
                 else:
                     self._plugin.network.disconnect()
 
             for server in self._plugin.core.servers:
                 isConnected = self._plugin.network.connected \
                               and server.host == self._plugin.network.host
-                serverAction = QAction(server.host, menu, checkable=True)
-                serverAction.setObjectName(server.host)
-                serverAction._port = server.port
+                serverAction = QAction('%s:%d' % (server.host, server.port),
+                                       menu, checkable=True)
+                serverAction._server = server
                 serverAction.setChecked(isConnected)
                 serverGroup.addAction(serverAction)
 
@@ -146,7 +145,7 @@ class StatusWidget(QWidget):
         current = self._textWidget.sizeHint().width() + 3
         self._iconWidget.render(painter, map(QPoint(current, 0)))
 
-    def setState(self, state):
+    def set_state(self, state):
         """
         Set the state of the connection.
 
@@ -156,7 +155,7 @@ class StatusWidget(QWidget):
             self._state = state
             self._update()
 
-    def setServer(self, server):
+    def set_server(self, server):
         """
         Set the server we're connected to.
 

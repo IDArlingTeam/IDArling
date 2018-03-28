@@ -1,7 +1,7 @@
 # Custom directories
 .idea/
-server/logs/
-server/files/
+logs/
+files/
 venv/
 
 # Byte-compiled / optimized / DLL files

@@ -16,7 +16,7 @@ import ida_idp
 import idaapi
 import idc
 
-from events import *
+from .events import *
 
 logger = logging.getLogger('IDAConnect.Core')
 
@@ -34,13 +34,13 @@ class Hooks(object):
         """
         self._plugin = plugin
 
-    def _sendEvent(self, event):
+    def _send_event(self, event):
         """
         Send an event to the other clients through the server.
 
         :param event: the event to send
         """
-        self._plugin.network.sendPacket(event)
+        self._plugin.network.send_packet(event)
 
 
 class IDBHooks(Hooks, ida_idp.IDB_Hooks):
@@ -53,59 +53,59 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         Hooks.__init__(self, plugin)
 
     def make_code(self, insn):
-        self._sendEvent(MakeCodeEvent(insn.ea))
+        self._send_event(MakeCodeEvent(insn.ea))
         return 0
 
     def make_data(self, ea, flags, tid, size):
-        self._sendEvent(MakeDataEvent(ea, flags, size, tid))
+        self._send_event(MakeDataEvent(ea, flags, size, tid))
         return 0
 
     def renamed(self, ea, new_name, local_name):
-        self._sendEvent(RenamedEvent(ea, new_name, local_name))
+        self._send_event(RenamedEvent(ea, new_name, local_name))
         return 0
 
     def func_added(self, func):
-        self._sendEvent(FuncAddedEvent(func.startEA, func.endEA))
+        self._send_event(FuncAddedEvent(func.startEA, func.endEA))
         return 0
 
     def deleting_func(self, func):
-        self._sendEvent(DeletingFuncEvent(func.startEA))
+        self._send_event(DeletingFuncEvent(func.startEA))
         return 0
 
     def set_func_start(self, func, new_start):
-        self._sendEvent(SetFuncStartEvent(func.startEA, new_start))
+        self._send_event(SetFuncStartEvent(func.startEA, new_start))
         return 0
 
     def set_func_end(self, func, new_end):
-        self._sendEvent(SetFuncEndEvent(func.startEA, new_end))
+        self._send_event(SetFuncEndEvent(func.startEA, new_end))
         return 0
 
     def func_tail_appended(self, func, tail):
-        self._sendEvent(FuncTailAppendedEvent(func.startEA, tail.startEA,
-                                              tail.endEA))
+        self._send_event(FuncTailAppendedEvent(func.startEA, tail.startEA,
+                                               tail.endEA))
         return 0
 
     def func_tail_deleted(self, func, tail_ea):
-        self._sendEvent(FuncTailDeletedEvent(func.startEA, tail_ea))
+        self._send_event(FuncTailDeletedEvent(func.startEA, tail_ea))
         return 0
 
     def tail_owner_changed(self, tail, owner_func, old_owner):
-        self._sendEvent(TailOwnerChangedEvent(tail.startEA, owner_func))
+        self._send_event(TailOwnerChangedEvent(tail.startEA, owner_func))
         return 0
 
     def cmt_changed(self, ea, repeatable_cmt):
         cmt = idc.get_cmt(ea, repeatable_cmt)
         cmt = '' if not cmt else cmt
-        self._sendEvent(CmtChangedEvent(ea, cmt, repeatable_cmt))
+        self._send_event(CmtChangedEvent(ea, cmt, repeatable_cmt))
         return 0
 
     def extra_cmt_changed(self, ea, line_idx, cmt):
-        self._sendEvent(ExtraCmtChangedEvent(ea, line_idx, cmt))
+        self._send_event(ExtraCmtChangedEvent(ea, line_idx, cmt))
         return 0
 
     def ti_changed(self, ea, type, fname):
         type = idc.GetTinfo(ea)
-        self._sendEvent(TiChangedEvent(ea, type))
+        self._send_event(TiChangedEvent(ea, type))
         return 0
 
     def op_type_changed(self, ea, n):
@@ -133,8 +133,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 extra['id'] = id
                 extra['serial'] = serial
             else:
-                # FIXME: Find a better way
-                return 0
+                return 0  # FIXME: Find a better way
         else:
             if idc.isHex1(flags):
                 op = 'hex'
@@ -152,62 +151,61 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 extra['id'] = id
                 extra['serial'] = serial
             else:
-                # FIXME: Find a better way
-                return 0
-        self._sendEvent(OpTypeChangedEvent(ea, n, op, extra))
+                return 0  # FIXME: Find a better way
+        self._send_event(OpTypeChangedEvent(ea, n, op, extra))
         return 0
 
     def enum_created(self, enum):
         name = idc.get_enum_name(enum)
-        self._sendEvent(EnumCreatedEvent(enum, name))
+        self._send_event(EnumCreatedEvent(enum, name))
         return 0
 
     def enum_deleted(self, enum):
-        self._sendEvent(EnumDeletedEvent(enum))
+        self._send_event(EnumDeletedEvent(enum))
         return 0
 
     def enum_renamed(self, tid):
         new_name = idaapi.get_enum_name(tid)
-        self._sendEvent(EnumRenamedEvent(tid, new_name))
+        self._send_event(EnumRenamedEvent(tid, new_name))
         return 0
 
     def enum_bf_changed(self, tid):
         bf_flag = 1 if idc.IsBitfield(tid) else 0
-        self._sendEvent(EnumBfChangedEvent(tid, bf_flag))
+        self._send_event(EnumBfChangedEvent(tid, bf_flag))
         return 0
 
     def enum_cmt_changed(self, tid, repeatable_cmt):
         cmt = idaapi.get_enum_cmt(tid, repeatable_cmt)
-        self._sendEvent(EnumCmtChangedEvent(tid, cmt, repeatable_cmt))
+        self._send_event(EnumCmtChangedEvent(tid, cmt, repeatable_cmt))
         return 0
 
     def enum_member_created(self, id, cid):
         name = idaapi.get_enum_member_name(cid)
         value = idaapi.get_enum_member_value(cid)
         bmask = idaapi.get_enum_member_bmask(cid)
-        self._sendEvent(EnumMemberCreatedEvent(id, name, value, bmask))
+        self._send_event(EnumMemberCreatedEvent(id, name, value, bmask))
         return 0
 
     def enum_member_deleted(self, id, cid):
         value = idaapi.get_enum_member_value(cid)
         serial = idaapi.get_enum_member_serial(cid)
         bmask = idaapi.get_enum_member_bmask(cid)
-        self._sendEvent(EnumMemberDeletedEvent(id, value, serial, bmask))
+        self._send_event(EnumMemberDeletedEvent(id, value, serial, bmask))
         return 0
 
     def struc_created(self, tid):
         name = idaapi.get_struc_name(tid)
         is_union = idaapi.is_union(tid)
-        self._sendEvent(StrucCreatedEvent(tid, name, is_union))
+        self._send_event(StrucCreatedEvent(tid, name, is_union))
         return 0
 
     def struc_deleted(self, tid):
-        self._sendEvent(StrucDeletedEvent(tid))
+        self._send_event(StrucDeletedEvent(tid))
         return 0
 
     def struc_renamed(self, sptr):
         new_name = idaapi.get_struc_name(sptr.id)
-        self._sendEvent(StrucRenamedEvent(sptr.id, new_name))
+        self._send_event(StrucRenamedEvent(sptr.id, new_name))
         return 0
 
     def struc_member_created(self, sptr, mptr):
@@ -225,33 +223,33 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 extra['base'] = mt.ri.base
                 extra['tdelta'] = mt.ri.tdelta
                 extra['flags'] = mt.ri.flags
-                self._sendEvent(StrucMemberCreatedEvent(sptr.id, fieldname,
-                                                        offset, flag, nbytes,
-                                                        extra))
+                self._send_event(StrucMemberCreatedEvent(sptr.id, fieldname,
+                                                         offset, flag, nbytes,
+                                                         extra))
             # Is it really possible to create an enum?
             elif idaapi.isEnum0(flag):
                 extra['serial'] = mt.ec.serial
-                self._sendEvent(StrucMemberCreatedEvent(sptr.id, fieldname,
-                                                        offset, flag, nbytes,
-                                                        extra))
+                self._send_event(StrucMemberCreatedEvent(sptr.id, fieldname,
+                                                         offset, flag, nbytes,
+                                                         extra))
             elif idaapi.isStruct(flag):
                 extra['id'] = mt.tid
-                self._sendEvent(StrucMemberCreatedEvent(sptr.id, fieldname,
-                                                        offset, flag, nbytes,
-                                                        extra))
+                self._send_event(StrucMemberCreatedEvent(sptr.id, fieldname,
+                                                         offset, flag, nbytes,
+                                                         extra))
             elif idaapi.isASCII(flag):
                 extra['strtype'] = mt.strtype
-                self._sendEvent(StrucMemberCreatedEvent(sptr.id, fieldname,
-                                                        offset, flag, nbytes,
-                                                        extra))
+                self._send_event(StrucMemberCreatedEvent(sptr.id, fieldname,
+                                                         offset, flag, nbytes,
+                                                         extra))
         else:
-            self._sendEvent(StrucMemberCreatedEvent(sptr.id, fieldname,
-                                                    offset, flag, nbytes,
-                                                    extra))
+            self._send_event(StrucMemberCreatedEvent(sptr.id, fieldname,
+                                                     offset, flag, nbytes,
+                                                     extra))
         return 0
 
     def struc_member_deleted(self, sptr, off1, off2):
-        self._sendEvent(StrucMemberDeletedEvent(sptr.id, off2))
+        self._send_event(StrucMemberDeletedEvent(sptr.id, off2))
         return 0
 
     def struc_member_changed(self, sptr, mptr):
@@ -267,70 +265,70 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 extra['base'] = mt.ri.base
                 extra['tdelta'] = mt.ri.tdelta
                 extra['flags'] = mt.ri.flags
-                self._sendEvent(StrucMemberChangedEvent(sptr.id, soff,
-                                                        mptr.eoff, flag,
-                                                        extra))
+                self._send_event(StrucMemberChangedEvent(sptr.id, soff,
+                                                         mptr.eoff, flag,
+                                                         extra))
             # Is it really possible to create an enum?
             elif idaapi.isEnum0(flag):
                 extra['serial'] = mt.ec.serial
-                self._sendEvent(StrucMemberChangedEvent(sptr.id, soff,
-                                                        mptr.eoff, flag,
-                                                        extra))
+                self._send_event(StrucMemberChangedEvent(sptr.id, soff,
+                                                         mptr.eoff, flag,
+                                                         extra))
             elif idaapi.isStruct(flag):
                 extra['id'] = mt.tid
-                self._sendEvent(StrucMemberChangedEvent(sptr.id, soff,
-                                                        mptr.eoff, flag,
-                                                        extra))
+                self._send_event(StrucMemberChangedEvent(sptr.id, soff,
+                                                         mptr.eoff, flag,
+                                                         extra))
             elif idaapi.isASCII(flag):
                 extra['strtype'] = mt.strtype
-                self._sendEvent(StrucMemberChangedEvent(sptr.id, soff,
-                                                        mptr.eoff, flag,
-                                                        extra))
+                self._send_event(StrucMemberChangedEvent(sptr.id, soff,
+                                                         mptr.eoff, flag,
+                                                         extra))
         else:
-            self._sendEvent(StrucMemberChangedEvent(sptr.id, soff,
-                                                    mptr.eoff, flag,
-                                                    extra))
+            self._send_event(StrucMemberChangedEvent(sptr.id, soff,
+                                                     mptr.eoff, flag,
+                                                     extra))
         return 0
 
     def struc_cmt_changed(self, tid, repeatable_cmt):
         cmt = idaapi.get_struc_cmt(tid, repeatable_cmt)
-        self._sendEvent(StrucCmtChangedEvent(tid, cmt, repeatable_cmt))
+        self._send_event(StrucCmtChangedEvent(tid, cmt, repeatable_cmt))
         return 0
 
     def expanding_struc(self, sptr, offset, delta):
-        self._sendEvent(ExpandingStrucEvent(sptr.id, offset, delta))
+        self._send_event(ExpandingStrucEvent(sptr.id, offset, delta))
         return 0
 
     def segm_added(self, s):
-        self._sendEvent(SegmAddedEvent(idaapi.get_segm_name(s),
-                                       idaapi.get_segm_class(s),
-                                       s.start_ea, s.end_ea,
-                                       s.orgbase, s.align, s.comb,
-                                       s.perm, s.bitness, s.flags))
+        self._send_event(SegmAddedEvent(idaapi.get_segm_name(s),
+                                        idaapi.get_segm_class(s),
+                                        s.start_ea, s.end_ea,
+                                        s.orgbase, s.align, s.comb,
+                                        s.perm, s.bitness, s.flags))
         return 0
 
     def segm_deleted(self, start_ea, end_ea):
-        self._sendEvent(SegmDeletedEvent(start_ea))
+        self._send_event(SegmDeletedEvent(start_ea))
         return 0
 
     def segm_start_changed(self, s, oldstart):
-        self._sendEvent(SegmStartChangedEvent(s.start_ea, oldstart))
+        self._send_event(SegmStartChangedEvent(s.start_ea, oldstart))
         return 0
 
     def segm_end_changed(self, s, oldend):
-        self._sendEvent(SegmEndChangedEvent(s.end_ea, s.start_ea))
+        self._send_event(SegmEndChangedEvent(s.end_ea, s.start_ea))
         return 0
 
     def segm_name_changed(self, s, name):
-        self._sendEvent(SegmNameChangedEvent(s.start_ea, name))
+        self._send_event(SegmNameChangedEvent(s.start_ea, name))
         return 0
 
     def segm_class_changed(self, s, sclass):
-        self._sendEvent(SegmClassChangedEvent(s.start_ea, sclass))
+        self._send_event(SegmClassChangedEvent(s.start_ea, sclass))
         return 0
 
     def byte_patched(self, ea, old_value):
-        self._sendEvent(BytePatchedEvent(ea, idc.Byte(ea)))
+        self._send_event(BytePatchedEvent(ea, idc.Byte(ea)))
         return 0
 
 
@@ -344,7 +342,7 @@ class IDPHooks(Hooks, ida_idp.IDP_Hooks):
         Hooks.__init__(self, plugin)
 
     def ev_undefine(self, ea):
-        self._sendEvent(UndefinedEvent(ea))
+        self._send_event(UndefinedEvent(ea))
         return 0
 
     def ev_adjust_argloc(self, *_):
@@ -391,19 +389,19 @@ class HexRaysHooks(Hooks):
             func = idaapi.get_func(ea)
             if self._funcEA != func.startEA:
                 self._funcEA = func.startEA
-                self._labels = HexRaysHooks._getUserLabels(self._funcEA)
-                self._cmts = HexRaysHooks._getUserCmts(self._funcEA)
-                self._iflags = HexRaysHooks._getUserIflags(self._funcEA)
+                self._labels = HexRaysHooks._get_user_labels(self._funcEA)
+                self._cmts = HexRaysHooks._get_user_cmts(self._funcEA)
+                self._iflags = HexRaysHooks._get_user_iflags(self._funcEA)
                 self._lvar_settings = \
-                    HexRaysHooks._getUserLvarSettings(self._funcEA)
-            self._sendUserLabels(func.startEA)
-            self._sendUserCmts(func.startEA)
-            self._sendUserIflags(func.startEA)
-            self._sendUserLvarSettings(func.startEA)
+                    HexRaysHooks._get_user_lvar_settings(self._funcEA)
+            self._send_user_labels(func.startEA)
+            self._send_user_cmts(func.startEA)
+            self._send_user_iflags(func.startEA)
+            self._send_user_lvar_settings(func.startEA)
         return 0
 
     @staticmethod
-    def _getUserLabels(ea):
+    def _get_user_labels(ea):
         user_labels = idaapi.restore_user_labels(ea)
         if user_labels is None:
             user_labels = idaapi.user_labels_new()
@@ -417,14 +415,14 @@ class HexRaysHooks(Hooks):
         idaapi.user_labels_free(user_labels)
         return labels
 
-    def _sendUserLabels(self, ea):
-        labels = HexRaysHooks._getUserLabels(ea)
+    def _send_user_labels(self, ea):
+        labels = HexRaysHooks._get_user_labels(ea)
         if labels != self._labels:
-            self._sendEvent(UserLabelsEvent(ea, labels))
+            self._send_event(UserLabelsEvent(ea, labels))
             self._labels = labels
 
     @staticmethod
-    def _getUserCmts(ea):
+    def _get_user_cmts(ea):
         user_cmts = idaapi.restore_user_cmts(ea)
         if user_cmts is None:
             user_cmts = idaapi.user_cmts_new()
@@ -438,14 +436,14 @@ class HexRaysHooks(Hooks):
         idaapi.user_cmts_free(user_cmts)
         return cmts
 
-    def _sendUserCmts(self, ea):
-        cmts = HexRaysHooks._getUserCmts(ea)
+    def _send_user_cmts(self, ea):
+        cmts = HexRaysHooks._get_user_cmts(ea)
         if cmts != self._cmts:
-            self._sendEvent(UserCmtsEvent(ea, cmts))
+            self._send_event(UserCmtsEvent(ea, cmts))
             self._cmts = cmts
 
     @staticmethod
-    def _getUserIflags(ea):
+    def _get_user_iflags(ea):
         user_iflags = idaapi.restore_user_iflags(ea)
         if user_iflags is None:
             user_iflags = idaapi.user_iflags_new()
@@ -455,7 +453,7 @@ class HexRaysHooks(Hooks):
             cl = idaapi.user_iflags_first(it)
             f = idaapi.user_iflags_second(it)
 
-            # Temporary fix while Hex-Rays fix their API
+            # Temporary while Hex-Rays fix their API
             def read_type_sign(obj):
                 import ctypes
                 import struct
@@ -467,28 +465,28 @@ class HexRaysHooks(Hooks):
         idaapi.user_iflags_free(user_iflags)
         return iflags
 
-    def _sendUserIflags(self, ea):
-        iflags = HexRaysHooks._getUserIflags(ea)
+    def _send_user_iflags(self, ea):
+        iflags = HexRaysHooks._get_user_iflags(ea)
         if iflags != self._iflags:
-            self._sendEvent(UserIflagsEvent(ea, iflags))
+            self._send_event(UserIflagsEvent(ea, iflags))
             self._iflags = iflags
 
     @staticmethod
-    def _getUserLvarSettings(ea):
+    def _get_user_lvar_settings(ea):
         dct = {}
         lvinf = idaapi.lvar_uservec_t()
         if idaapi.restore_user_lvar_settings(lvinf, ea):
             dct['lvvec'] = []
             for lv in lvinf.lvvec:
-                dct['lvvec'].append(HexRaysHooks._getLvarSavedInfo(lv))
+                dct['lvvec'].append(HexRaysHooks._get_lvar_saved_info(lv))
             dct['sizes'] = list(lvinf.sizes)
             dct['lmaps'] = {}
             it = idaapi.lvar_mapping_begin(lvinf.lmaps)
             while it != idaapi.lvar_mapping_end(lvinf.lmaps):
                 key = idaapi.lvar_mapping_first(it)
-                key = HexRaysHooks._getLvarLocator(key)
+                key = HexRaysHooks._get_lvar_locator(key)
                 val = idaapi.lvar_mapping_second(it)
-                val = HexRaysHooks._getLvarLocator(val)
+                val = HexRaysHooks._get_lvar_locator(val)
                 dct['lmaps'][key] = val
                 it = idaapi.lvar_mapping_next(it)
             dct['stkoff_delta'] = lvinf.stkoff_delta
@@ -496,30 +494,30 @@ class HexRaysHooks(Hooks):
         return dct
 
     @staticmethod
-    def _getLvarSavedInfo(lv):
+    def _get_lvar_saved_info(lv):
         return {
-            'll': HexRaysHooks._getLvarLocator(lv.ll),
+            'll': HexRaysHooks._get_lvar_locator(lv.ll),
             'name': lv.name,
-            'type': HexRaysHooks._getTinfo(lv.type),
+            'type': HexRaysHooks._get_tinfo(lv.type),
             'cmt': lv.cmt,
             'flags': lv.flags,
         }
 
     @staticmethod
-    def _getTinfo(type):
+    def _get_tinfo(type):
         if type.empty():
             return None, None, None
         return type.serialize()
 
     @staticmethod
-    def _getLvarLocator(ll):
+    def _get_lvar_locator(ll):
         return {
-            'location': HexRaysHooks._getVdloc(ll.location),
+            'location': HexRaysHooks._get_vdloc(ll.location),
             'defea': ll.defea,
         }
 
     @staticmethod
-    def _getVdloc(location):
+    def _get_vdloc(location):
         return {
             'atype': location.atype(),
             'reg1': location.reg1(),
@@ -528,23 +526,8 @@ class HexRaysHooks(Hooks):
             'ea': location.get_ea()
         }
 
-    def _sendUserLvarSettings(self, ea):
-        lvar_settings = HexRaysHooks._getUserLvarSettings(ea)
+    def _send_user_lvar_settings(self, ea):
+        lvar_settings = HexRaysHooks._get_user_lvar_settings(ea)
         if lvar_settings != self._lvar_settings:
-            self._sendEvent(UserLvarSettingsEvent(ea, lvar_settings))
+            self._send_event(UserLvarSettingsEvent(ea, lvar_settings))
             self._lvar_settings = lvar_settings
-
-
-class UIHooks(Hooks, idaapi.View_Hooks):
-    """
-    The concrete class for UI-related events.
-    """
-
-    def __init__(self, plugin):
-        idaapi.View_Hooks.__init__(self)
-        Hooks.__init__(self, plugin)
-
-    # for the next feature
-    def view_loc_changed(self, view, now, was):
-        pass
-        # print(now.plce.toea())
