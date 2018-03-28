@@ -131,9 +131,9 @@ class Plugin(idaapi.plugin_t):
         copyright = "(c) %s" % self.PLUGIN_AUTHORS
 
         prefix = '[IDAConnect] '
-        print prefix + ("-" * 75)
-        print prefix + "%s - %s" % (self.description(), copyright)
-        print prefix + ("-" * 75)
+        print(prefix + ("-" * 75))
+        print(prefix + "%s - %s" % (self.description(), copyright))
+        print(prefix + ("-" * 75))
 
     def term(self):
         """

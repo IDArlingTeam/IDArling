@@ -38,7 +38,7 @@ class Interface(Module):
                 return widget
         import PyQt5
         PyQt5.QtWidgets.Menu
-        QtWidget
+        # QtWidget
 
     def __init__(self, plugin):
         super(Interface, self).__init__(plugin)
