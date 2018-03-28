@@ -17,6 +17,11 @@ from twisted.protocols import basic
 
 from packets import Packet, PacketDeferred, Query, Reply, Container
 
+try:
+    unicode        # Python 2
+except NameError:
+    unicode = str  # Python 3
+
 
 class Protocol(basic.LineReceiver, object):
     """

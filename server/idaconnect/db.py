@@ -218,6 +218,6 @@ class Database(object):
         """
         sql = 'insert into {} ({}) values ({});'
         keys = ', '.join(fields.keys())
-        vals = ', '.join(['?' for _ in xrange(len(fields))])
+        vals = ', '.join(['?'] * len(fields))
         return self._conn.runOperation(sql.format(table, keys, vals),
                                        fields.values())
