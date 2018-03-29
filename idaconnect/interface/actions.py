@@ -375,7 +375,8 @@ class SaveActionHandler(ActionHandler):
             date = datetime.datetime.now().strftime(dateFormat)
             repo = Repository(hash, file, type, date)
             d = self._plugin.network.send_packet(NewRepository.Query(repo))
-            d.add_callback(partial(self._on_new_repository_reply, repo, branch))
+            d.add_callback(partial(self._on_new_repository_reply,
+                                   repo, branch))
             d.add_errback(logger.exception)
         else:
             self._on_new_repository_reply(repo, branch, None)

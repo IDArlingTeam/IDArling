@@ -10,6 +10,7 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import argparse
 import logging
 import os
 import signal
@@ -64,7 +65,7 @@ class DedicatedServer(Server):
         return logger
 
 
-def main():
+def main(args):
     """
     The entry point of a Python program.
     """
@@ -73,9 +74,12 @@ def main():
 
     app = QCoreApplication(sys.argv)
     server = DedicatedServer()
-    server.start('127.0.0.1', 31013)
+    server.start(args.host, args.port)
     return app.exec_()
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--host', type=str, default='127.0.0.1')
+    parser.add_argument('--port', type=int, default=31013)
+    main(parser.parse_args())

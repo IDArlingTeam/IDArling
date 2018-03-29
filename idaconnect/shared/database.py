@@ -30,6 +30,7 @@ class Database(object):
         :param dbpath: the database path
         """
         self._conn = sqlite3.connect(dbpath, check_same_thread=False)
+        self._conn.isolation_level = None
         self._conn.row_factory = sqlite3.Row
 
     def initialize(self):
