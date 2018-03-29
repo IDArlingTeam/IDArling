@@ -1,8 +1,7 @@
 # Custom directories
 .idea/
-logs/
 files/
-venv/
+logs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
