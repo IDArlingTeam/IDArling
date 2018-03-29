@@ -117,8 +117,8 @@ class Plugin(idaapi.plugin_t):
         Initialize the plugin and all its modules.
         """
         self._core.install()
-        self._network.install()
         self._interface.install()
+        self._network.install()
 
         # Load the current state
         self.core.load_state()

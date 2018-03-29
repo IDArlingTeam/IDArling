@@ -100,6 +100,8 @@ class Core(Module):
 
     def _uninstall(self):
         logger.debug("Uninstalling hooks")
+        self._idbHooksCore.unhook()
+        self._uiHooksCore.unhook()
         self.unhook_all()
         return True
 
