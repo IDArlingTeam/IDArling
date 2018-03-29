@@ -187,8 +187,8 @@ class OpenActionHandler(ActionHandler):
         """
         # Ask the server for the list of repositories
         d = self._plugin.network.send_packet(GetRepositories.Query())
-        d.addCallback(self._on_get_repository_reply)
-        d.addErrback(logger.exception)
+        d.add_callback(self._on_get_repository_reply)
+        d.add_errback(logger.exception)
         return 1
 
     def _on_get_repository_reply(self, reply):
@@ -199,8 +199,8 @@ class OpenActionHandler(ActionHandler):
         """
         # Ask the server for the list of branches
         d = self._plugin.network.send_packet(GetBranches.Query())
-        d.addCallback(partial(self._on_get_branches_reply, reply.repos))
-        d.addErrback(logger.exception)
+        d.add_callback(partial(self._on_get_branches_reply, reply.repos))
+        d.add_errback(logger.exception)
 
     def _on_get_branches_reply(self, repos, reply):
         """
@@ -241,8 +241,8 @@ class OpenActionHandler(ActionHandler):
 
         d = self._plugin.network.send_packet(packet)
         d.add_initback(setDownloadCallback)
-        d.addCallback(partial(self._database_downloaded, branch, progress))
-        d.addErrback(logger.exception)
+        d.add_callback(partial(self._database_downloaded, branch, progress))
+        d.add_errback(logger.exception)
         progress.show()
 
     def _database_downloaded(self, branch, progress, reply):
@@ -332,8 +332,8 @@ class SaveActionHandler(ActionHandler):
         """
         # Ask the server for the list of repositories
         d = self._plugin.network.send_packet(GetRepositories.Query())
-        d.addCallback(self._on_get_repository_reply)
-        d.addErrback(logger.exception)
+        d.add_callback(self._on_get_repository_reply)
+        d.add_errback(logger.exception)
         return 1
 
     def _on_get_repository_reply(self, reply):
@@ -344,8 +344,8 @@ class SaveActionHandler(ActionHandler):
         """
         # Ask the server for the list of branches
         d = self._plugin.network.send_packet(GetBranches.Query())
-        d.addCallback(partial(self._on_get_branches_reply, reply.repos))
-        d.addErrback(logger.exception)
+        d.add_callback(partial(self._on_get_branches_reply, reply.repos))
+        d.add_errback(logger.exception)
 
     def _on_get_branches_reply(self, repos, reply):
         """
@@ -375,8 +375,8 @@ class SaveActionHandler(ActionHandler):
             date = datetime.datetime.now().strftime(dateFormat)
             repo = Repository(hash, file, type, date)
             d = self._plugin.network.send_packet(NewRepository.Query(repo))
-            d.addCallback(partial(self._on_new_repository_reply, repo, branch))
-            d.addErrback(logger.exception)
+            d.add_callback(partial(self._on_new_repository_reply, repo, branch))
+            d.add_errback(logger.exception)
         else:
             self._on_new_repository_reply(repo, branch, None)
 
@@ -390,8 +390,8 @@ class SaveActionHandler(ActionHandler):
             date = datetime.datetime.now().strftime(dateFormat)
             branch = Branch(uuid_, repo.hash, date, 64 if idc.__EA64__ else 32)
             d = self._plugin.network.send_packet(NewBranch.Query(branch))
-            d.addCallback(partial(self._on_new_branch_reply, repo, branch))
-            d.addErrback(logger.exception)
+            d.add_callback(partial(self._on_new_branch_reply, repo, branch))
+            d.add_errback(logger.exception)
         else:
             self._on_new_branch_reply(repo, branch, None)
 
@@ -423,8 +423,8 @@ class SaveActionHandler(ActionHandler):
         # Send the packet to upload the file
         packet.upback = partial(self._progress_callback, progress)
         d = self._plugin.network.send_packet(packet)
-        d.addCallback(partial(self._database_uploaded, repo, branch))
-        d.addErrback(logger.exception)
+        d.add_callback(partial(self._database_uploaded, repo, branch))
+        d.add_errback(logger.exception)
 
     def _database_uploaded(self, repo, branch, _):
         # Show a success dialog

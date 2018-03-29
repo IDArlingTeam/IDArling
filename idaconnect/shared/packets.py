@@ -13,8 +13,6 @@
 import collections
 import itertools
 
-from twisted.internet import defer
-
 
 def with_metaclass(meta, *bases):
     """
@@ -195,68 +193,104 @@ class Packet(with_metaclass(PacketFactory, Serializable)):
         return '{}({})'.format(name, ', '.join(attrs))
 
 
-class AlreadyInitedError(Exception):
+class PacketDeferred(object):
     """
-    This exception is raised when the packed has already been initialized.
-    """
-    pass
-
-
-class PacketDeferred(defer.Deferred, object):
-    """
-    An improved deferred object that supports a new callback, called initback,
-    that is triggered when the expected object (a packet) is being initialized.
+    An Twisted-like deferred object that supports a standard callback, as well
+    as a new callback triggered when the expected packet is being instantiated.
     """
 
-    def __init__(self, canceller=None):
+    def __init__(self):
         """
         Initialize the packet deferred.
-
-        :param canceller: callable used to stop the pending operation
         """
-        super(PacketDeferred, self).__init__(canceller)
-        self._inited = False
+        super(PacketDeferred, self).__init__()
+        self._errback = None
+
+        self._callback = None
+        self._callresult = None
+        self._called = False
+
         self._initback = None
         self._initresult = None
+        self._inited = False
+
+    def add_callback(self, callback):
+        """
+        Register a callback for this deferred.
+
+        :param callback: the callback function
+        :return: the self instance
+        """
+        self._callback = callback
+        if self._called:
+            self._run_callback()
+        return self
+
+    def add_errback(self, errback):
+        """
+        Register an errback for this deferred.
+
+        :param errback: the errback function
+        :return: the self instance
+        """
+        self._errback = errback
+        return self
 
     def add_initback(self, initback):
         """
-        Register a callback to the initialization event.
+        Register an initback for this deferred.
 
-        :param initback: the callback function
-        :return: the same object
+        :param initback: the initback function
+        :return: the self instance
         """
         self._initback = initback
         if self._inited:
             self._run_initback()
         return self
 
-    def initback(self, result):
+    def callback(self, result):
         """
-        Trigger the callback function for the initialization event.
+        Triggers the callback function.
 
         :param result: the result
         """
-        self._start_run_initback(result)
+        if self._called:
+            raise RuntimeError("Callback already triggered")
+        self._called = True
+        self._callresult = result
+        self._run_callback()
 
-    def _start_run_initback(self, result):
+    def initback(self, result):
         """
-        This function guards the one below it.
+        Trigger the initback function.
 
         :param result: the result
         """
         if self._inited:
-            raise AlreadyInitedError()
+            raise RuntimeError("Initback already triggered")
         self._inited = True
         self._initresult = result
         self._run_initback()
 
+    def _run_callback(self):
+        """
+        Internal method that calls the callback/errback function.
+        """
+        if self._callback:
+            try:
+                self._callback(self._callresult)
+            except Exception as e:
+                self._errback(e)
+
     def _run_initback(self):
         """
-        This function will actually trigger the callback.
+        Internal method that call the initback/errback function.
         """
         if self._initback:
-            self._initback(self._initresult)
+            try:
+                self._initback(self._initresult)
+            except Exception as e:
+                self._errback(e)
 
 
 class EventFactory(PacketFactory):
