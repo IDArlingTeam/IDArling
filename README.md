@@ -2,41 +2,41 @@
 
 ## Overview
 
-IDAConnect is a collaborative reverse engineering plugin for [IDA Pro](https://www.hex-rays.com/products/ida/) and [Hex-Rays](https://www.hex-rays.com/products/decompiler/index.shtml). It allows to connect multiple instances of IDA using the asynchronous programming paradigm at the core of [Twisted](https://twistedmatrix.com/trac/), the event-driven networking engine.
+IDAConnect is a collaborative reverse engineering plugin for [IDA Pro](https://www.hex-rays.com/products/ida/) and [Hex-Rays](https://www.hex-rays.com/products/decompiler/index.shtml). It allows to synchronize in real-time the changes made to a database by multiple users, by connecting together different instances of IDA Pro.
 
 The main features of IDAConnect are:
-* recording user interactions and events;
-* syncing multiple databases in real-time;
-* replaying of previously recorded events;
-* loading and saving databases to a server;
-* live and interactive IDA status bar widget;
-* and even more...
+* live recording and replaying of all user interactions;
+* loading and saving of IDA databases to a central server;
+* interactive IDA status bar widget and custom dialogs;
+* Python plugin and server with no extra dependencies;
+* and even more to come...
+
+If you have any questions not worthy of a bug report, feel free to ping us at [#idaconnect on freenode](https://kiwiirc.com/client/irc.freenode.net/idaconnect) and ask away.
 
 ## Releases
 
 This project is under active development. Feel free to send a PR if you would like to help! :-)
 
-**It is not really usable in its current state, please stayed tuned for a first release of the project!**
+**It is not really stable in its current state, please stayed tuned for a first release of the project!**
 
 ## Installation
 
 Install the IDAConnect client into the IDA plugins folder.
 
-- Copy the contents of the `plugin` folder to the IDA plugins folder.
+- Copy `idaconnect_plugin.py` and the `idaconnect` folder to the IDA plugins folder.
     - On Windows, the folder is at `C:\Program Files\IDA 7.0\plugins`
-    - On MacOS, the folder is at `/Applications/IDA\ Pro\ 7.0/idaq.app/Contents/MacOS/plugins`
+    - On macOS, the folder is at `/Applications/IDA\ Pro\ 7.0/idaq.app/Contents/MacOS/plugins`
     - On Linux, the folder may be at `/opt/IDA/plugins/`
-- Install the requirements using `pip` and the `requirements.txt` file.
 
-*Warning:* The plugin is only compatible with IDA Pro 7.0 on Windows, MacOS, and Linux.
+**Warning:** The plugin is only compatible with IDA Pro 7.0 on Windows, macOS, and Linux.
 
-Launch the IDAConnect server located in the `server` folder after installing its requirements.
+The dedicated server requires PyQt5, which is integrated into IDA. If you're using an external Python installation, we recommand using Python 3, which offers a pre-built package that can be installed with a simple `pip install PyQt5`.
 
 ## Usage
 
-IDAConnect loads automatically when IDA is opened, installing a handful of menu entries into the user interface.
+IDAConnect loads automatically when IDA is opened, installing new elements into the user interface.
 
-First use the widget in the status bar to connect to the server. Then you will be able to access the following menus:
+First use the widget in the status bar to add the server of your choice in the *Network Settings*. Then connect to the server using the widget again. Finally, you should be able to access the following menus:
 
 ```
 - File --> Open from server
@@ -56,9 +56,3 @@ Thanks to Quarkslab for allowing this release.
 
 * Alexandre Adamski <<aadamski@quarkslab.com>>
 * Joffrey Guilbon <<jguilbon@quarkslab.com>>
-
-# Contact
-
-If you have any questions not worthy of a bug report, feel free to ping us at
-#idaconnect on Freenode and ask away. Click
-[here](https://kiwiirc.com/client/irc.freenode.net/idaconnect) to connect.
