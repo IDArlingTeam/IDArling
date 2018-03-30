@@ -295,9 +295,9 @@ class EnumCmtChangedEvent(Event):
 class EnumMemberCreatedEvent(Event):
     __event__ = 'enum_member_created'
 
-    def __init__(self, id, name, value, bmask):
+    def __init__(self, ename, name, value, bmask):
         super(EnumMemberCreatedEvent, self).__init__()
-        self.id = id
+        self.id = idaapi.get_enum(ename.encode('utf-8'))
         self.name = name
         self.value = value
         self.bmask = bmask
@@ -310,9 +310,9 @@ class EnumMemberCreatedEvent(Event):
 class EnumMemberDeletedEvent(Event):
     __event__ = 'enum_member_deleted'
 
-    def __init__(self, id, value, serial, bmask):
+    def __init__(self, ename, value, serial, bmask):
         super(EnumMemberDeletedEvent, self).__init__()
-        self.id = id
+        self.id = idaapi.get_enum(ename.encode('utf-8'))
         self.value = value
         self.serial = serial
         self.bmask = bmask

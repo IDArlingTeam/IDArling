@@ -180,17 +180,19 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         return 0
 
     def enum_member_created(self, id, cid):
+        ename = idaapi.get_enum_name(id)
         name = idaapi.get_enum_member_name(cid)
         value = idaapi.get_enum_member_value(cid)
         bmask = idaapi.get_enum_member_bmask(cid)
-        self._send_event(EnumMemberCreatedEvent(id, name, value, bmask))
+        self._send_event(EnumMemberCreatedEvent(ename, name, value, bmask))
         return 0
 
-    def enum_member_deleted(self, id, cid):
+    def deleting_enum_member(self, id, cid):
+        ename = idaapi.get_enum_name(id)
         value = idaapi.get_enum_member_value(cid)
         serial = idaapi.get_enum_member_serial(cid)
         bmask = idaapi.get_enum_member_bmask(cid)
-        self._send_event(EnumMemberDeletedEvent(id, value, serial, bmask))
+        self._send_event(EnumMemberDeletedEvent(ename, value, serial, bmask))
         return 0
 
     def struc_created(self, tid):
