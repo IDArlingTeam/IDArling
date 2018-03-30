@@ -288,7 +288,8 @@ class EnumCmtChangedEvent(Event):
         self.repeatable_cmt = repeatable_cmt
 
     def __call__(self):
-        idaapi.set_enum_cmt(self.tid, self.cmt.encode('utf-8'),
+        idaapi.set_enum_cmt(self.tid,
+                            self.cmt.encode('utf-8') if self.cmt else '',
                             self.repeatable_cmt)
 
 
@@ -297,13 +298,14 @@ class EnumMemberCreatedEvent(Event):
 
     def __init__(self, ename, name, value, bmask):
         super(EnumMemberCreatedEvent, self).__init__()
-        self.id = idaapi.get_enum(ename.encode('utf-8'))
+        self.ename = ename.encode('utf-8')
         self.name = name
         self.value = value
         self.bmask = bmask
 
     def __call__(self):
-        idaapi.add_enum_member(self.id, self.name.encode('utf-8'),
+        idaapi.add_enum_member(idaapi.get_enum(str(self.ename)),
+                               self.name.encode('utf-8'),
                                self.value, self.bmask)
 
 
@@ -312,13 +314,14 @@ class EnumMemberDeletedEvent(Event):
 
     def __init__(self, ename, value, serial, bmask):
         super(EnumMemberDeletedEvent, self).__init__()
-        self.id = idaapi.get_enum(ename.encode('utf-8'))
+        self.ename = ename.encode('utf-8')
         self.value = value
         self.serial = serial
         self.bmask = bmask
 
     def __call__(self):
-        idaapi.del_enum_member(self.id, self.value, self.serial, self.bmask)
+        idaapi.del_enum_member(idaapi.get_enum(str(self.ename)),
+                               self.value, self.serial, self.bmask)
 
 
 class StrucCreatedEvent(Event):
