@@ -67,9 +67,15 @@ class StatusWidget(QWidget):
         # Update the text of the widget
         textFmt = '%s -- <span style="color: %s;">%s</span>'
         self._textWidget = QLabel(textFmt % (self._server, color, text))
+        self._textWidget.setAutoFillBackground(False)
+        self._textWidget.setAttribute(Qt.WA_PaintOnScreen)
+        self._textWidget.setAttribute(Qt.WA_TranslucentBackground)
 
         # Update the icon of the widget
         self._iconWidget = QLabel()
+        self._iconWidget.setAutoFillBackground(False)
+        self._iconWidget.setAttribute(Qt.WA_PaintOnScreen)
+        self._iconWidget.setAttribute(Qt.WA_TranslucentBackground)
         pixmap = QPixmap(self._plugin.resource(icon))
         pixmapHeight = self._textWidget.sizeHint().height()
         self._iconWidget.setPixmap(pixmap.scaled(pixmapHeight, pixmapHeight,
