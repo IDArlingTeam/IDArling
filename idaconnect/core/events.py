@@ -248,7 +248,7 @@ class EnumDeletedEvent(Event):
 
     def __init__(self, ename):
         super(EnumDeletedEvent, self).__init__()
-        self.ename = ename.decode('utf-8')
+        self.ename = ename
 
     def __call__(self):
         idc.del_enum(idaapi.get_enum(self.ename.encode('utf-8')))
@@ -285,7 +285,7 @@ class EnumCmtChangedEvent(Event):
 
     def __init__(self, emname, cmt, repeatable_cmt):
         super(EnumCmtChangedEvent, self).__init__()
-        self.emname = emname.decode('utf-8')
+        self.emname = emname
         self.cmt = cmt
         self.repeatable_cmt = repeatable_cmt
 
@@ -301,7 +301,7 @@ class EnumMemberCreatedEvent(Event):
 
     def __init__(self, ename, name, value, bmask):
         super(EnumMemberCreatedEvent, self).__init__()
-        self.ename = ename.decode('utf-8')
+        self.ename = ename
         self.name = name
         self.value = value
         self.bmask = bmask
@@ -317,13 +317,13 @@ class EnumMemberDeletedEvent(Event):
 
     def __init__(self, ename, value, serial, bmask):
         super(EnumMemberDeletedEvent, self).__init__()
-        self.ename = ename.encode('utf-8')
+        self.ename = ename
         self.value = value
         self.serial = serial
         self.bmask = bmask
 
     def __call__(self):
-        idaapi.del_enum_member(idaapi.get_enum(str(self.ename)),
+        idaapi.del_enum_member(idaapi.get_enum(self.ename.encode('utf-8')),
                                self.value, self.serial, self.bmask)
 
 
