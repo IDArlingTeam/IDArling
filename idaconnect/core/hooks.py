@@ -165,8 +165,12 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         return 0
 
     def renaming_enum(self, id, is_enum, newname):
-        oldname = idaapi.get_enum_name(id)
-        self._send_event(EnumRenamedEvent(oldname, newname))
+        extra = {}
+        if is_enum:
+            oldname = idaapi.get_enum_name(id)
+        else:
+            oldname = idaapi.get_enum_member_name(id)
+        self._send_event(EnumRenamedEvent(oldname, newname, is_enum))
         return 0
 
     def enum_bf_changed(self, id):
