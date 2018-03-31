@@ -270,13 +270,14 @@ class EnumRenamedEvent(Event):
 class EnumBfChangedEvent(Event):
     __event__ = 'enum_bf_changed'
 
-    def __init__(self, tid, bf_flag):
+    def __init__(self, ename, bf_flag):
         super(EnumBfChangedEvent, self).__init__()
-        self.tid = tid
+        self.ename = ename
         self.bf_flag = bf_flag
 
     def __call__(self):
-        ida_enum.set_enum_bf(self.tid, self.bf_flag)
+        ida_enum.set_enum_bf(idaapi.get_enum(self.ename.encode('utf-8')),
+                             self.bf_flag)
 
 
 class EnumCmtChangedEvent(Event):
