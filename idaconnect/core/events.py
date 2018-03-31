@@ -298,13 +298,13 @@ class EnumMemberCreatedEvent(Event):
 
     def __init__(self, ename, name, value, bmask):
         super(EnumMemberCreatedEvent, self).__init__()
-        self.ename = ename.encode('utf-8')
+        self.ename = ename.decode('utf-8')
         self.name = name
         self.value = value
         self.bmask = bmask
 
     def __call__(self):
-        idaapi.add_enum_member(idaapi.get_enum(str(self.ename)),
+        idaapi.add_enum_member(idaapi.get_enum(self.ename.encode('utf-8')),
                                self.name.encode('utf-8'),
                                self.value, self.bmask)
 
