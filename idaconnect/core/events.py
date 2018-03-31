@@ -257,13 +257,14 @@ class EnumDeletedEvent(Event):
 class EnumRenamedEvent(Event):
     __event__ = 'enum_renamed'
 
-    def __init__(self, tid, new_name):
+    def __init__(self, oldname, newname):
         super(EnumRenamedEvent, self).__init__()
-        self.tid = tid
-        self.new_name = new_name
+        self.oldname = oldname
+        self.newname = newname
 
     def __call__(self):
-        idaapi.set_enum_name(self.tid, self.new_name.encode('utf-8'))
+        idaapi.set_enum_name(idaapi.get_enum(self.oldname.encode('utf-8')),
+                             self.newname.encode('utf-8'))
 
 
 class EnumBfChangedEvent(Event):
