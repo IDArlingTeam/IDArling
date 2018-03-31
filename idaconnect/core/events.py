@@ -246,12 +246,12 @@ class EnumCreatedEvent(Event):
 class EnumDeletedEvent(Event):
     __event__ = 'enum_deleted'
 
-    def __init__(self, enum):
+    def __init__(self, ename):
         super(EnumDeletedEvent, self).__init__()
-        self.enum = enum
+        self.ename = ename.decode('utf-8')
 
     def __call__(self):
-        idc.del_enum(self.enum)
+        idc.del_enum(idaapi.get_enum(self.ename.encode('utf-8')))
 
 
 class EnumRenamedEvent(Event):
