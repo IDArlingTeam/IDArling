@@ -176,7 +176,8 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
 
     def enum_cmt_changed(self, tid, repeatable_cmt):
         cmt = idaapi.get_enum_cmt(tid, repeatable_cmt)
-        self._send_event(EnumCmtChangedEvent(tid, cmt, repeatable_cmt))
+        emname = idaapi.get_enum_name(tid)
+        self._send_event(EnumCmtChangedEvent(emname, cmt, repeatable_cmt))
         return 0
 
     def enum_member_created(self, id, cid):

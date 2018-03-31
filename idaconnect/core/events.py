@@ -281,16 +281,17 @@ class EnumBfChangedEvent(Event):
 class EnumCmtChangedEvent(Event):
     __event__ = 'enum_cmt_changed'
 
-    def __init__(self, tid, cmt, repeatable_cmt):
+    def __init__(self, emname, cmt, repeatable_cmt):
         super(EnumCmtChangedEvent, self).__init__()
-        self.tid = tid
+        self.emname = emname.decode('utf-8')
         self.cmt = cmt
         self.repeatable_cmt = repeatable_cmt
 
     def __call__(self):
-        idaapi.set_enum_cmt(self.tid,
-                            self.cmt.encode('utf-8') if self.cmt else '',
-                            self.repeatable_cmt)
+        idaapi.set_enum_cmt(
+                idaapi.get_enum_member_by_name(self.emname.encode('utf-8')),
+                self.cmt.encode('utf-8') if self.cmt else '',
+                self.repeatable_cmt)
 
 
 class EnumMemberCreatedEvent(Event):
