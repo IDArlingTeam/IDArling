@@ -319,7 +319,8 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         return 0
 
     def expanding_struc(self, sptr, offset, delta):
-        self._send_event(ExpandingStrucEvent(sptr.id, offset, delta))
+        sname = idaapi.get_struc_name(sptr.id)
+        self._send_event(ExpandingStrucEvent(sname, offset, delta))
         return 0
 
     def segm_added(self, s):

@@ -476,14 +476,14 @@ class StrucMemberRenamedEvent(Event):
 class ExpandingStrucEvent(Event):
     __event__ = 'expanding_struc'
 
-    def __init__(self, sid, offset, delta):
+    def __init__(self, sname, offset, delta):
         super(ExpandingStrucEvent, self).__init__()
-        self.sid = sid
+        self.sname = sname
         self.offset = offset
         self.delta = delta
 
     def __call__(self):
-        sptr = idaapi.get_struc(self.sid)
+        sptr = idaapi.get_struc(idc.get_struc_id(self.sname.encode('utf-8')))
         idaapi.expand_struc(sptr, self.offset, self.delta)
 
 
