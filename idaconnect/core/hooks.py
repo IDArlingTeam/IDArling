@@ -218,6 +218,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
     def struc_member_created(self, sptr, mptr):
         extra = {}
 
+        sname = idaapi.get_struc_name(sptr.id)
         fieldname = idaapi.get_member_name2(mptr.id)
         offset = 0 if mptr.unimem() else mptr.soff
         flag = mptr.flag
@@ -230,27 +231,27 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 extra['base'] = mt.ri.base
                 extra['tdelta'] = mt.ri.tdelta
                 extra['flags'] = mt.ri.flags
-                self._send_event(StrucMemberCreatedEvent(sptr.id, fieldname,
+                self._send_event(StrucMemberCreatedEvent(sname, fieldname,
                                                          offset, flag, nbytes,
                                                          extra))
             # Is it really possible to create an enum?
             elif idaapi.isEnum0(flag):
                 extra['serial'] = mt.ec.serial
-                self._send_event(StrucMemberCreatedEvent(sptr.id, fieldname,
+                self._send_event(StrucMemberCreatedEvent(sname, fieldname,
                                                          offset, flag, nbytes,
                                                          extra))
             elif idaapi.isStruct(flag):
                 extra['id'] = mt.tid
-                self._send_event(StrucMemberCreatedEvent(sptr.id, fieldname,
+                self._send_event(StrucMemberCreatedEvent(sname, fieldname,
                                                          offset, flag, nbytes,
                                                          extra))
             elif idaapi.isASCII(flag):
                 extra['strtype'] = mt.strtype
-                self._send_event(StrucMemberCreatedEvent(sptr.id, fieldname,
+                self._send_event(StrucMemberCreatedEvent(sname, fieldname,
                                                          offset, flag, nbytes,
                                                          extra))
         else:
-            self._send_event(StrucMemberCreatedEvent(sptr.id, fieldname,
+            self._send_event(StrucMemberCreatedEvent(sname, fieldname,
                                                      offset, flag, nbytes,
                                                      extra))
         return 0
@@ -262,6 +263,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
     def struc_member_changed(self, sptr, mptr):
         extra = {}
 
+        sname = idaapi.get_struc_name(sptr.id)
         soff = 0 if mptr.unimem() else mptr.soff
         flag = mptr.flag
         mt = idaapi.opinfo_t()
@@ -272,27 +274,27 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 extra['base'] = mt.ri.base
                 extra['tdelta'] = mt.ri.tdelta
                 extra['flags'] = mt.ri.flags
-                self._send_event(StrucMemberChangedEvent(sptr.id, soff,
+                self._send_event(StrucMemberChangedEvent(sname, soff,
                                                          mptr.eoff, flag,
                                                          extra))
             # Is it really possible to create an enum?
             elif idaapi.isEnum0(flag):
                 extra['serial'] = mt.ec.serial
-                self._send_event(StrucMemberChangedEvent(sptr.id, soff,
+                self._send_event(StrucMemberChangedEvent(sname, soff,
                                                          mptr.eoff, flag,
                                                          extra))
             elif idaapi.isStruct(flag):
                 extra['id'] = mt.tid
-                self._send_event(StrucMemberChangedEvent(sptr.id, soff,
+                self._send_event(StrucMemberChangedEvent(sname, soff,
                                                          mptr.eoff, flag,
                                                          extra))
             elif idaapi.isASCII(flag):
                 extra['strtype'] = mt.strtype
-                self._send_event(StrucMemberChangedEvent(sptr.id, soff,
+                self._send_event(StrucMemberChangedEvent(sname, soff,
                                                          mptr.eoff, flag,
                                                          extra))
         else:
-            self._send_event(StrucMemberChangedEvent(sptr.id, soff,
+            self._send_event(StrucMemberChangedEvent(sname, soff,
                                                      mptr.eoff, flag,
                                                      extra))
         return 0

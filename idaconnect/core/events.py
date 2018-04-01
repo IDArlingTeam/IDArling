@@ -387,9 +387,9 @@ class StrucCmtChangedEvent(Event):
 class StrucMemberCreatedEvent(Event):
     __event__ = 'struc_member_created'
 
-    def __init__(self, sid, fieldname, offset, flag, nbytes, extra):
+    def __init__(self, sname, fieldname, offset, flag, nbytes, extra):
         super(StrucMemberCreatedEvent, self).__init__()
-        self.sid = sid
+        self.sname = sname
         self.fieldname = fieldname
         self.offset = offset
         self.flag = flag
@@ -406,7 +406,7 @@ class StrucMemberCreatedEvent(Event):
                                      self.extra['tdelta'])
         if idaapi.isASCII(self.flag):
             mt.strtype = self.extra['strtype']
-        sptr = idaapi.get_struc(self.sid)
+        sptr = idaapi.get_struc(idc.get_struc_id(self.sname.encode('utf-8')))
         idaapi.add_struc_member(sptr, self.fieldname.encode('utf-8'),
                                 self.offset, self.flag, mt, self.nbytes)
 
@@ -414,9 +414,9 @@ class StrucMemberCreatedEvent(Event):
 class StrucMemberChangedEvent(Event):
     __event__ = 'struc_member_changed'
 
-    def __init__(self, sid, soff, eoff, flag, extra):
+    def __init__(self, sname, soff, eoff, flag, extra):
         super(StrucMemberChangedEvent, self).__init__()
-        self.sid = sid
+        self.sname = sname
         self.soff = soff
         self.eoff = eoff
         self.flag = flag
@@ -432,7 +432,7 @@ class StrucMemberChangedEvent(Event):
                                      self.extra['tdelta'])
         if idaapi.isASCII(self.flag):
             mt.strtype = self.extra['strtype']
-        sptr = idaapi.get_struc(self.sid)
+        sptr = idaapi.get_struc(idc.get_struc_id(self.sname.encode('utf-8')))
         idaapi.set_member_type(sptr, self.soff, self.flag,
                                mt, self.eoff - self.soff)
 
