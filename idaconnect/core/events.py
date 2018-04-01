@@ -449,13 +449,13 @@ class StrucMemberChangedEvent(Event):
 class StrucMemberDeletedEvent(Event):
     __event__ = 'struc_member_deleted'
 
-    def __init__(self, sid, offset):
+    def __init__(self, sname, offset):
         super(StrucMemberDeletedEvent, self).__init__()
-        self.sid = sid
+        self.sname = sname
         self.offset = offset
 
     def __call__(self):
-        sptr = idaapi.get_struc(self.sid)
+        sptr = idaapi.get_struc(idc.get_struc_id(self.sname.encode('utf-8')))
         idaapi.del_struc_member(sptr, self.offset)
 
 

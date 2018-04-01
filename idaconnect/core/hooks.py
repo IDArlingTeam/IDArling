@@ -257,7 +257,8 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         return 0
 
     def struc_member_deleted(self, sptr, off1, off2):
-        self._send_event(StrucMemberDeletedEvent(sptr.id, off2))
+        sname = idaapi.get_struc_name(sptr.id)
+        self._send_event(StrucMemberDeletedEvent(sname, off2))
         return 0
 
     def renaming_struc_member(self, sptr, mptr, newname):
