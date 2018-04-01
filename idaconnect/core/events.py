@@ -349,24 +349,25 @@ class StrucCreatedEvent(Event):
 class StrucDeletedEvent(Event):
     __event__ = 'struc_deleted'
 
-    def __init__(self, struc):
+    def __init__(self, sname):
         super(StrucDeletedEvent, self).__init__()
-        self.struc = struc
+        self.sname = sname
 
     def __call__(self):
-        idc.del_struc(self.struc)
+        idc.del_struc(idc.get_struc_id(self.sname.encode('utf-8')))
 
 
 class StrucRenamedEvent(Event):
     __event__ = 'struc_renamed'
 
-    def __init__(self, sid, new_name):
+    def __init__(self, oldname, newname):
         super(StrucRenamedEvent, self).__init__()
-        self.sid = sid
-        self.new_name = new_name
+        self.oldname = oldname
+        self.newname = newname
 
     def __call__(self):
-        idaapi.set_struc_name(self.sid, self.new_name.encode('utf-8'))
+        idaapi.set_struc_name(idc.get_struc_id(self.oldname.encode('utf-8')),
+                              self.newname.encode('utf-8'))
 
 
 class StrucCmtChangedEvent(Event):
