@@ -130,7 +130,8 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
             elif idc.isEnum0(flags):
                 op = 'enum'
                 id, serial = gather_enum_info(ea, n)
-                extra['id'] = id
+                ename = idc.get_enum_name(id)
+                extra['ename'] = ename
                 extra['serial'] = serial
             else:
                 return 0  # FIXME: Find a better way
@@ -148,7 +149,8 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
             elif idc.isEnum1(flags):
                 op = 'enum'
                 id, serial = gather_enum_info(ea, n)
-                extra['id'] = id
+                ename = idc.get_enum_name(id)
+                extra['ename'] = ename
                 extra['serial'] = serial
             else:
                 return 0  # FIXME: Find a better way

@@ -227,8 +227,8 @@ class OpTypeChangedEvent(Event):
         if self.op == 'oct':
             idc.OpOctal(self.ea, self.n)
         if self.op == 'enum':
-            idc.OpEnumEx(self.ea, self.n, self.extra['id'],
-                         self.extra['serial'])
+            id = idaapi.get_enum(self.extra['ename'].encode('utf-8'))
+            idc.OpEnumEx(self.ea, self.n, id, self.extra['serial'])
 
 
 class EnumCreatedEvent(Event):
