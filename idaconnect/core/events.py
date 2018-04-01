@@ -382,11 +382,15 @@ class StrucCmtChangedEvent(Event):
 
     def __call__(self):
         sptr = idaapi.get_struc(idc.get_struc_id(self.sname.encode('utf-8')))
-        mptr = idaapi.get_member_by_name(sptr, self.smname.encode('utf-8'))
-        idaapi.set_struc_cmt(
-                mptr.id,
-                self.cmt.encode('utf-8') if self.cmt else '',
-                self.repeatable_cmt)
+        if self.smname:
+            mptr = idaapi.get_member_by_name(sptr, self.smname.encode('utf-8'))
+            idaapi.set_member_cmt(mptr,
+                                self.cmt.encode('utf-8') if self.cmt else '',
+                                self.repeatable_cmt)
+        else:
+            idaapi.set_struc_cmt(sptr.id,
+                                 self.cmt.encode('utf-8') if self.cmt else '',
+                                 self.repeatable_cmt)
 
 
 class StrucMemberCreatedEvent(Event):

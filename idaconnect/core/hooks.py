@@ -262,7 +262,11 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
 
     def struc_cmt_changed(self, id, repeatable_cmt):
         fullname = idaapi.get_struc_name(id)
-        sname, smname = fullname.split(".")
+        if "." in fullname:
+            sname, smname = fullname.split(".", 1)
+        else:
+            sname = fullname
+            smname = ''
         cmt = idaapi.get_struc_cmt(id, repeatable_cmt)
         self._send_event(StrucCmtChangedEvent(sname, smname, cmt, repeatable_cmt))
         return 0
