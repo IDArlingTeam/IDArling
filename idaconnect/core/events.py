@@ -373,15 +373,20 @@ class StrucRenamedEvent(Event):
 class StrucCmtChangedEvent(Event):
     __event__ = 'struc_cmt_changed'
 
-    def __init__(self, tid, cmt, repeatable_cmt):
+    def __init__(self, sname, smname, cmt, repeatable_cmt):
         super(StrucCmtChangedEvent, self).__init__()
-        self.tid = tid
+        self.sname = sname
+        self.smname = smname
         self.cmt = cmt
         self.repeatable_cmt = repeatable_cmt
 
     def __call__(self):
-        idaapi.set_struc_cmt(self.tid, self.cmt.encode('utf-8'),
-                             self.repeatable_cmt)
+        sptr = idaapi.get_struc(idc.get_struc_id(self.sname.encode('utf-8')))
+        mptr = idaapi.get_member_by_name(sptr, self.smname.encode('utf-8'))
+        idaapi.set_struc_cmt(
+                mptr.id,
+                self.cmt.encode('utf-8') if self.cmt else '',
+                self.repeatable_cmt)
 
 
 class StrucMemberCreatedEvent(Event):

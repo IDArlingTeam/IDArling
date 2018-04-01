@@ -260,6 +260,13 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         self._send_event(StrucMemberDeletedEvent(sptr.id, off2))
         return 0
 
+    def struc_cmt_changed(self, id, repeatable_cmt):
+        fullname = idaapi.get_struc_name(id)
+        sname, smname = fullname.split(".")
+        cmt = idaapi.get_struc_cmt(id, repeatable_cmt)
+        self._send_event(StrucCmtChangedEvent(sname, smname, cmt, repeatable_cmt))
+        return 0
+
     def struc_member_changed(self, sptr, mptr):
         extra = {}
 
@@ -297,11 +304,6 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
             self._send_event(StrucMemberChangedEvent(sname, soff,
                                                      mptr.eoff, flag,
                                                      extra))
-        return 0
-
-    def struc_cmt_changed(self, tid, repeatable_cmt):
-        cmt = idaapi.get_struc_cmt(tid, repeatable_cmt)
-        self._send_event(StrucCmtChangedEvent(tid, cmt, repeatable_cmt))
         return 0
 
     def expanding_struc(self, sptr, offset, delta):
