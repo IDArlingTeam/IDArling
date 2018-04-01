@@ -260,6 +260,12 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         self._send_event(StrucMemberDeletedEvent(sptr.id, off2))
         return 0
 
+    def renaming_struc_member(self, sptr, mptr, newname):
+        sname = idaapi.get_struc_name(sptr.id)
+        offset = mptr.soff
+        self._send_event(StrucMemberRenamedEvent(sname, offset, newname))
+        return 0
+
     def struc_cmt_changed(self, id, repeatable_cmt):
         fullname = idaapi.get_struc_name(id)
         if "." in fullname:
@@ -268,7 +274,8 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
             sname = fullname
             smname = ''
         cmt = idaapi.get_struc_cmt(id, repeatable_cmt)
-        self._send_event(StrucCmtChangedEvent(sname, smname, cmt, repeatable_cmt))
+        self._send_event(StrucCmtChangedEvent(sname, smname, cmt,
+                                              repeatable_cmt))
         return 0
 
     def struc_member_changed(self, sptr, mptr):

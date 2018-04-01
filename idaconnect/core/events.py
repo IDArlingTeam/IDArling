@@ -385,8 +385,8 @@ class StrucCmtChangedEvent(Event):
         if self.smname:
             mptr = idaapi.get_member_by_name(sptr, self.smname.encode('utf-8'))
             idaapi.set_member_cmt(mptr,
-                                self.cmt.encode('utf-8') if self.cmt else '',
-                                self.repeatable_cmt)
+                                  self.cmt.encode('utf-8') if self.cmt else '',
+                                  self.repeatable_cmt)
         else:
             idaapi.set_struc_cmt(sptr.id,
                                  self.cmt.encode('utf-8') if self.cmt else '',
@@ -457,6 +457,20 @@ class StrucMemberDeletedEvent(Event):
     def __call__(self):
         sptr = idaapi.get_struc(self.sid)
         idaapi.del_struc_member(sptr, self.offset)
+
+
+class StrucMemberRenamedEvent(Event):
+    __event__ = 'struc_member_renamed'
+
+    def __init__(self, sname, offset, newname):
+        super(StrucMemberRenamedEvent, self).__init__()
+        self.sname = sname
+        self.offset = offset
+        self.newname = newname
+
+    def __call__(self):
+        sptr = idaapi.get_struc(idc.get_struc_id(self.sname.encode('utf-8')))
+        idaapi.set_member_name(sptr, self.offset, self.newname.encode('utf-8'))
 
 
 class ExpandingStrucEvent(Event):
