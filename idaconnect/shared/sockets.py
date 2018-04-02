@@ -132,6 +132,7 @@ class ClientSocket(QObject):
                     self.disconnect(e)
                 break
             if not data:
+                self.disconnect()
                 break
             self._incoming.append(data)
         if self._incoming:

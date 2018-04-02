@@ -126,7 +126,8 @@ class StatusWidget(QWidget):
 
             for server in self._plugin.core.servers:
                 isConnected = self._plugin.network.connected \
-                              and server.host == self._plugin.network.host
+                              and server.host == self._plugin.network.host \
+                              and server.port == self._plugin.network.port
                 serverAction = QAction('%s:%d' % (server.host, server.port),
                                        menu, checkable=True)
                 serverAction._server = server

@@ -215,15 +215,16 @@ class Core(Module):
             if 'servers' in state:
                 self._servers = [Server(*s) for s in state['servers']]
 
-            if 'connect' in state and state['connect']:
-                # Reconnect and remove temporary files
+            if 'temp' in state:
+                # Remove temporary files from parent instance
+                idbFile, idbExt = os.path.splitext(state['temp'])
+                for ext in ['.id0', '.id1', '.nam', '.til', '.seg']:
+                    if os.path.exists(idbFile + ext):
+                        os.remove(idbFile + ext)
+
+                # Reconnect to the same server as parent instance
                 if 'host' in state and 'port' in state:
                     self._plugin.network.connect(state['host'], state['port'])
-                if 'remove' in state:
-                    idbFile, idbExt = os.path.splitext(state['remove'])
-                    for ext in ['.id0', '.id1', '.nam', '.til', '.seg']:
-                        if os.path.exists(idbFile + ext):
-                            os.remove(idbFile + ext)
 
     def save_state(self, idbPath=None):
         """
@@ -234,13 +235,12 @@ class Core(Module):
         statePath = local_resource('files', 'state.json')
         with open(statePath, 'wb') as stateFile:
             state = {
-                'connect': idbPath and self._plugin.network.connected,
                 'servers': [[s.host, s.port] for s in self._servers],
             }
-            if state['connect']:
+            if idbPath:
+                state['temp'] = idbPath
                 state['host'] = self._plugin.network.host
                 state['port'] = self._plugin.network.port
-                state['remove'] = idbPath
 
             logger.debug("Saved state: %s" % state)
             stateFile.write(json.dumps(state))
