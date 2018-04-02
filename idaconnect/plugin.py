@@ -120,9 +120,6 @@ class Plugin(idaapi.plugin_t):
         self._interface.install()
         self._network.install()
 
-        # Load the current state
-        self.core.load_state()
-
     def _print_banner(self):
         """
         Print the banner into the console.
@@ -150,9 +147,6 @@ class Plugin(idaapi.plugin_t):
         """
         Terminate the plugin and its modules.
         """
-        # Save the current state
-        self.core.save_state()
-
         self._core.uninstall()
         self._interface.uninstall()
         self._network.uninstall()

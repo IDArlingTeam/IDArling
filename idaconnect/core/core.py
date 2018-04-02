@@ -49,10 +49,10 @@ class Core(Module):
         self._servers = []
 
     def _install(self):
+        self.load_state()
         self._idbHooks = IDBHooks(self._plugin)
         self._idpHooks = IDPHooks(self._plugin)
         self._hxeHooks = HexRaysHooks(self._plugin)
-
         core = self
 
         class UIHooksCore(Hooks, ida_kernwin.UI_Hooks):
@@ -90,6 +90,7 @@ class Core(Module):
                 core.unhook_all()
                 core.repo = None
                 core.branch = None
+                core.ticks = 0
                 return 0
 
         self._idbHooksCore = IDBHooksCore(self._plugin)
@@ -103,6 +104,7 @@ class Core(Module):
         self._idbHooksCore.unhook()
         self._uiHooksCore.unhook()
         self.unhook_all()
+        self.save_state()
         return True
 
     def hook_all(self):
@@ -138,6 +140,7 @@ class Core(Module):
         :param hash: the hash
         """
         self._repo = hash
+        self.save_netnode()
 
     @property
     def branch(self):
@@ -156,6 +159,7 @@ class Core(Module):
         :param uuid: the UUID
         """
         self._branch = uuid
+        self.save_netnode()
 
     @property
     def tick(self):
@@ -174,6 +178,7 @@ class Core(Module):
         :param tick: the tick
         """
         self._tick = tick
+        self.save_netnode()
 
     @property
     def servers(self):
@@ -192,78 +197,71 @@ class Core(Module):
         :param servers: the list of server
         """
         self._servers = servers
+        self.save_state()
 
     def load_state(self):
         """
         Load the state file if it exists.
         """
         statePath = local_resource('files', 'state.json')
-        if os.path.isfile(statePath):
-            with open(statePath, 'rb') as stateFile:
-                state = json.loads(stateFile.read())
-                logger.debug("Loaded state: %s" % state)
+        if not os.path.isfile(statePath):
+            return
+        with open(statePath, 'rb') as stateFile:
+            state = json.loads(stateFile.read())
+            logger.debug("Loaded state: %s" % state)
 
-                # Load the server list from state
-                Server = collections.namedtuple('Server', ['host', 'port'])
+            # Load the server list from state
+            Server = collections.namedtuple('Server', ['host', 'port'])
+            if 'servers' in state:
                 self._servers = [Server(*s) for s in state['servers']]
 
-                # Remove unpacked files from parent instance
-                if 'cleanup' in state and state['cleanup']:
-                    idbFile, idbExt = os.path.splitext(state['cleanup'])
-                    for extension in ['.id0', '.id1', '.nam', '.seg', '.til']:
-                        if os.path.exists(idbFile + extension):
-                            os.remove(idbFile + extension)
-
-                # Reconnect to the same server as parent instance
-                if state['connected']:
+            if 'connect' in state and state['connect']:
+                # Reconnect and remove temporary files
+                if 'host' in state and 'port' in state:
                     self._plugin.network.connect(state['host'], state['port'])
+                if 'remove' in state:
+                    idbFile, idbExt = os.path.splitext(state['remove'])
+                    for ext in ['.id0', '.id1', '.nam', '.til', '.seg']:
+                        if os.path.exists(idbFile + ext):
+                            os.remove(idbFile + ext)
 
-    def save_state(self, cleanup=None):
+    def save_state(self, idbPath=None):
         """
         Save the state file.
 
-        :param cleanup: the path of the file to cleanup
+        :param idbPath: the opened database
         """
         statePath = local_resource('files', 'state.json')
         with open(statePath, 'wb') as stateFile:
             state = {
-                'connected': self._plugin.network.connected,
-                'host': self._plugin.network.host,
-                'port': self._plugin.network.port,
+                'connect': idbPath and self._plugin.network.connected,
                 'servers': [[s.host, s.port] for s in self._servers],
             }
-
-            # Remember to cleanup the temp files
-            if cleanup:
-                state['cleanup'] = cleanup
+            if state['connect']:
+                state['host'] = self._plugin.network.host
+                state['port'] = self._plugin.network.port
+                state['remove'] = idbPath
 
             logger.debug("Saved state: %s" % state)
             stateFile.write(json.dumps(state))
 
     def load_netnode(self):
         """
-        Load the netnode from the IDA database.
+        Load the custom netnode from the IDA database.
         """
-        node = idaapi.netnode()
-        if node.create(Core.NETNODE_NAME):
-            return  # node doesn't exists
-
+        node = idaapi.netnode(Core.NETNODE_NAME, 0, True)
         self._repo = node.hashval('hash')
         self._branch = node.hashval('uuid')
-        self._tick = node.hashval('tick')
-        self._tick = int(self._tick) if self._tick else 0
+        self._tick = int(node.hashval('tick') or '0')
 
         logger.debug("Loaded netnode: repo=%s, branch=%s, tick=%d"
                      % (self._repo, self._branch, self._tick))
 
     def save_netnode(self):
         """
-        Save the netnode in the IDA database.
+        Save the custom netnode in the IDA database.
         """
-        node = idaapi.netnode()
-        if not node.create(Core.NETNODE_NAME):
-            pass  # node already exists
-
+        node = idaapi.netnode(Core.NETNODE_NAME, 0, True)
         node.hashset('hash', self._repo)
         node.hashset('uuid', self._branch)
         node.hashset('tick', str(self._tick))

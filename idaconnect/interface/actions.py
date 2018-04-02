@@ -15,6 +15,7 @@ import logging
 import uuid
 from functools import partial
 
+import ida_loader
 import ida_kernwin
 import idaapi
 import idautils
@@ -278,7 +279,7 @@ class OpenActionHandler(ActionHandler):
         # Save the old database
         idbPath = idc.GetIdbPath()
         if idbPath:
-            idc.save_database(idbPath, 0)
+            idc.save_database(idbPath, ida_loader.DBFL_KILL)
         # Save the current state
         self._plugin.core.save_state(idbPath)
         # Open the new database

@@ -390,7 +390,9 @@ class NetworkSettingsDialog(QDialog):
         host, port = dialog.get_result()
         Server = namedtuple('Server', ['host', 'port'])
         server = Server(host, port)
-        self._plugin.core.servers.append(server)
+        servers = self._plugin.core.servers
+        servers.append(server)
+        self._plugin.core.servers = servers
         rowCount = self._serversTable.rowCount()
         self._serversTable.insertRow(rowCount)
         newServer = QTableWidgetItem('%s:%d' % (server.host, server.port))
@@ -404,7 +406,9 @@ class NetworkSettingsDialog(QDialog):
         Called when the delete button is clicked.
         """
         server = self._itemClicked.data(Qt.UserRole)
-        self._plugin.core.servers.remove(server)
+        servers = self._plugin.core.servers
+        servers.remove(server)
+        self._plugin.core.servers = servers
         self._serversTable.removeRow(self._itemClicked.row())
         self.update()
 
