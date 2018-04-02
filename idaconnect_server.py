@@ -15,8 +15,9 @@ import logging
 import os
 import signal
 import sys
+import traceback
 
-from PyQt5.QtCore import QCoreApplication
+from PyQt5.QtCore import QCoreApplication, QTimer
 
 from idaconnect.shared.server import Server
 
@@ -69,12 +70,26 @@ def main(args):
     """
     The entry point of a Python program.
     """
-    # Allow the use of Ctrl-C to stop the server
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-
     app = QCoreApplication(sys.argv)
+    sys.excepthook = traceback.print_exception
+
     server = DedicatedServer()
     server.start(args.host, args.port)
+
+    # Allow the use of Ctrl-C to stop the server
+    def sigint_handler(signum, frame):
+        server.stop()
+        app.exit(0)
+    signal.signal(signal.SIGINT, sigint_handler)
+
+    def safe_timer(timeout, func, *args, **kwargs):
+        def timer_event():
+            try:
+                func(*args, **kwargs)
+            finally:
+                QTimer.singleShot(timeout, timer_event)
+        QTimer.singleShot(timeout, timer_event)
+    safe_timer(50, lambda: None)
     return app.exec_()
 
 

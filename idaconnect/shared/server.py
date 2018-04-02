@@ -200,6 +200,18 @@ class Server(ServerSocket):
         self.connect(sock)
         return True
 
+    def stop(self):
+        """
+        Stops the server.
+
+        :return: did the operation succeed?
+        """
+        self._logger.info("Shutting down server")
+        for client in self._clients:
+            client.disconnect()
+        self.disconnect()
+        return True
+
     def _accept(self, socket):
         client = ServerClient(self._logger, self)
         client.connect(socket)
