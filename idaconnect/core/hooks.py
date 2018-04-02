@@ -137,9 +137,13 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 op = 'struct'
                 path = idaapi.tid_array(1)
                 delta = idaapi.sval_pointer()
-                idaapi.get_stroff_path(path.cast(), delta.cast(), ea, n)
-                struct = path[0]
-                extra['sname'] = Event.decode(idaapi.get_struc_name(struct))
+                path_len = idaapi.get_stroff_path(path.cast(), delta.cast(),
+                                                  ea, n)
+                spath = []
+                for i in range(path_len):
+                    spath.append(Event.decode(idaapi.get_struc_name(path[i])))
+                extra['delta'] = delta.value()
+                extra['spath'] = spath
             else:
                 return 0  # FIXME: Find a better way
         else:
