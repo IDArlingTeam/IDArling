@@ -642,7 +642,7 @@ class UserCmtsEvent(Event):
             tl = idaapi.treeloc_t()
             tl.ea = tl_ea
             tl.itp = tl_itp
-            cmts.insert(tl, idaapi.citem_cmt_t(cmt))
+            cmts.insert(tl, idaapi.citem_cmt_t(cmt.encode('utf-8')))
         idaapi.save_user_cmts(self.ea, cmts)
         refresh_pseudocode_view()
 
