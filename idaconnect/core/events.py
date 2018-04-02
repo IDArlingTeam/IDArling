@@ -229,6 +229,16 @@ class OpTypeChangedEvent(Event):
         if self.op == 'enum':
             id = idaapi.get_enum(self.extra['ename'].encode('utf-8'))
             idc.OpEnumEx(self.ea, self.n, id, self.extra['serial'])
+        if self.op == 'struct':
+            path_len = len(self.extra['spath'])
+            path = idaapi.tid_array(path_len)
+            isn = idaapi.insn_t()
+            for i in xrange(len(self.extra['spath'])):
+                sname = self.extra['spath'][i].encode('utf-8')
+                path[i] = idaapi.get_struc_id(sname)
+            idaapi.decode_insn(isn, self.ea)
+            idaapi.op_stroff(isn, self.n, path.cast(), path_len,
+                             self.extra['delta'])
 
 
 class EnumCreatedEvent(Event):

@@ -133,6 +133,13 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 ename = idc.get_enum_name(id)
                 extra['ename'] = ename
                 extra['serial'] = serial
+            elif idc.isStroff0(flags):
+                op = 'struct'
+                path = idaapi.tid_array(1)
+                delta = idaapi.sval_pointer()
+                idaapi.get_stroff_path(path.cast(), delta.cast(), ea, n)
+                struct = path[0]
+                extra['sname'] = idaapi.get_struc_name(struct)
             else:
                 return 0  # FIXME: Find a better way
         else:
@@ -152,6 +159,17 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 ename = idc.get_enum_name(id)
                 extra['ename'] = ename
                 extra['serial'] = serial
+            elif idc.isStroff1(flags):
+                op = 'struct'
+                path = idaapi.tid_array(1)
+                delta = idaapi.sval_pointer()
+                path_len = idaapi.get_stroff_path(path.cast(), delta.cast(),
+                                                  ea, n)
+                spath = []
+                for i in range(path_len):
+                    spath.append(idaapi.get_struc_name(path[i]))
+                extra['delta'] = delta.value()
+                extra['spath'] = spath
             else:
                 return 0  # FIXME: Find a better way
         self._send_event(OpTypeChangedEvent(ea, n, op, extra))
