@@ -524,14 +524,14 @@ class HexRaysHooks(Hooks):
             for lv in lvinf.lvvec:
                 dct['lvvec'].append(HexRaysHooks._get_lvar_saved_info(lv))
             dct['sizes'] = list(lvinf.sizes)
-            dct['lmaps'] = {}
+            dct['lmaps'] = []
             it = idaapi.lvar_mapping_begin(lvinf.lmaps)
             while it != idaapi.lvar_mapping_end(lvinf.lmaps):
                 key = idaapi.lvar_mapping_first(it)
                 key = HexRaysHooks._get_lvar_locator(key)
                 val = idaapi.lvar_mapping_second(it)
                 val = HexRaysHooks._get_lvar_locator(val)
-                dct['lmaps'][key] = val
+                dct['lmaps'].append((key, val))
                 it = idaapi.lvar_mapping_next(it)
             dct['stkoff_delta'] = lvinf.stkoff_delta
             dct['ulv_flags'] = lvinf.ulv_flags

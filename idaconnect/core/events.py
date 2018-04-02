@@ -692,7 +692,8 @@ class UserLvarSettingsEvent(Event):
         for i in self.lvar_settings['sizes']:
             lvinf.sizes.push_back(i)
         lvinf.lmaps = ida_hexrays.lvar_mapping_t()
-        for key, val in self.lvar_settings['lmaps'].items():
+        print(self.lvar_settings['lmaps'])
+        for key, val in self.lvar_settings['lmaps']:
             key = UserLvarSettingsEvent._get_lvar_locator(key)
             val = UserLvarSettingsEvent._get_lvar_locator(val)
             idaapi.lvar_mapping_insert(lvinf.lmaps, key, val)
@@ -705,9 +706,9 @@ class UserLvarSettingsEvent(Event):
     def _get_lvar_saved_info(dct):
         lv = ida_hexrays.lvar_saved_info_t()
         lv.ll = UserLvarSettingsEvent._get_lvar_locator(dct['ll'])
-        lv.name = dct['name']
+        lv.name = dct['name'].encode('utf-8')
         lv.type = UserLvarSettingsEvent._get_tinfo(dct['type'])
-        lv.cmt = dct['cmt']
+        lv.cmt = dct['cmt'].encode('utf-8')
         lv.flags = dct['flags']
         return lv
 
