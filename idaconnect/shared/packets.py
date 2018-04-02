@@ -188,9 +188,9 @@ class Packet(with_metaclass(PacketFactory, Serializable)):
         name = self.__class__.__name__
         if isinstance(self, Query) or isinstance(self, Reply):
             name = self.__parent__.__name__ + '.' + name
-        attrs = ['{}={}'.format(k, v) for k, v
+        attrs = [u'{}={}'.format(k, v) for k, v
                  in Default.attrs(self.__dict__).items()]
-        return '{}({})'.format(name, ', '.join(attrs))
+        return u'{}({})'.format(name, u', '.join(attrs))
 
 
 class PacketDeferred(object):

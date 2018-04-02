@@ -131,7 +131,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 op = 'enum'
                 id, serial = gather_enum_info(ea, n)
                 ename = idc.get_enum_name(id)
-                extra['ename'] = ename
+                extra['ename'] = Event.decode(ename)
                 extra['serial'] = serial
             elif idc.isStroff0(flags):
                 op = 'struct'
@@ -139,7 +139,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 delta = idaapi.sval_pointer()
                 idaapi.get_stroff_path(path.cast(), delta.cast(), ea, n)
                 struct = path[0]
-                extra['sname'] = idaapi.get_struc_name(struct)
+                extra['sname'] = Event.decode(idaapi.get_struc_name(struct))
             else:
                 return 0  # FIXME: Find a better way
         else:
@@ -157,7 +157,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 op = 'enum'
                 id, serial = gather_enum_info(ea, n)
                 ename = idc.get_enum_name(id)
-                extra['ename'] = ename
+                extra['ename'] = Event.decode(ename)
                 extra['serial'] = serial
             elif idc.isStroff1(flags):
                 op = 'struct'
@@ -167,7 +167,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                                                   ea, n)
                 spath = []
                 for i in range(path_len):
-                    spath.append(idaapi.get_struc_name(path[i]))
+                    spath.append(Event.decode(idaapi.get_struc_name(path[i])))
                 extra['delta'] = delta.value()
                 extra['spath'] = spath
             else:
@@ -454,7 +454,7 @@ class HexRaysHooks(Hooks):
         while it != idaapi.user_labels_end(user_labels):
             org_label = idaapi.user_labels_first(it)
             name = idaapi.user_labels_second(it)
-            labels.append((org_label, name))
+            labels.append((org_label, Event.decode(name)))
             it = idaapi.user_labels_next(it)
         idaapi.user_labels_free(user_labels)
         return labels
@@ -475,7 +475,7 @@ class HexRaysHooks(Hooks):
         while it != idaapi.user_cmts_end(user_cmts):
             tl = idaapi.user_cmts_first(it)
             cmt = idaapi.user_cmts_second(it)
-            cmts.append(((tl.ea, tl.itp), str(cmt)))
+            cmts.append(((tl.ea, tl.itp), Event.decode(cmt)))
             it = idaapi.user_cmts_next(it)
         idaapi.user_cmts_free(user_cmts)
         return cmts
@@ -541,9 +541,9 @@ class HexRaysHooks(Hooks):
     def _get_lvar_saved_info(lv):
         return {
             'll': HexRaysHooks._get_lvar_locator(lv.ll),
-            'name': lv.name,
+            'name': Event.decode(lv.name),
             'type': HexRaysHooks._get_tinfo(lv.type),
-            'cmt': lv.cmt,
+            'cmt': Event.decode(lv.cmt),
             'flags': lv.flags,
         }
 

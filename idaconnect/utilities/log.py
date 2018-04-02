@@ -84,12 +84,4 @@ def start_logging():
     fileHandler.setFormatter(formatter)
     logger.addHandler(fileHandler)
 
-    # Redirect standard output to logger
-    stdoutLogger = logging.getLogger('IDAConnect.STDOUT')
-    sys.stdout = LoggerProxy(sys.stdout, stdoutLogger, logging.INFO)
-
-    # Redirect standard error output to logger
-    stderrLogger = logging.getLogger('IDAConnect.STDERR')
-    sys.stderr = LoggerProxy(sys.stderr, stderrLogger, logging.ERROR)
-
     return logger

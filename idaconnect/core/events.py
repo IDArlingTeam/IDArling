@@ -10,7 +10,9 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import locale
 import logging
+import os
 
 import ida_enum
 import ida_funcs
@@ -27,6 +29,30 @@ logger = logging.getLogger('IDAConnect.Core')
 
 
 class Event(DefaultEvent):
+
+    @staticmethod
+    def encode(s):
+        """
+        Encodes a unicode string to the appropriate charset.
+
+        :param s: the Python string
+        :return: the IDA string
+        """
+        if os.name == 'nt':
+            return s.encode(locale.getpreferredencoding())
+        return s.encode('utf-8')
+
+    @staticmethod
+    def decode(s):
+        """
+        Decodes a string from the appropriate charset to unicode.
+
+        :param s: the IDA string
+        :return: the Python string
+        """
+        if os.name == 'nt':
+            return s.decode(locale.getpreferredencoding())
+        return s.decode('utf-8')
 
     def __call__(self):
         """
@@ -66,12 +92,12 @@ class RenamedEvent(Event):
     def __init__(self, ea, new_name, local_name):
         super(RenamedEvent, self).__init__()
         self.ea = ea
-        self.new_name = new_name
+        self.new_name = Event.decode(new_name)
         self.local_name = local_name
 
     def __call__(self):
         flags = ida_name.SN_LOCAL if self.local_name else 0
-        idc.set_name(self.ea, self.new_name.encode('utf8'),
+        idc.set_name(self.ea, Event.encode(self.new_name),
                      flags | ida_name.SN_NOWARN)
 
 
@@ -132,9 +158,8 @@ class FuncTailAppendedEvent(Event):
         self.end_ea_tail = end_ea_tail
 
     def __call__(self):
-        ida_funcs.append_func_tail(idaapi.get_func(self.start_ea_func),
-                                   self.start_ea_tail,
-                                   self.end_ea_tail)
+        func = idaapi.get_func(self.start_ea_func)
+        ida_funcs.append_func_tail(func, self.start_ea_tail, self.end_ea_tail)
 
 
 class FuncTailDeletedEvent(Event):
@@ -146,8 +171,8 @@ class FuncTailDeletedEvent(Event):
         self.tail_ea = tail_ea
 
     def __call__(self):
-        ida_funcs.remove_func_tail(idaapi.get_func(self.start_ea_func),
-                                   self.tail_ea)
+        func = idaapi.get_func(self.start_ea_func)
+        ida_funcs.remove_func_tail(func, self.tail_ea)
 
 
 class TailOwnerChangedEvent(Event):
@@ -169,11 +194,11 @@ class CmtChangedEvent(Event):
     def __init__(self, ea, comment, rptble):
         super(CmtChangedEvent, self).__init__()
         self.ea = ea
-        self.comment = comment
+        self.comment = Event.decode(comment)
         self.rptble = rptble
 
     def __call__(self):
-        idc.set_cmt(self.ea, self.comment.encode('utf-8'), self.rptble)
+        idc.set_cmt(self.ea, Event.encode(self.comment), self.rptble)
 
 
 class ExtraCmtChangedEvent(Event):
@@ -183,14 +208,14 @@ class ExtraCmtChangedEvent(Event):
         super(ExtraCmtChangedEvent, self).__init__()
         self.ea = ea
         self.line_idx = line_idx
-        self.cmt = cmt
+        self.cmt = Event.decode(cmt)
 
     def __call__(self):
         idaapi.del_extra_cmt(self.ea, self.line_idx)
         isprev = 1 if self.line_idx - 1000 < 1000 else 0
         if not self.cmt:
             return 0
-        idaapi.add_extra_cmt(self.ea, isprev, self.cmt.encode('utf-8'))
+        idaapi.add_extra_cmt(self.ea, isprev, Event.encode(self.cmt))
 
 
 class TiChangedEvent(Event):
@@ -227,17 +252,17 @@ class OpTypeChangedEvent(Event):
         if self.op == 'oct':
             idc.OpOctal(self.ea, self.n)
         if self.op == 'enum':
-            id = idaapi.get_enum(self.extra['ename'].encode('utf-8'))
+            id = idaapi.get_enum(Event.encode(self.extra['ename']))
             idc.OpEnumEx(self.ea, self.n, id, self.extra['serial'])
         if self.op == 'struct':
             path_len = len(self.extra['spath'])
             path = idaapi.tid_array(path_len)
-            isn = idaapi.insn_t()
-            for i in xrange(len(self.extra['spath'])):
-                sname = self.extra['spath'][i].encode('utf-8')
+            for i in xrange(path_len):
+                sname = Event.encode(self.extra['spath'][i])
                 path[i] = idaapi.get_struc_id(sname)
-            idaapi.decode_insn(isn, self.ea)
-            idaapi.op_stroff(isn, self.n, path.cast(), path_len,
+            insn = idaapi.insn_t()
+            idaapi.decode_insn(insn, self.ea)
+            idaapi.op_stroff(insn, self.n, path.cast(), path_len,
                              self.extra['delta'])
 
 
@@ -247,10 +272,10 @@ class EnumCreatedEvent(Event):
     def __init__(self, enum, name):
         super(EnumCreatedEvent, self).__init__()
         self.enum = enum
-        self.name = name
+        self.name = Event.decode(name)
 
     def __call__(self):
-        idc.add_enum(self.enum, self.name.encode('utf-8'), 0)
+        idc.add_enum(self.enum, Event.encode(self.name), 0)
 
 
 class EnumDeletedEvent(Event):
@@ -258,10 +283,10 @@ class EnumDeletedEvent(Event):
 
     def __init__(self, ename):
         super(EnumDeletedEvent, self).__init__()
-        self.ename = ename
+        self.ename = Event.decode(ename)
 
     def __call__(self):
-        idc.del_enum(idaapi.get_enum(self.ename.encode('utf-8')))
+        idc.del_enum(idaapi.get_enum(Event.encode(self.ename)))
 
 
 class EnumRenamedEvent(Event):
@@ -269,18 +294,17 @@ class EnumRenamedEvent(Event):
 
     def __init__(self, oldname, newname, is_enum):
         super(EnumRenamedEvent, self).__init__()
-        self.oldname = oldname
-        self.newname = newname
+        self.oldname = Event.decode(oldname)
+        self.newname = Event.decode(newname)
         self.is_enum = is_enum
 
     def __call__(self):
         if self.is_enum:
-            idaapi.set_enum_name(idaapi.get_enum(self.oldname.encode('utf-8')),
-                                 self.newname.encode('utf-8'))
+            enum = idaapi.get_enum(Event.encode(self.oldname))
+            idaapi.set_enum_name(enum, Event.encode(self.newname))
         else:
-            idaapi.set_enum_member_name(
-                idaapi.get_enum_member_by_name(self.oldname.encode('utf-8')),
-                self.newname.encode('utf-8'))
+            emem = idaapi.get_enum_member_by_name(Event.encode(self.oldname))
+            idaapi.set_enum_member_name(emem, Event.encode(self.newname))
 
 
 class EnumBfChangedEvent(Event):
@@ -288,12 +312,12 @@ class EnumBfChangedEvent(Event):
 
     def __init__(self, ename, bf_flag):
         super(EnumBfChangedEvent, self).__init__()
-        self.ename = ename
+        self.ename = Event.decode(ename)
         self.bf_flag = bf_flag
 
     def __call__(self):
-        ida_enum.set_enum_bf(idaapi.get_enum(self.ename.encode('utf-8')),
-                             self.bf_flag)
+        enum = idaapi.get_enum(Event.encode(self.ename))
+        ida_enum.set_enum_bf(enum, self.bf_flag)
 
 
 class EnumCmtChangedEvent(Event):
@@ -301,15 +325,14 @@ class EnumCmtChangedEvent(Event):
 
     def __init__(self, emname, cmt, repeatable_cmt):
         super(EnumCmtChangedEvent, self).__init__()
-        self.emname = emname
-        self.cmt = cmt
+        self.emname = Event.decode(emname)
+        self.cmt = Event.decode(cmt)
         self.repeatable_cmt = repeatable_cmt
 
     def __call__(self):
-        idaapi.set_enum_cmt(
-                idaapi.get_enum_member_by_name(self.emname.encode('utf-8')),
-                self.cmt.encode('utf-8') if self.cmt else '',
-                self.repeatable_cmt)
+        emem = idaapi.get_enum_member_by_name(Event.encode(self.emname))
+        cmt = Event.encode(self.cmt if self.cmt else '')
+        idaapi.set_enum_cmt(emem, cmt, self.repeatable_cmt)
 
 
 class EnumMemberCreatedEvent(Event):
@@ -317,14 +340,14 @@ class EnumMemberCreatedEvent(Event):
 
     def __init__(self, ename, name, value, bmask):
         super(EnumMemberCreatedEvent, self).__init__()
-        self.ename = ename
+        self.ename = Event.decode(ename)
         self.name = name
         self.value = value
         self.bmask = bmask
 
     def __call__(self):
-        idaapi.add_enum_member(idaapi.get_enum(self.ename.encode('utf-8')),
-                               self.name.encode('utf-8'),
+        enum = idaapi.get_enum(Event.encode(self.ename))
+        idaapi.add_enum_member(enum, Event.encode(self.name),
                                self.value, self.bmask)
 
 
@@ -333,14 +356,14 @@ class EnumMemberDeletedEvent(Event):
 
     def __init__(self, ename, value, serial, bmask):
         super(EnumMemberDeletedEvent, self).__init__()
-        self.ename = ename
+        self.ename = Event.decode(ename)
         self.value = value
         self.serial = serial
         self.bmask = bmask
 
     def __call__(self):
-        idaapi.del_enum_member(idaapi.get_enum(self.ename.encode('utf-8')),
-                               self.value, self.serial, self.bmask)
+        enum = idaapi.get_enum(Event.encode(self.ename))
+        idaapi.del_enum_member(enum, self.value, self.serial, self.bmask)
 
 
 class StrucCreatedEvent(Event):
@@ -349,11 +372,11 @@ class StrucCreatedEvent(Event):
     def __init__(self, struc, name, is_union):
         super(StrucCreatedEvent, self).__init__()
         self.struc = struc
-        self.name = name
+        self.name = Event.decode(name)
         self.is_union = is_union
 
     def __call__(self):
-        idc.add_struc(self.struc, self.name.encode('utf-8'), self.is_union)
+        idc.add_struc(self.struc, Event.encode(self.name), self.is_union)
 
 
 class StrucDeletedEvent(Event):
@@ -361,10 +384,10 @@ class StrucDeletedEvent(Event):
 
     def __init__(self, sname):
         super(StrucDeletedEvent, self).__init__()
-        self.sname = sname
+        self.sname = Event.decode(sname)
 
     def __call__(self):
-        idc.del_struc(idc.get_struc_id(self.sname.encode('utf-8')))
+        idc.del_struc(idc.get_struc_id(Event.encode(self.sname)))
 
 
 class StrucRenamedEvent(Event):
@@ -372,12 +395,12 @@ class StrucRenamedEvent(Event):
 
     def __init__(self, oldname, newname):
         super(StrucRenamedEvent, self).__init__()
-        self.oldname = oldname
-        self.newname = newname
+        self.oldname = Event.decode(oldname)
+        self.newname = Event.decode(newname)
 
     def __call__(self):
-        idaapi.set_struc_name(idc.get_struc_id(self.oldname.encode('utf-8')),
-                              self.newname.encode('utf-8'))
+        struc = idc.get_struc_id(Event.encode(self.oldname))
+        idaapi.set_struc_name(struc, Event.encode(self.newname))
 
 
 class StrucCmtChangedEvent(Event):
@@ -385,22 +408,19 @@ class StrucCmtChangedEvent(Event):
 
     def __init__(self, sname, smname, cmt, repeatable_cmt):
         super(StrucCmtChangedEvent, self).__init__()
-        self.sname = sname
-        self.smname = smname
-        self.cmt = cmt
+        self.sname = Event.decode(sname)
+        self.smname = Event.decode(smname)
+        self.cmt = Event.decode(cmt)
         self.repeatable_cmt = repeatable_cmt
 
     def __call__(self):
-        sptr = idaapi.get_struc(idc.get_struc_id(self.sname.encode('utf-8')))
+        sptr = idaapi.get_struc(idc.get_struc_id(Event.encode(self.sname)))
+        cmt = Event.encode(self.cmt if self.cmt else '')
         if self.smname:
-            mptr = idaapi.get_member_by_name(sptr, self.smname.encode('utf-8'))
-            idaapi.set_member_cmt(mptr,
-                                  self.cmt.encode('utf-8') if self.cmt else '',
-                                  self.repeatable_cmt)
+            mptr = idaapi.get_member_by_name(sptr, Event.encode(self.smname))
+            idaapi.set_member_cmt(mptr, cmt, self.repeatable_cmt)
         else:
-            idaapi.set_struc_cmt(sptr.id,
-                                 self.cmt.encode('utf-8') if self.cmt else '',
-                                 self.repeatable_cmt)
+            idaapi.set_struc_cmt(sptr.id, cmt, self.repeatable_cmt)
 
 
 class StrucMemberCreatedEvent(Event):
@@ -408,8 +428,8 @@ class StrucMemberCreatedEvent(Event):
 
     def __init__(self, sname, fieldname, offset, flag, nbytes, extra):
         super(StrucMemberCreatedEvent, self).__init__()
-        self.sname = sname
-        self.fieldname = fieldname
+        self.sname = Event.decode(sname)
+        self.fieldname = Event.decode(fieldname)
         self.offset = offset
         self.flag = flag
         self.nbytes = nbytes
@@ -425,8 +445,8 @@ class StrucMemberCreatedEvent(Event):
                                      self.extra['tdelta'])
         if idaapi.isASCII(self.flag):
             mt.strtype = self.extra['strtype']
-        sptr = idaapi.get_struc(idc.get_struc_id(self.sname.encode('utf-8')))
-        idaapi.add_struc_member(sptr, self.fieldname.encode('utf-8'),
+        sptr = idaapi.get_struc(idc.get_struc_id(Event.encode(self.sname)))
+        idaapi.add_struc_member(sptr, Event.encode(self.fieldname),
                                 self.offset, self.flag, mt, self.nbytes)
 
 
@@ -435,7 +455,7 @@ class StrucMemberChangedEvent(Event):
 
     def __init__(self, sname, soff, eoff, flag, extra):
         super(StrucMemberChangedEvent, self).__init__()
-        self.sname = sname
+        self.sname = Event.decode(sname)
         self.soff = soff
         self.eoff = eoff
         self.flag = flag
@@ -451,7 +471,7 @@ class StrucMemberChangedEvent(Event):
                                      self.extra['tdelta'])
         if idaapi.isASCII(self.flag):
             mt.strtype = self.extra['strtype']
-        sptr = idaapi.get_struc(idc.get_struc_id(self.sname.encode('utf-8')))
+        sptr = idaapi.get_struc(idc.get_struc_id(Event.encode(self.sname)))
         idaapi.set_member_type(sptr, self.soff, self.flag,
                                mt, self.eoff - self.soff)
 
@@ -461,11 +481,11 @@ class StrucMemberDeletedEvent(Event):
 
     def __init__(self, sname, offset):
         super(StrucMemberDeletedEvent, self).__init__()
-        self.sname = sname
+        self.sname = Event.decode(sname)
         self.offset = offset
 
     def __call__(self):
-        sptr = idaapi.get_struc(idc.get_struc_id(self.sname.encode('utf-8')))
+        sptr = idaapi.get_struc(idc.get_struc_id(Event.encode(self.sname)))
         idaapi.del_struc_member(sptr, self.offset)
 
 
@@ -474,13 +494,13 @@ class StrucMemberRenamedEvent(Event):
 
     def __init__(self, sname, offset, newname):
         super(StrucMemberRenamedEvent, self).__init__()
-        self.sname = sname
+        self.sname = Event.decode(sname)
         self.offset = offset
-        self.newname = newname
+        self.newname = Event.decode(newname)
 
     def __call__(self):
-        sptr = idaapi.get_struc(idc.get_struc_id(self.sname.encode('utf-8')))
-        idaapi.set_member_name(sptr, self.offset, self.newname.encode('utf-8'))
+        sptr = idaapi.get_struc(idc.get_struc_id(Event.encode(self.sname)))
+        idaapi.set_member_name(sptr, self.offset, Event.encode(self.newname))
 
 
 class ExpandingStrucEvent(Event):
@@ -488,12 +508,12 @@ class ExpandingStrucEvent(Event):
 
     def __init__(self, sname, offset, delta):
         super(ExpandingStrucEvent, self).__init__()
-        self.sname = sname
+        self.sname = Event.decode(sname)
         self.offset = offset
         self.delta = delta
 
     def __call__(self):
-        sptr = idaapi.get_struc(idc.get_struc_id(self.sname.encode('utf-8')))
+        sptr = idaapi.get_struc(idc.get_struc_id(Event.encode(self.sname)))
         idaapi.expand_struc(sptr, self.offset, self.delta)
 
 
@@ -503,7 +523,7 @@ class SegmAddedEvent(Event):
     def __init__(self, name, class_, start_ea, end_ea, orgbase, align,
                  comb, perm, bitness, flags):
         super(SegmAddedEvent, self).__init__()
-        self.name = name
+        self.name = Event.decode(name)
         self.class_ = class_
         self.start_ea = start_ea
         self.end_ea = end_ea
@@ -524,7 +544,7 @@ class SegmAddedEvent(Event):
         s.perm = self.perm
         s.bitness = self.bitness
         s.flags = self.flags
-        idaapi.add_segm_ex(s, self.name.encode('utf-8'), self.class_,
+        idaapi.add_segm_ex(s, Event.encode(self.name), self.class_,
                            idaapi.ADDSEG_QUIET | idaapi.ADDSEG_NOSREG)
 
 
@@ -569,11 +589,11 @@ class SegmNameChangedEvent(Event):
     def __init__(self, ea, name):
         super(SegmNameChangedEvent, self).__init__()
         self.ea = ea
-        self.name = name
+        self.name = Event.decode(name)
 
     def __call__(self):
         s = idaapi.getseg(self.ea)
-        idaapi.set_segm_name(s, self.name.encode('utf-8'))
+        idaapi.set_segm_name(s, Event.encode(self.name))
 
 
 class SegmClassChangedEvent(Event):
@@ -623,7 +643,7 @@ class UserLabelsEvent(Event):
     def __call__(self):
         labels = idaapi.user_labels_new()
         for org_label, name in self.labels:
-            idaapi.user_labels_insert(labels, org_label, name.encode('utf-8'))
+            idaapi.user_labels_insert(labels, org_label, Event.encode(name))
         idaapi.save_user_labels(self.ea, labels)
         refresh_pseudocode_view()
 
@@ -642,7 +662,7 @@ class UserCmtsEvent(Event):
             tl = idaapi.treeloc_t()
             tl.ea = tl_ea
             tl.itp = tl_itp
-            cmts.insert(tl, idaapi.citem_cmt_t(cmt.encode('utf-8')))
+            cmts.insert(tl, idaapi.citem_cmt_t(Event.encode(cmt)))
         idaapi.save_user_cmts(self.ea, cmts)
         refresh_pseudocode_view()
 
@@ -692,7 +712,6 @@ class UserLvarSettingsEvent(Event):
         for i in self.lvar_settings['sizes']:
             lvinf.sizes.push_back(i)
         lvinf.lmaps = ida_hexrays.lvar_mapping_t()
-        print(self.lvar_settings['lmaps'])
         for key, val in self.lvar_settings['lmaps']:
             key = UserLvarSettingsEvent._get_lvar_locator(key)
             val = UserLvarSettingsEvent._get_lvar_locator(val)
@@ -706,9 +725,9 @@ class UserLvarSettingsEvent(Event):
     def _get_lvar_saved_info(dct):
         lv = ida_hexrays.lvar_saved_info_t()
         lv.ll = UserLvarSettingsEvent._get_lvar_locator(dct['ll'])
-        lv.name = dct['name'].encode('utf-8')
+        lv.name = Event.encode(dct['name'])
         lv.type = UserLvarSettingsEvent._get_tinfo(dct['type'])
-        lv.cmt = dct['cmt'].encode('utf-8')
+        lv.cmt = Event.encode(dct['cmt'])
         lv.flags = dct['flags']
         return lv
 
