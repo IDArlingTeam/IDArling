@@ -215,18 +215,18 @@ class Core(Module):
             if 'servers' in state:
                 self._servers = [Server(*s) for s in state['servers']]
 
+            # Reconnect to the same server as parent instance
+            if 'host' in state and 'port' in state:
+                self._plugin.network.connect(state['host'], state['port'])
+
+            # Remove temporary files from parent instance
             if 'temp' in state:
-                # Remove temporary files from parent instance
                 idbFile, idbExt = os.path.splitext(state['temp'])
                 for ext in ['.id0', '.id1', '.nam', '.til', '.seg']:
                     if os.path.exists(idbFile + ext):
                         os.remove(idbFile + ext)
 
-                # Reconnect to the same server as parent instance
-                if 'host' in state and 'port' in state:
-                    self._plugin.network.connect(state['host'], state['port'])
-
-    def save_state(self, idbPath=None):
+    def save_state(self, connect=False, idbPath=None):
         """
         Save the state file.
 
@@ -237,10 +237,11 @@ class Core(Module):
             state = {
                 'servers': [[s.host, s.port] for s in self._servers],
             }
-            if idbPath:
-                state['temp'] = idbPath
+            if connect:
                 state['host'] = self._plugin.network.host
                 state['port'] = self._plugin.network.port
+            if idbPath:
+                state['temp'] = idbPath
 
             logger.debug("Saved state: %s" % state)
             stateFile.write(json.dumps(state))
@@ -250,8 +251,8 @@ class Core(Module):
         Load the custom netnode from the IDA database.
         """
         node = idaapi.netnode(Core.NETNODE_NAME, 0, True)
-        self._repo = node.hashval('hash')
-        self._branch = node.hashval('uuid')
+        self._repo = node.hashval('hash') or None
+        self._branch = node.hashval('uuid') or None
         self._tick = int(node.hashval('tick') or '0')
 
         logger.debug("Loaded netnode: repo=%s, branch=%s, tick=%d"
@@ -262,9 +263,12 @@ class Core(Module):
         Save the custom netnode in the IDA database.
         """
         node = idaapi.netnode(Core.NETNODE_NAME, 0, True)
-        node.hashset('hash', self._repo)
-        node.hashset('uuid', self._branch)
-        node.hashset('tick', str(self._tick))
+        if self._repo:
+            node.hashset('hash', self._repo)
+        if self._branch:
+            node.hashset('uuid', self._branch)
+        if self._tick:
+            node.hashset('tick', str(self._tick))
 
         logger.debug("Saved netnode: repo=%s, branch=%s, tick=%d"
                      % (self._repo, self._branch, self._tick))

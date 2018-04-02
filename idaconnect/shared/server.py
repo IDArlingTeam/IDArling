@@ -92,6 +92,12 @@ class ServerClient(ClientSocket):
                     "Received a packet from an unsubscribed client")
                 return True
 
+            # Check for de-synchronization
+            tick = self.parent().database.last_tick(self.repo, self.branch)
+            if tick >= packet.tick:
+                self._logger.warning("De-synchronization detected!")
+                packet.tick = tick + 1
+
             # Save the event into the database
             self.parent().database.insert_event(self, packet)
 

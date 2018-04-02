@@ -47,9 +47,12 @@ class Client(ClientSocket):
             try:
                 packet()
             except Exception as e:
-                self._logger.warning('Error while calling event')
+                self._logger.warning("Error while calling event")
                 self._logger.exception(e)
-            self._plugin.core.tick = max(self._plugin.core.tick, packet.tick)
+            if self._plugin.core.tick >= packet.tick:
+                self._logger.warning("De-synchronization detected!")
+                packet.tick = self._plugin.core.tick
+            self._plugin.core.tick = packet.tick
             self._plugin.core.hook_all()
         else:
             return False

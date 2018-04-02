@@ -154,6 +154,21 @@ class Database(object):
             events.append(DefaultEvent.new(dct))
         return events
 
+    def last_tick(self, hash, uuid):
+        """
+        Get the last tick for the specified repo and branch.
+
+        :param hash: the repo
+        :param uuid: the branch
+        :return: the last tick
+        """
+        c = self._conn.cursor()
+        sql = 'select tick from events where hash = ? and uuid = ? ' \
+              'order by tick desc limit 1;'
+        c.execute(sql, [hash, uuid])
+        result = c.fetchone()
+        return result['tick'] if result else 0
+
     def _create(self, table, cols):
         """
         Creates a table with the given name and columns.

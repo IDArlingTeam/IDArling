@@ -281,7 +281,7 @@ class OpenActionHandler(ActionHandler):
         if idbPath:
             idc.save_database(idbPath, ida_loader.DBFL_KILL)
         # Save the current state
-        self._plugin.core.save_state(idbPath)
+        self._plugin.core.save_state(True, idbPath)
         # Open the new database
         QProcess.startDetached(qApp.applicationFilePath(), [filePath])
         qApp.quit()  # FIXME: Find an alternative, if any
