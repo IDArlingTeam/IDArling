@@ -623,7 +623,7 @@ class UserLabelsEvent(Event):
     def __call__(self):
         labels = idaapi.user_labels_new()
         for org_label, name in self.labels:
-            idaapi.user_labels_insert(labels, org_label, name)
+            idaapi.user_labels_insert(labels, org_label, name.encode('utf-8'))
         idaapi.save_user_labels(self.ea, labels)
         refresh_pseudocode_view()
 
