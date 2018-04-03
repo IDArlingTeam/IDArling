@@ -87,6 +87,7 @@ class ClientSocket(QObject):
 
         :param sock: the socket
         """
+        sock.settimeout(0)
         self._read_notifier = QSocketNotifier(sock.fileno(),
                                               QSocketNotifier.Read, self)
         self._read_notifier.activated.connect(self._notify_read)
@@ -147,8 +148,6 @@ class ClientSocket(QObject):
                 if not self._outgoing:
                     break
                 data = self._outgoing.popleft()
-                if not data:
-                    continue
                 self._write_buffer = data
             try:
                 count = self._socket.send(self._write_buffer)

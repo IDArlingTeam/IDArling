@@ -362,8 +362,6 @@ class NetworkSettingsDialog(QDialog):
         self._quitButton = QPushButton("Close")
         self._quitButton.clicked.connect(self.reject)
         buttonsLayout.addWidget(self._quitButton)
-
-        buttonsLayout.addWidget(buttonsWidget)
         layout.addWidget(buttonsWidget)
 
     def _server_clicked(self, item):
