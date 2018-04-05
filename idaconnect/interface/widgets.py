@@ -25,12 +25,20 @@ class StatusWidget(QWidget):
     """
     The widget that displays the status of the connection to the server.
     """
-    SERVER_DISCONNECTED = '&lt;no server&gt;'
-
     # States enumeration
     STATE_DISCONNECTED = 0
     STATE_CONNECTING = 1
     STATE_CONNECTED = 2
+
+    # Server enumeration
+    SERVER_DISCONNECTED = '&lt;no server&gt;'
+
+    # States information
+    _BY_STATE = {
+        STATE_DISCONNECTED: ('red', 'Disconnected', 'disconnected.png'),
+        STATE_CONNECTING: ('orange', 'Connecting', 'connecting.png'),
+        STATE_CONNECTED: ('green', 'Connected', 'connected.png')
+    }
 
     def __init__(self, plugin):
         """
@@ -56,13 +64,7 @@ class StatusWidget(QWidget):
         logger.debug("Updating widget state")
 
         # Get color, text and icon from state
-        byState = {
-            self.STATE_DISCONNECTED: ('red', 'Disconnected',
-                                      'disconnected.png'),
-            self.STATE_CONNECTING: ('orange', 'Connecting', 'connecting.png'),
-            self.STATE_CONNECTED: ('green', 'Connected', 'connected.png')
-        }
-        color, text, icon = byState[self._state]
+        color, text, icon = StatusWidget._BY_STATE[self._state]
 
         # Update the text of the widget
         textFmt = '%s -- <span style="color: %s;">%s</span>'
@@ -82,12 +84,15 @@ class StatusWidget(QWidget):
                                                  Qt.KeepAspectRatio,
                                                  Qt.SmoothTransformation))
 
-        # Finally, resize the widget
-        size = QSize(self._textWidget.sizeHint().width() + 6 +
+    def sizeHint(self):
+        """
+        Called when the widget size is determined.
+
+        :return: the size hint
+        """
+        pixmapHeight = self._textWidget.sizeHint().height()
+        return QSize(self._textWidget.sizeHint().width() + 6 +
                      self._iconWidget.sizeHint().width(), pixmapHeight)
-        self.setMinimumSize(size)
-        self.setMaximumSize(size)
-        self.repaint()
 
     def _context_menu(self, point):
         """
@@ -140,17 +145,26 @@ class StatusWidget(QWidget):
         # Show the context menu
         menu.exec_(self.mapToGlobal(point))
 
-    def paintEvent(self, _):
+    def paintEvent(self, event):
         """
         Called when the widget is painted on the window.
         """
-        painter = QPainter(self)
+        dpr = self.devicePixelRatioF()
+        buffer = QPixmap(self.width() * dpr, self.height() * dpr)
+        buffer.setDevicePixelRatio(dpr)
+        buffer.fill(Qt.transparent)
+
+        painter = QPainter(buffer)
         # Paint the text first
-        map = painter.deviceTransform().map
-        self._textWidget.render(painter, map(QPoint(0, 0)))
+        self._textWidget.render(painter, QPoint(0, 0))
         # Then paint the icon
         current = self._textWidget.sizeHint().width() + 3
-        self._iconWidget.render(painter, map(QPoint(current, 0)))
+        self._iconWidget.render(painter, QPoint(current, 0))
+        painter.end()
+
+        p = QPainter(self)
+        p.drawPixmap(event.rect(), buffer, buffer.rect())
+        p.end()
 
     def set_state(self, state):
         """
