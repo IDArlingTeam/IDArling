@@ -234,6 +234,7 @@ class SaveDialog(QDialog):
         self._branchesTable.verticalHeader().setVisible(False)
         self._branchesTable.setSelectionBehavior(QTableWidget.SelectRows)
         self._branchesTable.setSelectionMode(QTableWidget.SingleSelection)
+        self._branchesTable.itemClicked.connect(self._branch_clicked)
         branchesLayout.addWidget(self._branchesTable, 0, 0)
         rightLayout.addWidget(branchesGroup)
 
@@ -258,7 +259,6 @@ class SaveDialog(QDialog):
         """
         repo = item.data(Qt.UserRole)
         repo = repo if repo else Repository('', '', '', '')
-        self._saveButton.setEnabled(True)
         self._fileLabel.setText('<b>File:</b> %s' % str(repo.file))
         self._hashLabel.setText('<b>Hash:</b> %s' % str(repo.hash))
         self._typeLabel.setText('<b>Type:</b> %s' % str(repo.type))
