@@ -116,9 +116,9 @@ class Plugin(idaapi.plugin_t):
         """
         Initialize the plugin and all its modules.
         """
-        self._core.install()
         self._interface.install()
         self._network.install()
+        self._core.install()
 
     def _print_banner(self):
         """
@@ -148,8 +148,8 @@ class Plugin(idaapi.plugin_t):
         Terminate the plugin and its modules.
         """
         self._core.uninstall()
-        self._interface.uninstall()
         self._network.uninstall()
+        self._interface.uninstall()
 
     def run(self, _):
         """
