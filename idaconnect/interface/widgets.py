@@ -52,12 +52,23 @@ class StatusWidget(QWidget):
         self._state = self.STATE_DISCONNECTED
         self._server = self.SERVER_DISCONNECTED
 
+        # Create the sub-widgets
+        self._textWidget = QLabel()
+        self._textWidget.setAutoFillBackground(False)
+        self._textWidget.setAttribute(Qt.WA_PaintOnScreen)
+        self._textWidget.setAttribute(Qt.WA_TranslucentBackground)
+
+        self._iconWidget = QLabel()
+        self._iconWidget.setAutoFillBackground(False)
+        self._iconWidget.setAttribute(Qt.WA_PaintOnScreen)
+        self._iconWidget.setAttribute(Qt.WA_TranslucentBackground)
+
         # Set a custom context menu policy
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self._context_menu)
-        self._update()
+        self.update_widget()
 
-    def _update(self):
+    def update_widget(self):
         """
         Called to update the widget when its state has changed.
         """
@@ -67,22 +78,19 @@ class StatusWidget(QWidget):
         color, text, icon = StatusWidget._BY_STATE[self._state]
 
         # Update the text of the widget
-        textFmt = '%s -- <span style="color: %s;">%s</span>'
-        self._textWidget = QLabel(textFmt % (self._server, color, text))
-        self._textWidget.setAutoFillBackground(False)
-        self._textWidget.setAttribute(Qt.WA_PaintOnScreen)
-        self._textWidget.setAttribute(Qt.WA_TranslucentBackground)
+        textFmt = '%s | %s -- <span style="color: %s;">%s</span>'
+        self._textWidget.setText(textFmt % (self._plugin.description(),
+                                            self._server, color, text))
 
         # Update the icon of the widget
-        self._iconWidget = QLabel()
-        self._iconWidget.setAutoFillBackground(False)
-        self._iconWidget.setAttribute(Qt.WA_PaintOnScreen)
-        self._iconWidget.setAttribute(Qt.WA_TranslucentBackground)
         pixmap = QPixmap(self._plugin.resource(icon))
         pixmapHeight = self._textWidget.sizeHint().height()
         self._iconWidget.setPixmap(pixmap.scaled(pixmapHeight, pixmapHeight,
                                                  Qt.KeepAspectRatio,
                                                  Qt.SmoothTransformation))
+        self.update()
+        self.setMinimumSize(self.sizeHint())
+        self.setMaximumSize(self.sizeHint())
 
     def sizeHint(self):
         """
@@ -90,9 +98,9 @@ class StatusWidget(QWidget):
 
         :return: the size hint
         """
-        pixmapHeight = self._textWidget.sizeHint().height()
-        return QSize(self._textWidget.sizeHint().width() + 6 +
-                     self._iconWidget.sizeHint().width(), pixmapHeight)
+        width = self._textWidget.sizeHint().width() \
+            + 6 + self._iconWidget.sizeHint().width()
+        return QSize(width, self._textWidget.sizeHint().height())
 
     def _context_menu(self, point):
         """
@@ -155,16 +163,14 @@ class StatusWidget(QWidget):
         buffer.fill(Qt.transparent)
 
         painter = QPainter(buffer)
-        # Paint the text first
         self._textWidget.render(painter, QPoint(0, 0))
-        # Then paint the icon
-        current = self._textWidget.sizeHint().width() + 3
-        self._iconWidget.render(painter, QPoint(current, 0))
+        x = self._textWidget.sizeHint().width() + 3
+        self._iconWidget.render(painter, QPoint(x, 0))
         painter.end()
 
-        p = QPainter(self)
-        p.drawPixmap(event.rect(), buffer, buffer.rect())
-        p.end()
+        painter = QPainter(self)
+        painter.drawPixmap(event.rect(), buffer, buffer.rect())
+        painter.end()
 
     def set_state(self, state):
         """
@@ -174,7 +180,7 @@ class StatusWidget(QWidget):
         """
         if state != self._state:
             self._state = state
-            self._update()
+            self.update_widget()
 
     def set_server(self, server):
         """
@@ -184,4 +190,4 @@ class StatusWidget(QWidget):
         """
         if server != self._server:
             self._server = server
-            self._update()
+            self.update_widget()

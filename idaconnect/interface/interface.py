@@ -39,59 +39,28 @@ class Interface(Module):
 
     def __init__(self, plugin):
         super(Interface, self).__init__(plugin)
-
         self._window = self._find_main_window()
 
         self._openAction = OpenAction(plugin)
         self._saveAction = SaveAction(plugin)
-
-        self._labelWidget = None
         self._statusWidget = None
 
     def _install(self):
-        self._install_actions()
-        self._install_widgets()
-        return True
-
-    def _uninstall(self):
-        self._uninstall_actions()
-        self._uninstall_widgets()
-        return True
-
-    def _install_actions(self):
-        """
-        Install the actions: install open and save.
-        """
         self._openAction.install()
         self._saveAction.install()
 
-    def _install_widgets(self):
-        """
-        Install the widgets: install label and status.
-        """
-        self._labelWidget = QLabel(self._plugin.description())
-        self._window.statusBar().addPermanentWidget(self._labelWidget)
-
         self._statusWidget = StatusWidget(self._plugin)
         self._window.statusBar().addPermanentWidget(self._statusWidget)
-
         logger.debug("Installed widgets in status bar")
+        return True
 
-    def _uninstall_actions(self):
-        """
-        Uninstall the actions: uninstall open and save.
-        """
+    def _uninstall(self):
         self._openAction.uninstall()
         self._saveAction.uninstall()
 
-    def _uninstall_widgets(self):
-        """
-        Uninstall the widgets: uninstall label and status.
-        """
-        self._window.statusBar().removeWidget(self._labelWidget)
         self._window.statusBar().removeWidget(self._statusWidget)
-
         logger.debug("Uninstalled widgets from status bar")
+        return True
 
     def _update_actions(self):
         """
