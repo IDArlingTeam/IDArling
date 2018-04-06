@@ -20,8 +20,8 @@ import ida_kernwin
 import idaapi
 
 from ..module import Module
-from ..utilities.misc import local_resource
 from ..shared.commands import Subscribe, Unsubscribe
+from ..utilities.misc import local_resource
 from .hooks import Hooks, IDBHooks, IDPHooks, HexRaysHooks
 
 logger = logging.getLogger('IDAConnect.Core')
@@ -43,17 +43,22 @@ class Core(Module):
         self._uiHooksCore = None
         self._idbHooksCore = None
 
+        # Database members
         self._repo = None
         self._branch = None
         self._tick = 0
+
+        # Instance members
         self._servers = []
 
     def _install(self):
+        logger.debug("Installing hooks")
+        core = self
         self.load_state()
+
         self._idbHooks = IDBHooks(self._plugin)
         self._idpHooks = IDPHooks(self._plugin)
         self._hxeHooks = HexRaysHooks(self._plugin)
-        core = self
 
         class UIHooksCore(Hooks, ida_kernwin.UI_Hooks):
             """
@@ -95,14 +100,13 @@ class Core(Module):
 
         self._idbHooksCore = IDBHooksCore(self._plugin)
         self._idbHooksCore.hook()
-
-        logger.debug("Installing hooks")
         return True
 
     def _uninstall(self):
         logger.debug("Uninstalling hooks")
         self._idbHooksCore.unhook()
         self._uiHooksCore.unhook()
+
         self.unhook_all()
         self.save_state()
         return True
@@ -126,39 +130,39 @@ class Core(Module):
     @property
     def repo(self):
         """
-        Get the current repository hash.
+        Get the current repository.
 
-        :return: the hash
+        :return: the repo name
         """
         return self._repo
 
     @repo.setter
-    def repo(self, hash):
+    def repo(self, name):
         """
-        Set the current repository hash.
+        Set the the current repository.
 
-        :param hash: the hash
+        :param name: the repo name
         """
-        self._repo = hash
+        self._repo = name
         self.save_netnode()
 
     @property
     def branch(self):
         """
-        Get the current branch UUID.
+        Get the current branch.
 
-        :return: the UUID
+        :return: the branch name
         """
         return self._branch
 
     @branch.setter
-    def branch(self, uuid):
+    def branch(self, name):
         """
-        Set the current branch UUID.
+        Set the current branch.
 
-        :param uuid: the UUID
+        :param name: the branch name
         """
-        self._branch = uuid
+        self._branch = name
         self.save_netnode()
 
     @property
@@ -179,6 +183,33 @@ class Core(Module):
         """
         self._tick = tick
         self.save_netnode()
+
+    def load_netnode(self):
+        """
+        Load members from the custom netnode.
+        """
+        node = idaapi.netnode(Core.NETNODE_NAME, 0, True)
+        self._repo = node.hashval('repo') or None
+        self._branch = node.hashval('branch') or None
+        self._tick = int(node.hashval('tick') or '0')
+
+        logger.debug("Loaded netnode: repo=%s, branch=%s, tick=%d"
+                     % (self._repo, self._branch, self._tick))
+
+    def save_netnode(self):
+        """
+        Save members to the custom netnode.
+        """
+        node = idaapi.netnode(Core.NETNODE_NAME, 0, True)
+        if self._repo:
+            node.hashset('repo', str(self._repo))
+        if self._branch:
+            node.hashset('branch', str(self._branch))
+        if self._tick:
+            node.hashset('tick', str(self._tick))
+
+        logger.debug("Saved netnode: repo=%s, branch=%s, tick=%d"
+                     % (self._repo, self._branch, self._tick))
 
     @property
     def servers(self):
@@ -201,7 +232,7 @@ class Core(Module):
 
     def load_state(self):
         """
-        Load the state file if it exists.
+        Load the state file.
         """
         statePath = local_resource('files', 'state.json')
         if not os.path.isfile(statePath):
@@ -213,7 +244,7 @@ class Core(Module):
             # Load the server list from state
             Server = collections.namedtuple('Server', ['host', 'port'])
             if 'servers' in state:
-                self._servers = [Server(*s) for s in state['servers']]
+                self._servers = [Server(*addr) for addr in state['servers']]
 
             # Reconnect to the same server as parent instance
             if 'host' in state and 'port' in state:
@@ -226,52 +257,24 @@ class Core(Module):
                     if os.path.exists(idbFile + ext):
                         os.remove(idbFile + ext)
 
-    def save_state(self, connect=False, idbPath=None):
+    def save_state(self, connect=False, database=None):
         """
         Save the state file.
 
-        :param idbPath: the opened database
+        :param connect: should we reconnect?
+        :param database: the opened database
         """
         statePath = local_resource('files', 'state.json')
         with open(statePath, 'wb') as stateFile:
-            state = {
-                'servers': [[s.host, s.port] for s in self._servers],
-            }
+            state = {'servers': [[s.host, s.port] for s in self._servers]}
             if connect:
                 state['host'] = self._plugin.network.host
                 state['port'] = self._plugin.network.port
-            if idbPath:
-                state['temp'] = idbPath
+            if database:
+                state['temp'] = database
 
             logger.debug("Saved state: %s" % state)
             stateFile.write(json.dumps(state))
-
-    def load_netnode(self):
-        """
-        Load the custom netnode from the IDA database.
-        """
-        node = idaapi.netnode(Core.NETNODE_NAME, 0, True)
-        self._repo = node.hashval('hash') or None
-        self._branch = node.hashval('uuid') or None
-        self._tick = int(node.hashval('tick') or '0')
-
-        logger.debug("Loaded netnode: repo=%s, branch=%s, tick=%d"
-                     % (self._repo, self._branch, self._tick))
-
-    def save_netnode(self):
-        """
-        Save the custom netnode in the IDA database.
-        """
-        node = idaapi.netnode(Core.NETNODE_NAME, 0, True)
-        if self._repo:
-            node.hashset('hash', self._repo)
-        if self._branch:
-            node.hashset('uuid', self._branch)
-        if self._tick:
-            node.hashset('tick', str(self._tick))
-
-        logger.debug("Saved netnode: repo=%s, branch=%s, tick=%d"
-                     % (self._repo, self._branch, self._tick))
 
     def notify_connected(self):
         if self._repo and self._branch:

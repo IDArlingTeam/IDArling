@@ -189,7 +189,6 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         return 0
 
     def renaming_enum(self, id, is_enum, newname):
-        extra = {}
         if is_enum:
             oldname = idaapi.get_enum_name(id)
         else:
@@ -479,7 +478,7 @@ class HexRaysHooks(Hooks):
         while it != idaapi.user_cmts_end(user_cmts):
             tl = idaapi.user_cmts_first(it)
             cmt = idaapi.user_cmts_second(it)
-            cmts.append(((tl.ea, tl.itp), Event.decode(cmt)))
+            cmts.append(((tl.ea, tl.itp), Event.decode(str(cmt))))
             it = idaapi.user_cmts_next(it)
         idaapi.user_cmts_free(user_cmts)
         return cmts

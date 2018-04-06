@@ -38,25 +38,28 @@ class Database(object):
         Creates all the tables used by the wrapper.
         """
         self._create('repos', [
-            'hash text primary key',
-            'file string',
-            'type string',
-            'date string'
+            'name text not null',
+            'hash text not null',
+            'file text not null',
+            'type text not null',
+            'date text not null',
+            'primary key (name)',
         ])
         self._create('branches', [
-            'uuid text primary key',
-            'hash text',
-            'date text',
-            'bits integer',
-            'foreign key(hash) references repos(hash)'
+            'repo text not null',
+            'name text not null',
+            'date text not null',
+            'foreign key(repo) references repos(repo)',
+            'primary key(repo, name)',
         ])
         self._create('events', [
-            'hash text',
-            'uuid text',
-            'tick integer',
-            'dict text',
-            'foreign key(hash) references repos(hash)',
-            'foreign key(uuid) references branches(uuid)'
+            'repo text not null',
+            'branch text not null',
+            'tick integer not null',
+            'dict text not null',
+            'foreign key(repo) references repos(name)',
+            'foreign key(branch) references branches(name)',
+            'primary key(repo, branch, tick)',
         ])
 
     def insert_repo(self, repo):
@@ -67,26 +70,26 @@ class Database(object):
         """
         self._insert('repos', Default.attrs(repo.__dict__))
 
-    def select_repo(self, hash):
+    def select_repo(self, name):
         """
-        Selects the repository with the given hash.
+        Selects the repository with the given name.
 
-        :param hash: the hash, or None if no filtering
+        :param name: the name
         :return: the repository or None
         """
-        objects = self.select_repos(hash, 1)
+        objects = self.select_repos(name, 1)
         return objects[0] if objects else None
 
-    def select_repos(self, hash, limit=None):
+    def select_repos(self, name=None, limit=None):
         """
-        Selects the repositories with the given hash.
+        Selects the repositories with the given name.
 
-        :param hash: the hash, or None if no filtering
-        :param limit: the number of results to return, or None
-        :return: the repositories
+        :param name: the name, or None if all
+        :param limit: the number of results
+        :return: a list of the repositories
         """
-        results = self._select('repos', {'hash': hash}, limit)
-        return [Repository(*result) for result in results]
+        results = self._select('repos', {'name': name}, limit)
+        return [Repository(**result) for result in results]
 
     def insert_branch(self, branch):
         """
@@ -94,30 +97,32 @@ class Database(object):
 
         :param branch: the branch
         """
-        self._insert('branches', Default.attrs(branch.__dict__))
+        attrs = Default.attrs(branch.__dict__)
+        attrs.pop('tick')
+        self._insert('branches', attrs)
 
-    def select_branch(self, uuid, hash):
+    def select_branch(self, repo, name):
         """
-        Selects the branch with the given uuid and hash.
+        Selects the branch with the given name and repo.
 
-        :param uuid: the uuid, or None if no filtering
-        :param hash: the hash, or None if no filtering
+        :param repo: the repository name
+        :param name: the branch name
         :return: the branch or None
         """
-        objects = self.select_branches(uuid, hash, 1)
+        objects = self.select_branches(repo, name, 1)
         return objects[0] if objects else None
 
-    def select_branches(self, uuid, hash, limit=None):
+    def select_branches(self, repo=None, name=None, limit=None):
         """
-        Selects the branches with the given uuid and hash.
+        Selects the branches with the given repo and name.
 
-        :param uuid: the uuid, or None if no filtering
-        :param hash: the hash, or None if no filtering
-        :param limit: the number of results to return, or None
-        :return: the branches
+        :param repo: the repository name, or None if all
+        :param name: the branch name, or None if all
+        :param limit: the number of results to return
+        :return: a list of branches
         """
-        results = self._select('branches', {'uuid': uuid, 'hash': hash}, limit)
-        return [Branch(*result) for result in results]
+        results = self._select('branches', {'repo': repo, 'name': name}, limit)
+        return [Branch(**result) for result in results]
 
     def insert_event(self, client, event):
         """
@@ -128,25 +133,25 @@ class Database(object):
         """
         dct = DefaultEvent.attrs(event.__dict__)
         self._insert('events', {
-            'hash': client.repo,
-            'uuid': client.branch,
+            'repo': client.repo,
+            'branch': client.branch,
             'tick': dct.pop('tick'),
             'dict': json.dumps(dct)
         })
 
-    def select_events(self, hash, uuid, tick):
+    def select_events(self, repo, branch, tick):
         """
         Get all events sent after the given ticks count.
 
-        :param hash: the repository
-        :param uuid: the branch
+        :param repo: the repository name
+        :param branch: the branch name
         :param tick: the ticks count
-        :return: the events
+        :return: a list of events
         """
         c = self._conn.cursor()
-        sql = 'select * from events where hash = ? and uuid = ? ' \
+        sql = 'select * from events where repo = ? and branch = ? ' \
               'and tick > ? order by tick asc;'
-        c.execute(sql, [hash, uuid, tick])
+        c.execute(sql, [repo, branch, tick])
         events = []
         for result in c.fetchall():
             dct = json.loads(result['dict'])
@@ -154,18 +159,18 @@ class Database(object):
             events.append(DefaultEvent.new(dct))
         return events
 
-    def last_tick(self, hash, uuid):
+    def last_tick(self, repo, branch):
         """
         Get the last tick for the specified repo and branch.
 
-        :param hash: the repo
-        :param uuid: the branch
+        :param repo: the repo name
+        :param branch: the branch name
         :return: the last tick
         """
         c = self._conn.cursor()
-        sql = 'select tick from events where hash = ? and uuid = ? ' \
+        sql = 'select tick from events where repo = ? and branch = ? ' \
               'order by tick desc limit 1;'
-        c.execute(sql, [hash, uuid])
+        c.execute(sql, [repo, branch])
         result = c.fetchone()
         return result['tick'] if result else 0
 

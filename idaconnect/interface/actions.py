@@ -10,27 +10,20 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import datetime
 import logging
-import uuid
 from functools import partial
 
 import ida_loader
 import ida_kernwin
 import idaapi
-import idautils
 import idc
 
 from PyQt5.QtCore import Qt, QProcess
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import qApp, QProgressDialog, QMessageBox
 
-from ..shared.commands import (GetRepositories, GetBranches,
-                               NewRepository, NewBranch,
-                               DownloadDatabase, UploadDatabase,
-                               Subscribe)
-from ..shared.models import Repository, Branch
 from ..utilities.misc import local_resource
+from ..shared.commands import DownloadDatabase, UploadDatabase, Subscribe
 from .dialogs import OpenDialog, SaveDialog
 
 logger = logging.getLogger('IDAConnect.Interface')
@@ -125,6 +118,19 @@ class ActionHandler(idaapi.action_handler_t):
     """
     This is the base class for all action handlers of the interface module.
     """
+    _DIALOG = None
+
+    @staticmethod
+    def _on_progress(progress, count, total):
+        """
+        Called when some data has been exchanged.
+
+        :param progress: the progress dialog
+        :param count: the number of bytes exchanged
+        :param total: the total number of bytes to exchange
+        """
+        progress.setRange(0, total)
+        progress.setValue(count)
 
     def __init__(self, plugin):
         """
@@ -146,6 +152,27 @@ class ActionHandler(idaapi.action_handler_t):
             return idaapi.AST_ENABLE
         return idaapi.AST_DISABLE
 
+    def activate(self, ctx):
+        """
+        Called when the action is triggered.
+
+        :param ctx: the context
+        :return: refresh or not the IDA windows
+        """
+        # Ask the server for the list of repositories
+        dialog = self._DIALOG(self._plugin)
+        dialog.accepted.connect(partial(self._dialog_accepted, dialog))
+        dialog.exec_()
+        return 1
+
+    def _dialog_accepted(self, dialog):
+        """
+        Called when the dialog is accepted by the user.
+
+        :param dialog: the dialog
+        """
+        raise NotImplementedError("dialog_accepted() not implemented")
+
 
 class OpenAction(Action):
     """
@@ -166,60 +193,9 @@ class OpenActionHandler(ActionHandler):
     """
     The action handler for the open action.
     """
-
-    @staticmethod
-    def _progress_callback(progress, count, total):
-        """
-        Called when some data from the file has been received.
-
-        :param progress: the progress dialog
-        :param count: the number of bytes received
-        :param total: the total number of bytes to receive
-        """
-        progress.setRange(0, total)
-        progress.setValue(count)
-
-    def activate(self, ctx):
-        """
-        Called when the action is triggered.
-
-        :param ctx: the context
-        :return: refresh or not the IDA windows
-        """
-        # Ask the server for the list of repositories
-        d = self._plugin.network.send_packet(GetRepositories.Query())
-        d.add_callback(self._on_get_repository_reply)
-        d.add_errback(logger.exception)
-        return 1
-
-    def _on_get_repository_reply(self, reply):
-        """
-        Called when the list of repositories is received.
-
-        :param reply: the reply from the server
-        """
-        # Ask the server for the list of branches
-        d = self._plugin.network.send_packet(GetBranches.Query())
-        d.add_callback(partial(self._on_get_branches_reply, reply.repos))
-        d.add_errback(logger.exception)
-
-    def _on_get_branches_reply(self, repos, reply):
-        """
-        Called when the list of branches is received.
-
-        :param repos: the list of repositories
-        :param reply: the reply from the server
-        """
-        dialog = OpenDialog(self._plugin, repos, reply.branches)
-        dialog.accepted.connect(partial(self._dialog_accepted, dialog))
-        dialog.exec_()
+    _DIALOG = OpenDialog
 
     def _dialog_accepted(self, dialog):
-        """
-        Called when the open dialog is accepted by the user.
-
-        :param dialog: the open dialog
-        """
         repo, branch = dialog.get_result()
 
         # Create the progress dialog
@@ -234,8 +210,8 @@ class OpenActionHandler(ActionHandler):
         progress.setWindowIcon(QIcon(iconPath))
 
         # Send a packet to download the database
-        packet = DownloadDatabase.Query(repo.hash, branch.uuid)
-        callback = partial(self._progress_callback, progress)
+        packet = DownloadDatabase.Query(repo.name, branch.name)
+        callback = partial(self._on_progress, progress)
 
         def setDownloadCallback(reply):
             reply.downback = callback
@@ -255,10 +231,11 @@ class OpenActionHandler(ActionHandler):
         :param reply: the reply from the server
         """
         # Close the progress dialog
-        self._progress_callback(progress, 1, 1)
+        self._on_progress(progress, 1, 1)
 
         # Get the absolute path of the file
-        fileName = branch.uuid + ('.i64' if branch.bits == 64 else '.idb')
+        fileExt = 'i64' if idc.__EA64__ else 'idb'
+        fileName = '%s_%s.%s' % (branch.repo, branch.name, fileExt)
         filePath = local_resource('files', fileName)
 
         # Write the packet content to disk
@@ -266,25 +243,15 @@ class OpenActionHandler(ActionHandler):
             outputFile.write(reply.content)
         logger.info("Saved file %s" % fileName)
 
-        # Show a success dialog
-        # success = QMessageBox()
-        # success.setIcon(QMessageBox.Information)
-        # success.setStandardButtons(QMessageBox.Ok)
-        # success.setText("Database successfully downloaded!")
-        # success.setWindowTitle("Open from server")
-        # iconPath = self._plugin.getResource('download.png')
-        # success.setWindowIcon(QIcon(iconPath))
-        # success.exec_()
-
         # Save the old database
-        idbPath = idc.GetIdbPath()
-        if idbPath:
-            idc.save_database(idbPath, ida_loader.DBFL_KILL)
+        database = idc.GetIdbPath()
+        if database:
+            idc.save_database(database, ida_loader.DBFL_KILL)
         # Save the current state
-        self._plugin.core.save_state(True, idbPath)
+        self._plugin.core.save_state(True, database)
         # Open the new database
         QProcess.startDetached(qApp.applicationFilePath(), [filePath])
-        qApp.quit()  # FIXME: Find an alternative, if any
+        qApp.quit()  # https://forum.hex-rays.com/viewtopic.php?f=8&t=4294
 
 
 class SaveAction(Action):
@@ -306,106 +273,24 @@ class SaveActionHandler(ActionHandler):
     """
     The action handler for the save action.
     """
-
-    @staticmethod
-    def _progress_callback(progress, count, total):
-        """
-        Called when some data from the file has been sent.
-
-        :param progress: the progress dialog
-        :param count: the number of bytes sent
-        :param total: the total number of bytes to send
-        """
-        progress.setRange(0, total)
-        progress.setValue(count)
+    _DIALOG = SaveDialog
 
     def update(self, ctx):
         if not idc.GetIdbPath():
             return idaapi.AST_DISABLE
         return super(SaveActionHandler, self).update(ctx)
 
-    def activate(self, ctx):
-        """
-        Called when the action is triggered.
-
-        :param ctx: the context
-        :return: refresh or not the IDA windows
-        """
-        # Ask the server for the list of repositories
-        d = self._plugin.network.send_packet(GetRepositories.Query())
-        d.add_callback(self._on_get_repository_reply)
-        d.add_errback(logger.exception)
-        return 1
-
-    def _on_get_repository_reply(self, reply):
-        """
-        Called when the list of repositories is received.
-
-        :param reply: the reply from the server
-        """
-        # Ask the server for the list of branches
-        d = self._plugin.network.send_packet(GetBranches.Query())
-        d.add_callback(partial(self._on_get_branches_reply, reply.repos))
-        d.add_errback(logger.exception)
-
-    def _on_get_branches_reply(self, repos, reply):
-        """
-        Called when the list of branches is received.
-
-        :param repos: the list of repositories
-        :param reply: the reply from the server
-        """
-        dialog = SaveDialog(self._plugin, repos, reply.branches)
-        dialog.accepted.connect(partial(self._dialog_accepted, dialog))
-        dialog.exec_()
-
     def _dialog_accepted(self, dialog):
-        """
-        Called when the save dialog is accepted by the user.
-
-        :param dialog: the save dialog
-        """
         repo, branch = dialog.get_result()
-
-        # Create new repository if necessary
-        if not repo:
-            hash = idautils.GetInputFileMD5()
-            file = idc.GetInputFile()
-            type = idaapi.get_file_type_name()
-            dateFormat = "%Y/%m/%d %H:%M"
-            date = datetime.datetime.now().strftime(dateFormat)
-            repo = Repository(hash, file, type, date)
-            d = self._plugin.network.send_packet(NewRepository.Query(repo))
-            d.add_callback(partial(self._on_new_repository_reply,
-                                   repo, branch))
-            d.add_errback(logger.exception)
-        else:
-            self._on_new_repository_reply(repo, branch, None)
-
-    def _on_new_repository_reply(self, repo, branch, _):
-        self._plugin.core.repo = repo.hash
-
-        # Create new branch if necessary
-        if not branch:
-            uuid_ = str(uuid.uuid4())
-            dateFormat = "%Y/%m/%d %H:%M"
-            date = datetime.datetime.now().strftime(dateFormat)
-            branch = Branch(uuid_, repo.hash, date, 64 if idc.__EA64__ else 32)
-            d = self._plugin.network.send_packet(NewBranch.Query(branch))
-            d.add_callback(partial(self._on_new_branch_reply, repo, branch))
-            d.add_errback(logger.exception)
-        else:
-            self._on_new_branch_reply(repo, branch, None)
-
-    def _on_new_branch_reply(self, repo, branch, _):
-        self._plugin.core.branch = branch.uuid
+        self._plugin.core.repo = repo.name
+        self._plugin.core.branch = branch.name
 
         # Save the current database
         self._plugin.core.save_netnode()
         idc.save_database(idc.GetIdbPath(), 0)
 
         # Create the packet that will hold the database
-        packet = UploadDatabase.Query(repo.hash, branch.uuid)
+        packet = UploadDatabase.Query(repo.name, branch.name)
         inputPath = idc.GetIdbPath()
         with open(inputPath, 'rb') as inputFile:
             packet.content = inputFile.read()
@@ -423,7 +308,7 @@ class SaveActionHandler(ActionHandler):
         progress.show()
 
         # Send the packet to upload the file
-        packet.upback = partial(self._progress_callback, progress)
+        packet.upback = partial(self._on_progress, progress)
         d = self._plugin.network.send_packet(packet)
         d.add_callback(partial(self._database_uploaded, repo, branch))
         d.add_errback(logger.exception)
@@ -440,6 +325,6 @@ class SaveActionHandler(ActionHandler):
         success.exec_()
 
         # Subscribe to the new events stream
-        self._plugin.network.send_packet(Subscribe(repo.hash, branch.uuid,
+        self._plugin.network.send_packet(Subscribe(repo.name, branch.name,
                                                    self._plugin.core.tick))
         self._plugin.core.hook_all()

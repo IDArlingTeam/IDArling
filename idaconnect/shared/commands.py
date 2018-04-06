@@ -19,10 +19,7 @@ class GetRepositories(ParentCommand):
     __command__ = 'get_repos'
 
     class Query(IQuery, DefaultCommand):
-
-        def __init__(self, hash=None):
-            super(GetRepositories.Query, self).__init__()
-            self.hash = hash
+        pass
 
     class Reply(IReply, Command):
 
@@ -42,10 +39,9 @@ class GetBranches(ParentCommand):
 
     class Query(IQuery, DefaultCommand):
 
-        def __init__(self, hash=None, uuid=None):
+        def __init__(self, repo):
             super(GetBranches.Query, self).__init__()
-            self.hash = hash
-            self.uuid = uuid
+            self.repo = repo
 
     class Reply(IReply, Command):
 
@@ -103,10 +99,10 @@ class UploadDatabase(ParentCommand):
 
     class Query(IQuery, Container, DefaultCommand):
 
-        def __init__(self, hash, uuid):
+        def __init__(self, repo, branch):
             super(UploadDatabase.Query, self).__init__()
-            self.hash = hash
-            self.uuid = uuid
+            self.repo = repo
+            self.branch = branch
 
     class Reply(IReply, Command):
         pass
@@ -117,10 +113,10 @@ class DownloadDatabase(ParentCommand):
 
     class Query(IQuery, DefaultCommand):
 
-        def __init__(self, hash, uuid):
+        def __init__(self, repo, branch):
             super(DownloadDatabase.Query, self).__init__()
-            self.hash = hash
-            self.uuid = uuid
+            self.repo = repo
+            self.branch = branch
 
     class Reply(IReply, Container, Command):
         pass
@@ -129,10 +125,10 @@ class DownloadDatabase(ParentCommand):
 class Subscribe(DefaultCommand):
     __command__ = 'subscribe'
 
-    def __init__(self, hash, uuid, tick):
+    def __init__(self, repo, branch, tick):
         super(Subscribe, self).__init__()
-        self.hash = hash
-        self.uuid = uuid
+        self.repo = repo
+        self.branch = branch
         self.tick = tick
 
 

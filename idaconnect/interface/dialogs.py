@@ -10,18 +10,24 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import datetime
 import logging
 from collections import namedtuple
 from functools import partial
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout,
-                             QGridLayout, QWidget, QTableWidget,
-                             QTableWidgetItem, QGroupBox, QLabel, QPushButton,
-                             QLineEdit)
+import idaapi
+import idautils
+import idc
 
-from ..shared.models import Repository
+from PyQt5.QtCore import Qt, QRegExp
+from PyQt5.QtGui import QIcon, QRegExpValidator
+from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout, QGridLayout,
+                             QWidget, QTableWidget, QTableWidgetItem, QLabel,
+                             QPushButton, QLineEdit, QGroupBox, QMessageBox)
+
+from ..shared.commands import GetRepositories, GetBranches, \
+                               NewRepository, NewBranch
+from ..shared.models import Repository, Branch
 
 logger = logging.getLogger('IDAConnect.Interface')
 
@@ -31,274 +37,376 @@ class OpenDialog(QDialog):
     The open dialog allowing an user to select a remote database to download.
     """
 
-    def __init__(self, plugin, repos, branches):
+    def __init__(self, plugin):
         """
         Initialize the open dialog.
 
         :param plugin: the plugin instance
-        :param repos: the list of repositories
-        :param branches: the list of branches
         """
         super(OpenDialog, self).__init__()
         self._plugin = plugin
-        self._repos = repos
-        self._branches = branches
+        self._repos = None
+        self._branches = None
 
         # General setup of the dialog
-        logger.debug("Showing open database dialog")
+        logger.debug("Showing the database selection dialog")
         self.setWindowTitle("Open from Remote Server")
         iconPath = self._plugin.resource('download.png')
         self.setWindowIcon(QIcon(iconPath))
         self.resize(900, 450)
 
         # Setup of the layout and widgets
-        layout = QHBoxLayout(self)
-        self._reposTable = QTableWidget(len(repos), 1, self)
-        self._reposTable.setHorizontalHeaderLabels(('Remote Repositories',))
-        for i, repo in enumerate(repos):
-            item = QTableWidgetItem("%s (%s)" % (str(repo.file),
-                                                 str(repo.hash)))
-            item.setData(Qt.UserRole, repo)
-            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self._reposTable.setItem(i, 0, item)
+        layout = QVBoxLayout(self)
+        main = QWidget(self)
+        mainLayout = QHBoxLayout(main)
+        layout.addWidget(main)
+
+        self._leftSide = QWidget(main)
+        self._leftLayout = QVBoxLayout(self._leftSide)
+        self._reposTable = QTableWidget(0, 1, self._leftSide)
+        self._reposTable.setHorizontalHeaderLabels(('Repositories',))
         self._reposTable.horizontalHeader().setSectionsClickable(False)
         self._reposTable.horizontalHeader().setStretchLastSection(True)
         self._reposTable.verticalHeader().setVisible(False)
         self._reposTable.setSelectionBehavior(QTableWidget.SelectRows)
         self._reposTable.setSelectionMode(QTableWidget.SingleSelection)
-        self._reposTable.itemClicked.connect(self._repo_clicked)
-        minSZ = self._reposTable.minimumSize()
-        self._reposTable.setMinimumSize(300, minSZ.height())
-        maxSZ = self._reposTable.maximumSize()
-        self._reposTable.setMaximumSize(300, maxSZ.height())
-        layout.addWidget(self._reposTable)
+        self._reposTable.itemSelectionChanged.connect(self._repo_clicked)
+        self._leftLayout.addWidget(self._reposTable)
+        mainLayout.addWidget(self._leftSide)
 
-        rightSide = QWidget(self)
+        rightSide = QWidget(main)
         rightLayout = QVBoxLayout(rightSide)
-        infoGroup = QGroupBox("Information", rightSide)
-        infoLayout = QGridLayout(infoGroup)
+        detailsGroup = QGroupBox("Details", rightSide)
+        detailsLayout = QGridLayout(detailsGroup)
         self._fileLabel = QLabel('<b>File:</b>')
-        infoLayout.addWidget(self._fileLabel, 0, 0)
+        detailsLayout.addWidget(self._fileLabel, 0, 0)
         self._hashLabel = QLabel('<b>Hash:</b>')
-        infoLayout.addWidget(self._hashLabel, 1, 0)
-        infoLayout.setColumnStretch(0, 1)
+        detailsLayout.addWidget(self._hashLabel, 1, 0)
+        detailsLayout.setColumnStretch(0, 1)
         self._typeLabel = QLabel('<b>Type:</b>')
-        infoLayout.addWidget(self._typeLabel, 0, 1)
+        detailsLayout.addWidget(self._typeLabel, 0, 1)
         self._dateLabel = QLabel('<b>Date:</b>')
-        infoLayout.addWidget(self._dateLabel, 1, 1)
-        infoLayout.setColumnStretch(1, 1)
-        rightLayout.addWidget(infoGroup)
+        detailsLayout.addWidget(self._dateLabel, 1, 1)
+        detailsLayout.setColumnStretch(1, 1)
+        rightLayout.addWidget(detailsGroup)
+        mainLayout.addWidget(rightSide)
 
-        branchesGroup = QGroupBox("Branches", rightSide)
-        branchesLayout = QGridLayout(branchesGroup)
-        self._branchesTable = QTableWidget(0, 2, branchesGroup)
-        self._branchesTable.setHorizontalHeaderLabels(('Identifier', 'Date'))
+        self._branchesGroup = QGroupBox("Branches", rightSide)
+        self._branchesLayout = QVBoxLayout(self._branchesGroup)
+        self._branchesTable = QTableWidget(0, 3, self._branchesGroup)
+        labels = ('Name', 'Date', 'Ticks')
+        self._branchesTable.setHorizontalHeaderLabels(labels)
         horizontalHeader = self._branchesTable.horizontalHeader()
         horizontalHeader.setSectionsClickable(False)
         horizontalHeader.setSectionResizeMode(0, horizontalHeader.Stretch)
         self._branchesTable.verticalHeader().setVisible(False)
         self._branchesTable.setSelectionBehavior(QTableWidget.SelectRows)
         self._branchesTable.setSelectionMode(QTableWidget.SingleSelection)
-        self._branchesTable.itemClicked.connect(self._branch_clicked)
-        branchesLayout.addWidget(self._branchesTable, 0, 0)
-        rightLayout.addWidget(branchesGroup)
+        self._branchesTable.itemSelectionChanged.connect(self._branch_clicked)
+        self._branchesLayout.addWidget(self._branchesTable)
+        rightLayout.addWidget(self._branchesGroup)
 
-        buttonsWidget = QWidget(rightSide)
+        buttonsWidget = QWidget(self)
         buttonsLayout = QHBoxLayout(buttonsWidget)
         buttonsLayout.addStretch()
-        self._openButton = QPushButton("Open")
-        self._openButton.setEnabled(False)
-        self._openButton.clicked.connect(self.accept)
-        buttonsLayout.addWidget(self._openButton)
-        cancelButton = QPushButton("Cancel")
+        self._acceptButton = QPushButton("Open", buttonsWidget)
+        self._acceptButton.setEnabled(False)
+        self._acceptButton.clicked.connect(self.accept)
+        cancelButton = QPushButton("Cancel", buttonsWidget)
         cancelButton.clicked.connect(self.reject)
         buttonsLayout.addWidget(cancelButton)
-        rightLayout.addWidget(buttonsWidget)
-        layout.addWidget(rightSide)
+        buttonsLayout.addWidget(self._acceptButton)
+        layout.addWidget(buttonsWidget)
 
-    def _repo_clicked(self, item):
+        # Ask the server for the list of repositories
+        d = self._plugin.network.send_packet(GetRepositories.Query())
+        d.add_callback(self._on_get_repos)
+        d.add_errback(logger.exception)
+
+    def _on_get_repos(self, reply):
+        """
+        Called when the list of repositories is received.
+
+        :param reply: the reply from the server
+        """
+        self._repos = reply.repos
+        self._refresh_repos()
+
+    def _refresh_repos(self):
+        """
+        Refreshes the table of repositories.
+        """
+        self._reposTable.setRowCount(len(self._repos))
+        for i, repo in enumerate(self._repos):
+            item = QTableWidgetItem(repo.name)
+            item.setData(Qt.UserRole, repo)
+            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+            self._reposTable.setItem(i, 0, item)
+
+    def _repo_clicked(self):
         """
         Called when a repository item is clicked, will update the display.
-
-        :param item: the item clicked
         """
-        repo = item.data(Qt.UserRole)
+        repo = self._reposTable.selectedItems()[0].data(Qt.UserRole)
         self._fileLabel.setText('<b>File:</b> %s' % str(repo.file))
         self._hashLabel.setText('<b>Hash:</b> %s' % str(repo.hash))
         self._typeLabel.setText('<b>Type:</b> %s' % str(repo.type))
         self._dateLabel.setText('<b>Date:</b> %s' % str(repo.date))
 
-        # Display the list of branches for the selected repository
-        branches = [br for br in self._branches if br.hash == repo.hash]
-        self._branchesTable.setRowCount(len(branches))
-        for i, branch in enumerate(branches):
-            item = QTableWidgetItem(str(branch.uuid))
-            item.setData(Qt.UserRole, branch)
-            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self._branchesTable.setItem(i, 0, item)
-            item = QTableWidgetItem(str(branch.date))
-            item.setData(Qt.UserRole, branch)
-            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self._branchesTable.setItem(i, 1, item)
+        # Ask the server for the list of branches
+        d = self._plugin.network.send_packet(GetBranches.Query(repo.name))
+        d.add_callback(partial(self._on_get_branches))
+        d.add_errback(logger.exception)
 
-    def _branch_clicked(self, _):
+    def _on_get_branches(self, reply):
+        """
+        Called when the list of branches is received.
+
+        :param reply: the reply from the server
+        """
+        self._branches = reply.branches
+        self._refresh_branches()
+
+    def _refresh_branches(self):
+        """
+        Refreshes the table of branches.
+        """
+        def createItem(text, branch):
+            item = QTableWidgetItem(text)
+            item.setData(Qt.UserRole, branch)
+            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+            if branch.tick == -1:
+                item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
+            return item
+        self._branchesTable.setRowCount(len(self._branches))
+        for i, branch in enumerate(self._branches):
+            self._branchesTable.setItem(i, 0, createItem(branch.name, branch))
+            self._branchesTable.setItem(i, 1, createItem(branch.date, branch))
+            tick = str(branch.tick) if branch.tick != -1 else '<none>'
+            self._branchesTable.setItem(i, 2, createItem(tick, branch))
+
+    def _branch_clicked(self):
         """
         Called when a branch item is clicked.
         """
-        self._openButton.setEnabled(True)
+        self._acceptButton.setEnabled(True)
 
     def get_result(self):
         """
-        Get the result (repository, branch) from this dialog.
+        Get the result (repo, branch) from this dialog.
 
         :return: the result
         """
-        repo = self._reposTable.currentItem().data(Qt.UserRole)
-        return repo, self._branchesTable.currentItem().data(Qt.UserRole)
+        repo = self._reposTable.selectedItems()[0].data(Qt.UserRole)
+        return repo, self._branchesTable.selectedItems()[0].data(Qt.UserRole)
 
 
-class SaveDialog(QDialog):
+class SaveDialog(OpenDialog):
     """
     The save dialog allowing an user to select a remote database to upload to.
     """
 
-    def __init__(self, plugin, repos, branches):
+    def __init__(self, plugin):
         """
         Initialize the save dialog.
 
         :param plugin: the plugin instance
-        :param repos: the list of repositories
-        :param branches: the list of branches
         """
-        super(SaveDialog, self).__init__()
-        self._plugin = plugin
-        self._repos = repos
-        self._branches = branches
+        super(SaveDialog, self).__init__(plugin)
+        self._repo = None
 
         # General setup of the dialog
-        logger.debug("Showing save database dialog")
         self.setWindowTitle("Save to Remote Server")
         iconPath = self._plugin.resource('upload.png')
         self.setWindowIcon(QIcon(iconPath))
-        self.resize(900, 450)
 
         # Setup the layout and widgets
-        layout = QHBoxLayout(self)
-        self._reposTable = QTableWidget(len(repos) + 1, 1, self)
-        self._reposTable.setHorizontalHeaderLabels(('Remote Repositories',))
-        for i, repo in enumerate(repos):
-            item = QTableWidgetItem("%s (%s)" % (str(repo.file),
-                                                 str(repo.hash)))
-            item.setData(Qt.UserRole, repo)
-            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self._reposTable.setItem(i, 0, item)
-        newItem = QTableWidgetItem("<new repository>")
-        newItem.setData(Qt.UserRole, None)
-        newItem.setFlags(newItem.flags() & ~Qt.ItemIsEditable)
-        self._reposTable.setItem(len(repos), 0, newItem)
-        self._reposTable.horizontalHeader().setSectionsClickable(False)
-        self._reposTable.horizontalHeader().setStretchLastSection(True)
-        self._reposTable.verticalHeader().setVisible(False)
-        self._reposTable.setSelectionBehavior(QTableWidget.SelectRows)
-        self._reposTable.setSelectionMode(QTableWidget.SingleSelection)
-        self._reposTable.itemClicked.connect(self._repo_clicked)
-        minSZ = self._reposTable.minimumSize()
-        self._reposTable.setMinimumSize(300, minSZ.height())
-        maxSZ = self._reposTable.maximumSize()
-        self._reposTable.setMaximumSize(300, maxSZ.height())
-        layout.addWidget(self._reposTable)
+        self._acceptButton.setText("Save")
 
-        rightSide = QWidget(self)
-        rightLayout = QVBoxLayout(rightSide)
-        infoGroup = QGroupBox("Information", rightSide)
-        infoLayout = QGridLayout(infoGroup)
-        self._fileLabel = QLabel('<b>File:</b>')
-        infoLayout.addWidget(self._fileLabel, 0, 0)
-        self._hashLabel = QLabel('<b>Hash:</b>')
-        infoLayout.addWidget(self._hashLabel, 1, 0)
-        infoLayout.setColumnStretch(0, 1)
-        self._typeLabel = QLabel('<b>Type:</b>')
-        infoLayout.addWidget(self._typeLabel, 0, 1)
-        self._dateLabel = QLabel('<b>Date:</b>')
-        infoLayout.addWidget(self._dateLabel, 1, 1)
-        infoLayout.setColumnStretch(1, 1)
-        rightLayout.addWidget(infoGroup)
+        newRepoButton = QPushButton("New Repository", self._leftSide)
+        newRepoButton.clicked.connect(self._new_repo_clicked)
+        self._leftLayout.addWidget(newRepoButton)
 
-        branchesGroup = QGroupBox("Branches", rightSide)
-        branchesLayout = QGridLayout(branchesGroup)
-        self._branchesTable = QTableWidget(0, 2, branchesGroup)
-        self._branchesTable.setHorizontalHeaderLabels(('Identifier', 'Date'))
-        horizontalHeader = self._branchesTable.horizontalHeader()
-        horizontalHeader.setSectionsClickable(False)
-        horizontalHeader.setSectionResizeMode(0, horizontalHeader.Stretch)
-        self._branchesTable.verticalHeader().setVisible(False)
-        self._branchesTable.setSelectionBehavior(QTableWidget.SelectRows)
-        self._branchesTable.setSelectionMode(QTableWidget.SingleSelection)
-        self._branchesTable.itemClicked.connect(self._branch_clicked)
-        branchesLayout.addWidget(self._branchesTable, 0, 0)
-        rightLayout.addWidget(branchesGroup)
+        self._newBranchButton = QPushButton("New Branch", self._branchesGroup)
+        self._newBranchButton.setEnabled(False)
+        self._newBranchButton.clicked.connect(self._new_branch_clicked)
+        self._branchesLayout.addWidget(self._newBranchButton)
 
-        buttonsWidget = QWidget(rightSide)
-        buttonsLayout = QHBoxLayout(buttonsWidget)
-        buttonsLayout.addStretch()
-        self._saveButton = QPushButton("Save")
-        self._saveButton.setEnabled(False)
-        self._saveButton.clicked.connect(self.accept)
-        buttonsLayout.addWidget(self._saveButton)
+    def _repo_clicked(self):
+        super(SaveDialog, self)._repo_clicked()
+        self._repo = self._reposTable.selectedItems()[0].data(Qt.UserRole)
+        self._newBranchButton.setEnabled(True)
+
+    def _new_repo_clicked(self):
+        """
+        Called when the new repository button is clicked.
+        """
+        dialog = NewRepoDialog(self._plugin)
+        dialog.accepted.connect(partial(self._new_repo_accepted, dialog))
+        dialog.exec_()
+
+    def _new_repo_accepted(self, dialog):
+        """
+        Called when the new repository dialog is accepted by the user.
+
+        :param dialog: the dialog
+        """
+        name = dialog.get_result()
+        if any(repo.name == name for repo in self._repos):
+            failure = QMessageBox()
+            failure.setIcon(QMessageBox.Warning)
+            failure.setStandardButtons(QMessageBox.Ok)
+            failure.setText("A repository with that name already exists!")
+            failure.setWindowTitle("New Repository")
+            iconPath = self._plugin.resource('upload.png')
+            failure.setWindowIcon(QIcon(iconPath))
+            failure.exec_()
+            return
+
+        hash = idautils.GetInputFileMD5().lower()
+        file = idc.GetInputFile()
+        type = idaapi.get_file_type_name()
+        dateFormat = "%Y/%m/%d %H:%M"
+        date = datetime.datetime.now().strftime(dateFormat)
+        repo = Repository(name, hash, file, type, date)
+        d = self._plugin.network.send_packet(NewRepository.Query(repo))
+        d.add_callback(partial(self._on_new_repo, repo))
+        d.add_errback(logger.exception)
+
+    def _on_new_repo(self, repo, _):
+        """
+        Called when the new repository reply is received.
+
+        :param repo: the new repo
+        """
+        self._repos.append(repo)
+        self._refresh_repos()
+        row = len(self._repos) - 1
+        self._reposTable.selectRow(row)
+        self._acceptButton.setEnabled(False)
+
+    def _refresh_repos(self):
+        super(SaveDialog, self)._refresh_repos()
+        hash = idautils.GetInputFileMD5().lower()
+        for row in range(self._reposTable.rowCount()):
+            item = self._reposTable.item(row, 0)
+            repo = item.data(Qt.UserRole)
+            if repo.hash != hash:
+                item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
+
+    def _new_branch_clicked(self):
+        """
+        Called when the new branch button is clicked.
+        """
+        dialog = NewBranchDialog(self._plugin)
+        dialog.accepted.connect(partial(self._new_branch_accepted, dialog))
+        dialog.exec_()
+
+    def _new_branch_accepted(self, dialog):
+        """
+        Called when the new branch dialog is accepted by the user.
+
+        :param dialog: the dialog
+        """
+        name = dialog.get_result()
+        if any(br.name == name for br in self._branches):
+            failure = QMessageBox()
+            failure.setIcon(QMessageBox.Warning)
+            failure.setStandardButtons(QMessageBox.Ok)
+            failure.setText("A branch with that name already exists!")
+            failure.setWindowTitle("New Branch")
+            iconPath = self._plugin.resource('upload.png')
+            failure.setWindowIcon(QIcon(iconPath))
+            failure.exec_()
+            return
+
+        dateFormat = "%Y/%m/%d %H:%M"
+        date = datetime.datetime.now().strftime(dateFormat)
+        branch = Branch(self._repo.name, name, date, -1)
+        d = self._plugin.network.send_packet(NewBranch.Query(branch))
+        d.add_callback(partial(self._on_new_branch, branch))
+        d.add_errback(logger.exception)
+
+    def _on_new_branch(self, branch, _):
+        """
+        Called when the new branch reply is received.
+
+        :param branch: the new branch
+        """
+        self._branches.append(branch)
+        self._refresh_branches()
+        row = len(self._branches) - 1
+        self._branchesTable.selectRow(row)
+
+    def _refresh_branches(self):
+        super(SaveDialog, self)._refresh_branches()
+        for row in range(self._branchesTable.rowCount()):
+            for col in range(3):
+                item = self._branchesTable.item(row, col)
+                item.setFlags(item.flags() | Qt.ItemIsEnabled)
+
+
+class NewRepoDialog(QDialog):
+    """
+    The dialog allowing an user to create a new repository.
+    """
+
+    def __init__(self, plugin):
+        """
+        Initialize the new repo dialog.
+
+        :param plugin: the plugin instance
+        """
+        super(NewRepoDialog, self).__init__()
+
+        # General setup of the dialog
+        logger.debug("New repo dialog")
+        self.setWindowTitle("New Repository")
+        iconPath = plugin.resource('upload.png')
+        self.setWindowIcon(QIcon(iconPath))
+        self.resize(100, 100)
+
+        layout = QVBoxLayout(self)
+
+        self._nameLabel = QLabel("<b>Repository Name</b>")
+        layout.addWidget(self._nameLabel)
+        self._nameEdit = QLineEdit()
+        self._nameEdit.setValidator(QRegExpValidator(QRegExp("[a-zA-Z0-9-]+")))
+        layout.addWidget(self._nameEdit)
+
+        buttons = QWidget(self)
+        buttonsLayout = QHBoxLayout(buttons)
+        createButton = QPushButton("Create")
+        createButton.clicked.connect(self.accept)
+        buttonsLayout.addWidget(createButton)
         cancelButton = QPushButton("Cancel")
         cancelButton.clicked.connect(self.reject)
         buttonsLayout.addWidget(cancelButton)
-        rightLayout.addWidget(buttonsWidget)
-        layout.addWidget(rightSide)
-
-    def _repo_clicked(self, item):
-        """
-        Called when a repository item is clicked, will update the display.
-
-        :param item: the item clicked
-        """
-        repo = item.data(Qt.UserRole)
-        repo = repo if repo else Repository('', '', '', '')
-        self._fileLabel.setText('<b>File:</b> %s' % str(repo.file))
-        self._hashLabel.setText('<b>Hash:</b> %s' % str(repo.hash))
-        self._typeLabel.setText('<b>Type:</b> %s' % str(repo.type))
-        self._dateLabel.setText('<b>Date:</b> %s' % str(repo.date))
-
-        # Display the list of branches for the selected repository
-        branches = [br for br in self._branches if br.hash == repo.hash]
-        self._branchesTable.setRowCount(len(branches) + 1)
-        for i, br in enumerate(branches):
-            item = QTableWidgetItem(str(br.uuid))
-            item.setData(Qt.UserRole, br)
-            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self._branchesTable.setItem(i, 0, item)
-            item = QTableWidgetItem(str(br.date))
-            item.setData(Qt.UserRole, br)
-            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self._branchesTable.setItem(i, 1, item)
-        newItem = QTableWidgetItem("<new branch>")
-        item.setData(Qt.UserRole, None)
-        newItem.setFlags(newItem.flags() & ~Qt.ItemIsEditable)
-        self._branchesTable.setItem(len(branches), 0, newItem)
-        newItem = QTableWidgetItem()
-        item.setData(Qt.UserRole, None)
-        newItem.setFlags(newItem.flags() & ~Qt.ItemIsEditable)
-        self._branchesTable.setItem(len(branches), 1, newItem)
-
-    def _branch_clicked(self, _):
-        """
-        Called when a branch item is clicked.
-        """
-        self._saveButton.setEnabled(True)
+        layout.addWidget(buttons)
 
     def get_result(self):
         """
-        Get the result (repository, branch) from this dialog.
+        Get the user-specified name from this dialog.
 
-        :return: the result
+        :return: the name
         """
-        repo = self._reposTable.currentItem().data(Qt.UserRole)
-        return repo, self._branchesTable.currentItem().data(Qt.UserRole)
+        return self._nameEdit.text()
+
+
+class NewBranchDialog(NewRepoDialog):
+    """
+    The dialog allowing an user to create a new branch.
+    """
+
+    def __init__(self, plugin):
+        """
+        Initialize the new branch dialog.
+
+        :param plugin: the plugin instance
+        """
+        super(NewBranchDialog, self).__init__(plugin)
+        self.setWindowTitle("New Branch")
+        self._nameLabel.setText("<b>Branch Name</b>")
 
 
 class NetworkSettingsDialog(QDialog):
@@ -325,7 +433,7 @@ class NetworkSettingsDialog(QDialog):
         layout = QVBoxLayout(self)
         servers = self._plugin.core.servers
         self._serversTable = QTableWidget(len(servers), 1, self)
-        self._serversTable.setHorizontalHeaderLabels(("Server List",))
+        self._serversTable.setHorizontalHeaderLabels(("Servers",))
         for i, server in enumerate(servers):
             item = QTableWidgetItem('%s:%d' % (server.host, server.port))
             item.setData(Qt.UserRole, server)
@@ -423,12 +531,11 @@ class AddServerDialog(QDialog):
         :param plugin: the plugin instance
         """
         super(AddServerDialog, self).__init__()
-        self._plugin = plugin
 
         # General setup of the dialog
         logger.debug("Add server settings dialog")
         self.setWindowTitle("Add Server")
-        iconPath = self._plugin.resource('settings.png')
+        iconPath = plugin.resource('settings.png')
         self.setWindowIcon(QIcon(iconPath))
         self.resize(100, 100)
 

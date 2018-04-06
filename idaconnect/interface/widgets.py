@@ -14,7 +14,7 @@ import logging
 
 from PyQt5.QtCore import Qt, QSize, QPoint
 from PyQt5.QtGui import QPixmap, QIcon, QPainter
-from PyQt5.QtWidgets import QWidget, QLabel, QMenu, QActionGroup, QAction
+from PyQt5.QtWidgets import QWidget, QLabel, QMenu, QAction, QActionGroup
 
 from .dialogs import NetworkSettingsDialog
 
@@ -32,13 +32,6 @@ class StatusWidget(QWidget):
 
     # Server enumeration
     SERVER_DISCONNECTED = '&lt;no server&gt;'
-
-    # States information
-    _BY_STATE = {
-        STATE_DISCONNECTED: ('red', 'Disconnected', 'disconnected.png'),
-        STATE_CONNECTING: ('orange', 'Connecting', 'connecting.png'),
-        STATE_CONNECTED: ('green', 'Connected', 'connected.png')
-    }
 
     def __init__(self, plugin):
         """
@@ -75,7 +68,14 @@ class StatusWidget(QWidget):
         logger.debug("Updating widget state")
 
         # Get color, text and icon from state
-        color, text, icon = StatusWidget._BY_STATE[self._state]
+        color, text, icon = {
+            StatusWidget.STATE_DISCONNECTED: ('red', 'Disconnected',
+                                              'disconnected.png'),
+            StatusWidget.STATE_CONNECTING: ('orange', 'Connecting',
+                                            'connecting.png'),
+            StatusWidget.STATE_CONNECTED: ('green', 'Connected',
+                                           'connected.png')
+        }[self._state]
 
         # Update the text of the widget
         textFmt = '%s | %s -- <span style="color: %s;">%s</span>'

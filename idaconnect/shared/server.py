@@ -12,6 +12,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import collections
 import logging
+import os
 import socket
 
 from .database import Database
@@ -61,18 +62,18 @@ class ServerClient(ClientSocket):
     @property
     def repo(self):
         """
-        Get the current repository hash.
+        Get the current repository.
 
-        :return: the hash
+        :return: the name
         """
         return self._repo
 
     @property
     def branch(self):
         """
-        Get the current branch UUID.
+        Get the current branch.
 
-        :return: the UUID
+        :return: the name
         """
         return self._branch
 
@@ -113,12 +114,19 @@ class ServerClient(ClientSocket):
         return True
 
     def _handle_get_repositories(self, query):
-        repos = self.parent().database.select_repos(query.hash)
+        repos = self.parent().database.select_repos()
         self.send_packet(GetRepositories.Reply(query, repos))
 
     def _handle_get_branches(self, query):
-        branches = self.parent().database.select_branches(query.uuid,
-                                                          query.hash)
+        branches = self.parent().database.select_branches(query.repo)
+        for branch in branches:
+            branchInfo = branch.repo, branch.name
+            fileName = '%s_%s.idb' % branchInfo
+            filePath = self.parent().local_file(fileName)
+            if os.path.isfile(filePath):
+                branch.tick = self.parent().database.last_tick(*branchInfo)
+            else:
+                branch.tick = -1
         self.send_packet(GetBranches.Reply(query, branches))
 
     def _handle_new_repository(self, query):
@@ -130,9 +138,8 @@ class ServerClient(ClientSocket):
         self.send_packet(NewBranch.Reply(query))
 
     def _handle_upload_database(self, query):
-        branch = self.parent().database.select_branch(query.uuid, query.hash)
-        fileName = branch.uuid + (
-            '.i64' if branch.bits == 64 else '.idb')
+        branch = self.parent().database.select_branch(query.repo, query.branch)
+        fileName = '%s_%s.idb' % (branch.repo, branch.name)
         filePath = self.parent().local_file(fileName)
 
         # Write the file received to disk
@@ -142,9 +149,8 @@ class ServerClient(ClientSocket):
         self.send_packet(UploadDatabase.Reply(query))
 
     def _handle_download_database(self, query):
-        branch = self.parent().database.select_branch(query.uuid, query.hash)
-        fileName = branch.uuid + (
-            '.i64' if branch.bits == 64 else '.idb')
+        branch = self.parent().database.select_branch(query.repo, query.branch)
+        fileName = '%s_%s.idb' % (branch.repo, branch.name)
         filePath = self.parent().local_file(fileName)
 
         # Read file from disk and sent it
@@ -154,8 +160,8 @@ class ServerClient(ClientSocket):
         self.send_packet(reply)
 
     def _handle_subscribe(self, packet):
-        self._repo = packet.hash
-        self._branch = packet.uuid
+        self._repo = packet.repo
+        self._branch = packet.branch
         self.parent().register_client(self)
 
         # Send all missed events

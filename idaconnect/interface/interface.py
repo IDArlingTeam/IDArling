@@ -12,7 +12,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import logging
 
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel
+from PyQt5.QtWidgets import QApplication, QMainWindow
 
 from ..module import Module
 from .actions import OpenAction, SaveAction
@@ -43,13 +43,13 @@ class Interface(Module):
 
         self._openAction = OpenAction(plugin)
         self._saveAction = SaveAction(plugin)
-        self._statusWidget = None
+
+        self._statusWidget = StatusWidget(self._plugin)
 
     def _install(self):
         self._openAction.install()
         self._saveAction.install()
 
-        self._statusWidget = StatusWidget(self._plugin)
         self._window.statusBar().addPermanentWidget(self._statusWidget)
         logger.debug("Installed widgets in status bar")
         return True

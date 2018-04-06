@@ -44,16 +44,18 @@ class Repository(Model):
     The class representing a repository.
     """
 
-    def __init__(self, hash, file, type, date):
+    def __init__(self, name, hash, file, type, date):
         """
         Initialize a repository.
 
+        :param name: the repository name
         :param hash: the hash of the input file
         :param file: the name of the input file
         :param type: the type of the input file
         :param date: the date of creation
         """
         super(Repository, self).__init__()
+        self.name = name
         self.hash = hash
         self.file = file
         self.type = type
@@ -65,17 +67,17 @@ class Branch(Model):
     The class representing a branch.
     """
 
-    def __init__(self, uuid, hash, date, bits):
+    def __init__(self, repo, name, date, tick=0):
         """
         Initialize a branch.
 
-        :param uuid: the UUID of the branch
-        :param hash: the hash of the input file
+        :param repo: the name of the repo
+        :param name: the name of the branch
         :param date: the date of creation
-        :param bits: the bitness (32/64) of IDA
+        :param tick: the last tick received
         """
         super(Branch, self).__init__()
-        self.uuid = uuid
-        self.hash = hash
+        self.repo = repo
+        self.name = name
         self.date = date
-        self.bits = bits
+        self.tick = tick

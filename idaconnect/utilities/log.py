@@ -12,49 +12,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import logging
 import os
-import sys
 
 from .misc import local_resource
-
-
-class LoggerProxy(object):
-    """
-    A proxy class used to redirect a standard stream to a logger.
-    """
-
-    def __init__(self, stream, logger, level=logging.INFO):
-        """
-        Initialize the proxy class.
-
-        :param stream: the stream to redirect
-        :param logger: the logger to use
-        :param level: the log level to use
-        """
-        self._stream = stream
-        self._logger = logger
-        self._level = level
-
-    def write(self, buf):
-        """
-        Called when a string is being written.
-
-        :param buf: the string
-        """
-        for line in buf.rstrip().splitlines():
-            self._logger.log(self._level, line.rstrip())
-        return self._stream.write(buf)
-
-    def flush(self):
-        """
-        Called to flush the internal buffer.
-        """
-        pass
-
-    def isatty(self):
-        """
-        Called to check if this is a tty.
-        """
-        pass
 
 
 def start_logging():

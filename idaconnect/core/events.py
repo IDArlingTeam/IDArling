@@ -23,7 +23,6 @@ import idaapi
 import idc
 
 from ..shared.packets import DefaultEvent
-from ..utilities.misc import refresh_pseudocode_view
 
 logger = logging.getLogger('IDAConnect.Core')
 
@@ -632,7 +631,22 @@ class BytePatchedEvent(Event):
         idaapi.patch_byte(self.ea, self.value)
 
 
-class UserLabelsEvent(Event):
+class HexRaysEvent(Event):
+
+    @staticmethod
+    def refresh_pseudocode_view():
+        """
+        Refresh the pseudocode view in IDA.
+        """
+        names = ['Pseudocode-%c' % chr(ord('A') + i) for i in range(5)]
+        for name in names:
+            widget = idaapi.find_widget(name)
+            if widget:
+                vu = idaapi.get_widget_vdui(widget)
+                vu.refresh_view(True)
+
+
+class UserLabelsEvent(HexRaysEvent):
     __event__ = 'user_labels'
 
     def __init__(self, ea, labels):
@@ -645,10 +659,10 @@ class UserLabelsEvent(Event):
         for org_label, name in self.labels:
             idaapi.user_labels_insert(labels, org_label, Event.encode(name))
         idaapi.save_user_labels(self.ea, labels)
-        refresh_pseudocode_view()
+        HexRaysEvent.refresh_pseudocode_view()
 
 
-class UserCmtsEvent(Event):
+class UserCmtsEvent(HexRaysEvent):
     __event__ = 'user_cmts'
 
     def __init__(self, ea, cmts):
@@ -664,10 +678,10 @@ class UserCmtsEvent(Event):
             tl.itp = tl_itp
             cmts.insert(tl, idaapi.citem_cmt_t(Event.encode(cmt)))
         idaapi.save_user_cmts(self.ea, cmts)
-        refresh_pseudocode_view()
+        HexRaysEvent.refresh_pseudocode_view()
 
 
-class UserIflagsEvent(Event):
+class UserIflagsEvent(HexRaysEvent):
     __event__ = 'user_iflags'
 
     def __init__(self, ea, iflags):
@@ -684,17 +698,17 @@ class UserIflagsEvent(Event):
         # idaapi.save_user_iflags(self.ea, iflags)
 
         idaapi.save_user_iflags(self.ea, idaapi.user_iflags_new())
-        refresh_pseudocode_view()
+        HexRaysEvent.refresh_pseudocode_view()
 
         cfunc = idaapi.decompile(self.ea)
         for (cl_ea, cl_op), f in self.iflags:
             cl = idaapi.citem_locator_t(cl_ea, cl_op)
             cfunc.set_user_iflags(cl, f)
         cfunc.save_user_iflags()
-        refresh_pseudocode_view()
+        HexRaysEvent.refresh_pseudocode_view()
 
 
-class UserLvarSettingsEvent(Event):
+class UserLvarSettingsEvent(HexRaysEvent):
     __event__ = 'user_lvar_settings'
 
     def __init__(self, ea, lvar_settings):
@@ -719,7 +733,7 @@ class UserLvarSettingsEvent(Event):
         lvinf.stkoff_delta = self.lvar_settings['stkoff_delta']
         lvinf.ulv_flags = self.lvar_settings['ulv_flags']
         idaapi.save_user_lvar_settings(self.ea, lvinf)
-        refresh_pseudocode_view()
+        HexRaysEvent.refresh_pseudocode_view()
 
     @staticmethod
     def _get_lvar_saved_info(dct):

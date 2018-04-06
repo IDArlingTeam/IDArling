@@ -23,7 +23,7 @@ def local_resource(dirname, filename):
 
     :param dirname: the directory name
     :param filename: the file name
-    :return: the path
+    :return: the path of the resource
     """
     resDir = os.path.join(LOCAL_PATH, dirname)
     if not os.path.exists(resDir):
@@ -39,18 +39,6 @@ def plugin_resource(filename):
     Get the absolute path of a plugin resource.
 
     :param filename: the filename
-    :return: the path
+    :return: the path of the resource
     """
     return os.path.join(PLUGIN_PATH, 'resources', filename)
-
-
-def refresh_pseudocode_view():
-    """
-    Refresh the pseudocode view in IDA.
-    """
-    names = ['Pseudocode-%c' % chr(ord('A') + i) for i in range(5)]
-    for name in names:
-        widget = idaapi.find_widget(name)
-        if widget:
-            vu = idaapi.get_widget_vdui(widget)
-            vu.refresh_view(True)
