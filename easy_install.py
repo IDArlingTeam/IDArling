@@ -15,13 +15,13 @@ import shutil
 import zipfile
 import urllib2
 
-import idaapi
+import ida_diskio
 
 if 'URL' not in locals():
     URL = 'https://github.com/IDAConnect/IDAConnect/archive/master.zip'
 
 print('[*] Installing IDAConnect...')
-userDir = idaapi.get_user_idadir()
+userDir = ida_diskio.get_user_idadir()
 if not os.path.exists(userDir):
     os.makedirs(userDir, 0755)
 pluginDir = os.path.join(userDir, 'idaconnect')
@@ -65,13 +65,17 @@ if os.path.exists(archiveDir):
 print('[*] Loading IDAConnect into IDA Pro...')
 content = '''
 #-----BEGIN IDACONNECT-----
+import os
+import ida_diskio
+import ida_kernwin
+import ida_loader
+
 def load():
-    import os
-    userDir = idaapi.get_user_idadir()
+    userDir = ida_diskio.get_user_idadir()
     pluginDir = os.path.join(userDir, 'idaconnect')
     pluginPath = os.path.join(pluginDir, 'idaconnect_plugin.py')
-    idaapi.load_plugin(pluginPath)
-idaapi.register_timer(0, load)
+    ida_loader.load_plugin(pluginPath)
+ida_kernwin.register_timer(0, load)
 #-----END IDACONNECT-----
 '''
 exec(content)

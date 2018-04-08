@@ -15,9 +15,8 @@ import logging
 from collections import namedtuple
 from functools import partial
 
-import idaapi
-import idautils
-import idc
+import ida_loader
+import ida_nalt
 
 from PyQt5.QtCore import Qt, QRegExp
 from PyQt5.QtGui import QIcon, QRegExpValidator
@@ -263,9 +262,9 @@ class SaveDialog(OpenDialog):
             failure.exec_()
             return
 
-        hash = idautils.GetInputFileMD5().lower()
-        file = idc.GetInputFile()
-        type = idaapi.get_file_type_name()
+        hash = ida_nalt.retrieve_input_file_md5().lower()
+        file = ida_nalt.get_root_filename()
+        type = ida_loader.get_file_type_name()
         dateFormat = "%Y/%m/%d %H:%M"
         date = datetime.datetime.now().strftime(dateFormat)
         repo = Repository(name, hash, file, type, date)
@@ -287,7 +286,7 @@ class SaveDialog(OpenDialog):
 
     def _refresh_repos(self):
         super(SaveDialog, self)._refresh_repos()
-        hash = idautils.GetInputFileMD5().lower()
+        hash = ida_nalt.retrieve_input_file_md5().lower()
         for row in range(self._reposTable.rowCount()):
             item = self._reposTable.item(row, 0)
             repo = item.data(Qt.UserRole)

@@ -17,7 +17,7 @@ import os
 
 import ida_idp
 import ida_kernwin
-import idaapi
+import ida_netnode
 
 from ..module import Module
 from ..shared.commands import Subscribe, Unsubscribe
@@ -188,7 +188,7 @@ class Core(Module):
         """
         Load members from the custom netnode.
         """
-        node = idaapi.netnode(Core.NETNODE_NAME, 0, True)
+        node = ida_netnode.netnode(Core.NETNODE_NAME, 0, True)
         self._repo = node.hashval('repo') or None
         self._branch = node.hashval('branch') or None
         self._tick = int(node.hashval('tick') or '0')
@@ -200,7 +200,7 @@ class Core(Module):
         """
         Save members to the custom netnode.
         """
-        node = idaapi.netnode(Core.NETNODE_NAME, 0, True)
+        node = ida_netnode.netnode(Core.NETNODE_NAME, 0, True)
         if self._repo:
             node.hashset('repo', str(self._repo))
         if self._branch:

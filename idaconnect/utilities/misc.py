@@ -12,9 +12,9 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import os
 
-import idaapi
+import ida_diskio
 
-LOCAL_PATH = os.path.join(idaapi.get_user_idadir(), 'idaconnect')
+LOCAL_PATH = os.path.join(ida_diskio.get_user_idadir(), 'idaconnect')
 
 
 def local_resource(dirname, filename):

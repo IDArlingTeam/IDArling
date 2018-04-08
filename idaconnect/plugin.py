@@ -10,7 +10,8 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import idaapi
+import ida_idaapi
+import ida_kernwin
 
 from .core.core import Core
 from .interface.interface import Interface
@@ -22,7 +23,7 @@ from .utilities.misc import plugin_resource
 logger = start_logging()
 
 
-class Plugin(idaapi.plugin_t):
+class Plugin(ida_idaapi.plugin_t):
     """
     The IDAConnect plugin.
     """
@@ -32,7 +33,7 @@ class Plugin(idaapi.plugin_t):
     PLUGIN_AUTHORS = "The IDAConnect Team"
 
     # External definitions
-    flags = idaapi.PLUGIN_FIX | idaapi.PLUGIN_HIDE
+    flags = ida_idaapi.PLUGIN_FIX | ida_idaapi.PLUGIN_HIDE
     comment = "Collaborative Reverse Engineering plugin"
     help = ""
     wanted_name = PLUGIN_NAME
@@ -104,12 +105,12 @@ class Plugin(idaapi.plugin_t):
         except Exception as e:
             logger.error("Failed to initialize")
             logger.exception(e)
-            skip = idaapi.PLUGIN_SKIP
+            skip = ida_idaapi.PLUGIN_SKIP
             return skip
 
         self._print_banner()
         logger.info("Successfully initialized")
-        keep = idaapi.PLUGIN_KEEP
+        keep = ida_idaapi.PLUGIN_KEEP
         return keep
 
     def _init(self):
@@ -155,7 +156,7 @@ class Plugin(idaapi.plugin_t):
         """
         This method is called when IDA is running the plugin as a script.
         """
-        idaapi.warning("IDAConnect cannot be run as a script")
+        ida_kernwin.warning("IDAConnect cannot be run as a script")
         return False
 
     def notify_disconnected(self):

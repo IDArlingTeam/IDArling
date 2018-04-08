@@ -13,10 +13,9 @@
 import logging
 from functools import partial
 
+import ida_idaapi
 import ida_loader
 import ida_kernwin
-import idaapi
-import idc
 
 from PyQt5.QtCore import Qt, QProcess
 from PyQt5.QtGui import QIcon
@@ -52,7 +51,7 @@ class Action(object):
         self._icon = icon
         self._handler = handler
 
-        self._iconId = idaapi.BADADDR
+        self._iconId = ida_idaapi.BADADDR
 
     def install(self):
         """
@@ -62,21 +61,21 @@ class Action(object):
         """
         # Read and load the icon file
         iconData = str(open(self._icon, 'rb').read())
-        self._iconId = idaapi.load_custom_icon(data=iconData)
+        self._iconId = ida_kernwin.load_custom_icon(data=iconData)
 
         # Create the action description
-        actionDesc = idaapi.action_desc_t(self._ACTION_ID, self._text,
-                                          self._handler, None, self._tooltip,
-                                          self._iconId)
+        actionDesc = ida_kernwin.action_desc_t(self._ACTION_ID, self._text,
+                                               self._handler, None,
+                                               self._tooltip, self._iconId)
 
         # Register the action using its description
-        result = idaapi.register_action(actionDesc)
+        result = ida_kernwin.register_action(actionDesc)
         if not result:
             raise RuntimeError("Failed to register action")
 
         # Attach the action to the chosen menu
-        result = idaapi.attach_action_to_menu(self._menu, self._ACTION_ID,
-                                              idaapi.SETMENU_APP)
+        result = ida_kernwin.attach_action_to_menu(self._menu, self._ACTION_ID,
+                                                   ida_kernwin.SETMENU_APP)
         if not result:
             raise RuntimeError("Failed to attach action")
 
@@ -90,18 +89,19 @@ class Action(object):
         :return: did the uninstall succeed
         """
         # Detach the action from the chosen menu
-        result = idaapi.detach_action_from_menu(self._menu, self._ACTION_ID)
+        result = ida_kernwin.detach_action_from_menu(self._menu,
+                                                     self._ACTION_ID)
         if not result:
             return False
 
         # Un-register the action using its id
-        result = idaapi.unregister_action(self._ACTION_ID)
+        result = ida_kernwin.unregister_action(self._ACTION_ID)
         if not result:
             return False
 
         # Free the custom icon using its id
-        idaapi.free_custom_icon(self._iconId)
-        self._iconId = idaapi.BADADDR
+        ida_kernwin.free_custom_icon(self._iconId)
+        self._iconId = ida_idaapi.BADADDR
 
         logger.debug("Uninstalled the action")
         return True
@@ -114,7 +114,7 @@ class Action(object):
                                         self._handler.update(None))
 
 
-class ActionHandler(idaapi.action_handler_t):
+class ActionHandler(ida_kernwin.action_handler_t):
     """
     This is the base class for all action handlers of the interface module.
     """
@@ -149,8 +149,8 @@ class ActionHandler(idaapi.action_handler_t):
         :return: should the action be enabled or not
         """
         if self._plugin.network.connected:
-            return idaapi.AST_ENABLE
-        return idaapi.AST_DISABLE
+            return ida_kernwin.AST_ENABLE
+        return ida_kernwin.AST_DISABLE
 
     def activate(self, ctx):
         """
@@ -234,7 +234,7 @@ class OpenActionHandler(ActionHandler):
         self._on_progress(progress, 1, 1)
 
         # Get the absolute path of the file
-        fileExt = 'i64' if idc.__EA64__ else 'idb'
+        fileExt = 'i64' if __EA64__ else 'idb'
         fileName = '%s_%s.%s' % (branch.repo, branch.name, fileExt)
         filePath = local_resource('files', fileName)
 
@@ -244,9 +244,9 @@ class OpenActionHandler(ActionHandler):
         logger.info("Saved file %s" % fileName)
 
         # Save the old database
-        database = idc.GetIdbPath()
+        database = ida_loader.get_path(ida_loader.PATH_TYPE_IDB)
         if database:
-            idc.save_database(database, ida_loader.DBFL_KILL)
+            ida_loader.save_database(database, ida_loader.DBFL_KILL)
         # Save the current state
         self._plugin.core.save_state(True, database)
         # Open the new database
@@ -276,8 +276,8 @@ class SaveActionHandler(ActionHandler):
     _DIALOG = SaveDialog
 
     def update(self, ctx):
-        if not idc.GetIdbPath():
-            return idaapi.AST_DISABLE
+        if not ida_loader.get_path(ida_loader.PATH_TYPE_IDB):
+            return ida_kernwin.AST_DISABLE
         return super(SaveActionHandler, self).update(ctx)
 
     def _dialog_accepted(self, dialog):
@@ -287,11 +287,11 @@ class SaveActionHandler(ActionHandler):
 
         # Save the current database
         self._plugin.core.save_netnode()
-        idc.save_database(idc.GetIdbPath(), 0)
+        inputPath = ida_loader.get_path(ida_loader.PATH_TYPE_IDB)
+        ida_loader.save_database(inputPath, 0)
 
         # Create the packet that will hold the database
         packet = UploadDatabase.Query(repo.name, branch.name)
-        inputPath = idc.GetIdbPath()
         with open(inputPath, 'rb') as inputFile:
             packet.content = inputFile.read()
 
