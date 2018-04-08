@@ -14,7 +14,7 @@ import os
 
 import idaapi
 
-LOCAL_PATH = os.path.join(idaapi.get_user_idadir(), '.idaconnect')
+LOCAL_PATH = os.path.join(idaapi.get_user_idadir(), 'idaconnect')
 
 
 def local_resource(dirname, filename):

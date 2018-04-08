@@ -27,9 +27,9 @@ Install the IDAConnect client into the IDA plugins folder.
     - On Windows, the folder is at `C:\Program Files\IDA 7.0\plugins`
     - On macOS, the folder is at `/Applications/IDA\ Pro\ 7.0/idaq.app/Contents/MacOS/plugins`
     - On Linux, the folder may be at `/opt/IDA/plugins/`
-- Alternatively, you can use the "easy install" method by copying the following line into the console of an IDA Pro instance running with administrator privilege (to be able to write the program files directory):
+- Alternatively, you can use the "easy install" method by copying the following line into the console:
 ```
-import urllib2; exec urllib2.urlopen('https://raw.githubusercontent.com/IDAConnect/IDAConnect/master/easy_install.py').read()
+import urllib2; exec(urllib2.urlopen('https://raw.githubusercontent.com/IDAConnect/IDAConnect/master/easy_install.py')).read()
 ```
 
 **Warning:** The plugin is only compatible with IDA Pro 7.0 on Windows, macOS, and Linux.

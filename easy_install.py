@@ -17,47 +17,74 @@ import urllib2
 
 import idaapi
 
-MASTER_LOCATION = 'https://github.com/IDAConnect/IDAConnect/archive/master.zip'
-FILES_TO_MOVE = ['idaconnect_plugin.py', 'idaconnect/']
+if 'URL' not in locals():
+    URL = 'https://github.com/IDAConnect/IDAConnect/archive/master.zip'
 
 print('[*] Installing IDAConnect...')
-pluginsDir = os.path.join(idaapi.idadir(None), 'plugins')
-archivePath = os.path.join(pluginsDir, 'master.zip')
-masterDir = os.path.join(pluginsDir, 'IDAConnect-master')
+userDir = idaapi.get_user_idadir()
+if not os.path.exists(userDir):
+    os.makedirs(userDir, 0755)
+pluginDir = os.path.join(userDir, 'idaconnect')
+if not os.path.exists(pluginDir):
+    os.makedirs(pluginDir, 0755)
 
 print('[*] Downloading master.zip archive...')
+archivePath = os.path.join(userDir, 'master.zip')
 if os.path.exists(archivePath):
     os.remove(archivePath)
 with open(archivePath, 'wb') as f:
-    f.write(urllib2.urlopen(MASTER_LOCATION).read())
+    f.write(urllib2.urlopen(URL).read())
 
 print('[*] Unzipping master.zip archive...')
-if os.path.exists(masterDir):
-    shutil.rmtree(masterDir)
-with zipfile.ZipFile(archivePath, 'r') as z:
-    for zf in z.namelist():
-        if zf.startswith('IDAConnect-master/'):
-            z.extract(zf, pluginsDir)
+archiveDir = os.path.join(userDir, 'IDAConnect-master')
+if os.path.exists(archiveDir):
+    shutil.rmtree(archiveDir)
+with zipfile.ZipFile(archivePath, 'r') as zip:
+    for zipfile in zip.namelist():
+        if zipfile.startswith(os.path.basename(archiveDir)):
+            zip.extract(zipfile, userDir)
 
 print('[*] Moving the IDAConnect files...')
-for filename in FILES_TO_MOVE:
-    masterPath = os.path.join(masterDir, filename)
-    pluginPath = os.path.join(pluginsDir, filename)
-    if os.path.exists(pluginPath):
-        if os.path.isdir(pluginPath):
-            shutil.rmtree(pluginPath)
-        if os.path.isfile(pluginPath):
-            os.remove(pluginPath)
-    shutil.move(masterPath, pluginPath)
+srcPath = os.path.join(archiveDir, 'idaconnect_plugin.py')
+dstPath = os.path.join(pluginDir, os.path.basename(srcPath))
+if os.path.exists(dstPath):
+    os.remove(dstPath)
+shutil.move(srcPath, dstPath)
+srcDir = os.path.join(archiveDir, 'idaconnect')
+dstDir = os.path.join(pluginDir, os.path.basename(srcDir))
+if os.path.exists(dstDir):
+    shutil.rmtree(dstDir)
+shutil.move(srcDir, dstDir)
 
 print('[*] Removing master.zip archive...')
 if os.path.exists(archivePath):
     os.remove(archivePath)
-if os.path.exists(masterDir):
-    shutil.rmtree(masterDir)
+if os.path.exists(archiveDir):
+    shutil.rmtree(archiveDir)
 
 print('[*] Loading IDAConnect into IDA Pro...')
-pluginPath = os.path.join(pluginsDir, 'idaconnect_plugin.py')
-idaapi.load_plugin(pluginPath)
+content = '''
+#-----BEGIN IDACONNECT-----
+def load():
+    import os
+    userDir = idaapi.get_user_idadir()
+    pluginDir = os.path.join(userDir, 'idaconnect')
+    pluginPath = os.path.join(pluginDir, 'idaconnect_plugin.py')
+    idaapi.load_plugin(pluginPath)
+idaapi.register_timer(0, load)
+#-----END IDACONNECT-----
+'''
+exec(content)
+
+print('[*] Editing idapythonrc.py file...')
+idapyrcPath = os.path.join(userDir, 'idapythonrc.py')
+idapyrcContent = ''
+if os.path.exists(idapyrcPath):
+    with open(idapyrcPath, 'r') as f:
+        idapyrcContent = f.read()
+
+if content.split('\n')[1] not in idapyrcContent:
+    with open(idapyrcPath, 'a') as f:
+        f.write(content)
 
 print('[*] IDAConnect installed successfully!')
