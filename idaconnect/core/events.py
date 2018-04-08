@@ -32,7 +32,7 @@ class Event(DefaultEvent):
     @staticmethod
     def encode(s):
         """
-        Encodes a unicode string to the appropriate charset.
+        Encodes a unicode string to a string using the appropriate charset.
 
         :param s: the Python string
         :return: the IDA string
@@ -42,9 +42,19 @@ class Event(DefaultEvent):
         return s.encode('utf-8')
 
     @staticmethod
+    def encode_bytes(s):
+        """
+        Encodes a unicode string to a string of bytes (no charset).
+
+        :param s: the Python string
+        :return: the IDA string
+        """
+        return s.encode('raw_unicode_escape')
+
+    @staticmethod
     def decode(s):
         """
-        Decodes a string from the appropriate charset to unicode.
+        Decodes a string to unicode using the appropriate charset.
 
         :param s: the IDA string
         :return: the Python string
@@ -52,6 +62,16 @@ class Event(DefaultEvent):
         if os.name == 'nt':
             return s.decode(locale.getpreferredencoding())
         return s.decode('utf-8')
+
+    @staticmethod
+    def decode_bytes(s):
+        """
+        Decodes a string of bytes to a unicode string (no charset).
+
+        :param s: the IDA string
+        :return: the Python string
+        """
+        return s.decode('raw_unicode_escape')
 
     def __call__(self):
         """
@@ -223,10 +243,11 @@ class TiChangedEvent(Event):
     def __init__(self, ea, py_type):
         super(TiChangedEvent, self).__init__()
         self.ea = ea
-        self.py_type = py_type
+        self.py_type = [Event.decode_bytes(t) for t in py_type]
 
     def __call__(self):
-        idc.apply_type(self.ea, self.py_type)
+        py_type = [Event.encode_bytes(t) for t in self.py_type]
+        idc.apply_type(self.ea, tuple(py_type))
 
 
 class OpTypeChangedEvent(Event):
