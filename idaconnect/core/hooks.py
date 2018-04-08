@@ -152,6 +152,12 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 spath.append(Event.decode(sname))
             extra['delta'] = delta.value()
             extra['spath'] = spath
+        elif flags & ida_bytes.stkvar_flag():
+            op = 'stkvar'
+        # IDA hooks for is_invsign seems broken
+        # Inverting sign don't trigger the hook
+        # elif ida_bytes.is_invsign(ea, flags, n):
+        #     op = 'invert_sign'
         else:
             return 0  # FIXME: Find a better way
         self._send_event(OpTypeChangedEvent(ea, n, op, extra))
@@ -333,6 +339,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                                         s.perm, s.bitness, s.flags))
         return 0
 
+    # This hook lack of disable addresses option
     def segm_deleted(self, start_ea, end_ea):
         self._send_event(SegmDeletedEvent(start_ea))
         return 0
@@ -351,6 +358,13 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
 
     def segm_class_changed(self, s, sclass):
         self._send_event(SegmClassChangedEvent(s.start_ea, sclass))
+        return 0
+
+    def segm_attrs_updated(self, s):
+        # This hook isn't triggered by segregs modifications
+        # ida_segregs.get_sreg()
+        # ida_segregs.split_sreg_range()
+        self._send_event(SegmAttrsUpdatedEvent(s.start_ea, s.perm, s.bitness))
         return 0
 
     def byte_patched(self, ea, old_value):

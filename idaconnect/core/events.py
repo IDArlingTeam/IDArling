@@ -290,6 +290,12 @@ class OpTypeChangedEvent(Event):
             ida_ua.decode_insn(insn, self.ea)
             ida_bytes.op_stroff(insn, self.n, path.cast(), path_len,
                                 self.extra['delta'])
+        if self.op == 'stkvar':
+            ida_bytes.op_stkvar(self.ea, self.n)
+        # IDA hooks for is_invsign seems broken
+        # Inverting sign don't trigger the hook
+        # if self.op == 'invert_sign':
+        #     idc.toggle_sign(ea, n)
 
 
 class EnumCreatedEvent(Event):
@@ -644,6 +650,22 @@ class SegmClassChangedEvent(Event):
     def __call__(self):
         seg = ida_segment.getseg(self.ea)
         ida_segment.set_segm_class(seg, self.sclass)
+
+
+class SegmAttrsUpdatedEvent(Event):
+    __event__ = 'segm_attrs_updated_event'
+
+    def __init__(self, ea, perm, bitness):
+        super(SegmAttrsUpdatedEvent, self).__init__()
+        self.ea = ea
+        self.perm = perm
+        self.bitness = bitness
+
+    def __call__(self):
+        s = ida_segment.getseg(self.ea)
+        s.perm = self.perm
+        s.bitness = self.bitness
+        s.update()
 
 
 class UndefinedEvent(Event):
