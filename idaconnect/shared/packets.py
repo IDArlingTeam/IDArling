@@ -335,7 +335,7 @@ class Event(with_metaclass(EventFactory, Packet)):
         return dct
 
     def parse(self, dct):
-        self._tick = dct['tick']
+        self._tick = dct.pop('tick')
         self.parse_event(dct)
         return self
 

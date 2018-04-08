@@ -17,7 +17,7 @@ import ida_idaapi
 import ida_loader
 import ida_kernwin
 
-from PyQt5.QtCore import Qt, QProcess
+from PyQt5.QtCore import Qt, QProcess, QCoreApplication, QFileInfo
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import qApp, QProgressDialog, QMessageBox
 
@@ -234,7 +234,9 @@ class OpenActionHandler(ActionHandler):
         self._on_progress(progress, 1, 1)
 
         # Get the absolute path of the file
-        fileExt = 'i64' if __EA64__ else 'idb'
+        appPath = QCoreApplication.applicationFilePath()
+        appName = QFileInfo(appPath).fileName()
+        fileExt = 'i64' if '64' in appName else 'idb'
         fileName = '%s_%s.%s' % (branch.repo, branch.name, fileExt)
         filePath = local_resource('files', fileName)
 

@@ -135,7 +135,7 @@ class Database(object):
         self._insert('events', {
             'repo': client.repo,
             'branch': client.branch,
-            'tick': dct.pop('tick'),
+            'tick': event.tick,
             'dict': json.dumps(dct)
         })
 
