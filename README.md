@@ -81,5 +81,5 @@ Thanks to Quarkslab for allowing this release.
 
 # Authors
 
-* Alexandre Adamski <<neat@quarkslab.com>>
-* Joffrey Guilbon <<patate@quarkslab.com>>
+* Alexandre Adamski <<neat@idarling.re>>
+* Joffrey Guilbon <<patate@idarling.re>>
