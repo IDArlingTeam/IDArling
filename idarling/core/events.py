@@ -30,7 +30,7 @@ import ida_ua
 
 from ..shared.packets import DefaultEvent
 
-logger = logging.getLogger('IDAConnect.Core')
+logger = logging.getLogger('IDArling.Core')
 
 
 class Event(DefaultEvent):

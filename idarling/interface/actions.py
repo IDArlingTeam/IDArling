@@ -25,7 +25,7 @@ from ..utilities.misc import local_resource
 from ..shared.commands import DownloadDatabase, UploadDatabase, Subscribe
 from .dialogs import OpenDialog, SaveDialog
 
-logger = logging.getLogger('IDAConnect.Interface')
+logger = logging.getLogger('IDArling.Interface')
 
 
 class Action(object):
@@ -178,7 +178,7 @@ class OpenAction(Action):
     """
     The "Open from server..." action installed in the "File" menu.
     """
-    _ACTION_ID = 'idaconnect:open'
+    _ACTION_ID = 'idarling:open'
 
     def __init__(self, plugin):
         super(OpenAction, self).__init__(
@@ -260,7 +260,7 @@ class SaveAction(Action):
     """
     The "Save to server..." action installed in the "File" menu.
     """
-    _ACTION_ID = 'idaconnect:save'
+    _ACTION_ID = 'idarling:save'
 
     def __init__(self, plugin):
         super(SaveAction, self).__init__(

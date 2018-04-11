@@ -15,7 +15,7 @@ import logging
 from ..shared.packets import Event
 from ..shared.sockets import ClientSocket
 
-logger = logging.getLogger('IDAConnect.Network')
+logger = logging.getLogger('IDArling.Network')
 
 
 class Client(ClientSocket):

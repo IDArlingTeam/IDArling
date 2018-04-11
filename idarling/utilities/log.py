@@ -23,10 +23,10 @@ def start_logging():
 
     :return: the main logger
     """
-    logger = logging.getLogger('IDAConnect')
+    logger = logging.getLogger('IDArling')
 
     # Get the absolute path to the log file
-    logPath = local_resource('logs', 'idaconnect.%s.log' % os.getpid())
+    logPath = local_resource('logs', 'idarling.%s.log' % os.getpid())
 
     # Configure the logger
     logger.setLevel(logging.DEBUG)

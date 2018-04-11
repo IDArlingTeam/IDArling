@@ -14,7 +14,7 @@ import os
 
 import ida_diskio
 
-LOCAL_PATH = os.path.join(ida_diskio.get_user_idadir(), 'idaconnect')
+LOCAL_PATH = os.path.join(ida_diskio.get_user_idadir(), 'idarling')
 
 
 def local_resource(dirname, filename):

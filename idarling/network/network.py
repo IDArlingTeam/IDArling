@@ -16,7 +16,7 @@ import socket
 from ..module import Module
 from .client import Client
 
-logger = logging.getLogger('IDAConnect.Network')
+logger = logging.getLogger('IDArling.Network')
 
 
 class Network(Module):

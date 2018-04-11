@@ -19,7 +19,7 @@ import traceback
 
 from PyQt5.QtCore import QCoreApplication, QTimer
 
-from idaconnect.shared.server import Server
+from idarling.shared.server import Server
 
 
 class DedicatedServer(Server):
@@ -39,14 +39,14 @@ class DedicatedServer(Server):
         return os.path.join(filesDir, filename)
 
     def start_logging(self):
-        logger = logging.getLogger('IDAConnect.Server')
+        logger = logging.getLogger('IDArling.Server')
 
         # Get path to the log file
         logDir = os.path.join(os.path.dirname(__file__), 'logs')
         logDir = os.path.abspath(logDir)
         if not os.path.exists(logDir):
             os.makedirs(logDir)
-        logPath = os.path.join(logDir, 'idaconnect.%s.log' % os.getpid())
+        logPath = os.path.join(logDir, 'idarling.%s.log' % os.getpid())
 
         # Configure the logger
         logger.setLevel(logging.DEBUG)

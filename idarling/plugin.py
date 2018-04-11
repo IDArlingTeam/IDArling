@@ -25,12 +25,12 @@ logger = start_logging()
 
 class Plugin(ida_idaapi.plugin_t):
     """
-    The IDAConnect plugin.
+    The IDArling plugin.
     """
     # Internal definitions
-    PLUGIN_NAME = "IDAConnect"
+    PLUGIN_NAME = "IDArling"
     PLUGIN_VERSION = "0.0.1"
-    PLUGIN_AUTHORS = "The IDAConnect Team"
+    PLUGIN_AUTHORS = "The IDArling Team"
 
     # External definitions
     flags = ida_idaapi.PLUGIN_FIX | ida_idaapi.PLUGIN_HIDE
@@ -156,7 +156,7 @@ class Plugin(ida_idaapi.plugin_t):
         """
         This method is called when IDA is running the plugin as a script.
         """
-        ida_kernwin.warning("IDAConnect cannot be run as a script")
+        ida_kernwin.warning("IDArling cannot be run as a script")
         return False
 
     def notify_disconnected(self):

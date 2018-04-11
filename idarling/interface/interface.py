@@ -12,13 +12,16 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import logging
 
-from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt5.QtCore import QObject, Qt
+from PyQt5.QtGui import QShowEvent, QPixmap
+from PyQt5.QtWidgets import QApplication, QMainWindow,\
+                            QDialog, QGroupBox, QLabel
 
 from ..module import Module
 from .actions import OpenAction, SaveAction
 from .widgets import StatusWidget
 
-logger = logging.getLogger('IDAConnect.Interface')
+logger = logging.getLogger('IDArling.Interface')
 
 
 class Interface(Module):
@@ -44,11 +47,37 @@ class Interface(Module):
         self._openAction = OpenAction(plugin)
         self._saveAction = SaveAction(plugin)
 
+        class EventHandler(QObject):
+
+            def __init__(self, plugin, parent=None):
+                super(EventHandler, self).__init__(parent)
+                self._plugin = plugin
+
+            @staticmethod
+            def replace_icon(label):
+                pixmap = QPixmap(self._plugin.resource('idarling.png'))
+                pixmap = pixmap.scaled(
+                    label.sizeHint().width(), label.sizeHint().height(),
+                    Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                label.setPixmap(pixmap)
+
+            def eventFilter(self, obj, ev):
+                if isinstance(obj, QDialog) and isinstance(ev, QShowEvent):
+                    if obj.windowTitle() == 'About':
+                        for child in obj.children():
+                            if isinstance(child, QGroupBox):
+                                for subchild in child.children():
+                                    if isinstance(subchild, QLabel) \
+                                            and subchild.pixmap():
+                                        EventHandler.replace_icon(subchild)
+                return False
+        self._eventFilter = EventHandler(self._plugin)
         self._statusWidget = StatusWidget(self._plugin)
 
     def _install(self):
         self._openAction.install()
         self._saveAction.install()
+        self._install_our_icon()
 
         self._window.statusBar().addPermanentWidget(self._statusWidget)
         logger.debug("Installed widgets in status bar")
@@ -57,6 +86,7 @@ class Interface(Module):
     def _uninstall(self):
         self._openAction.uninstall()
         self._saveAction.uninstall()
+        self._uninstall_our_icon()
 
         self._window.statusBar().removeWidget(self._statusWidget)
         logger.debug("Uninstalled widgets from status bar")
@@ -68,6 +98,15 @@ class Interface(Module):
         """
         self._openAction.update()
         self._saveAction.update()
+
+    def _install_our_icon(self):
+        """
+        Install our icon in the about dialog.
+        """
+        QApplication.instance().installEventFilter(self._eventFilter)
+
+    def _uninstall_our_icon(self):
+        QApplication.instance().removeEventFilter(self._eventFilter)
 
     def notify_disconnected(self):
         self._statusWidget.set_state(StatusWidget.STATE_DISCONNECTED)

@@ -28,7 +28,7 @@ from ..shared.commands import GetRepositories, GetBranches, \
                                NewRepository, NewBranch
 from ..shared.models import Repository, Branch
 
-logger = logging.getLogger('IDAConnect.Interface')
+logger = logging.getLogger('IDArling.Interface')
 
 
 class OpenDialog(QDialog):

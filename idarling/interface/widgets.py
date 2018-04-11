@@ -18,7 +18,7 @@ from PyQt5.QtWidgets import QWidget, QLabel, QMenu, QAction, QActionGroup
 
 from .dialogs import NetworkSettingsDialog
 
-logger = logging.getLogger('IDAConnect.Interface')
+logger = logging.getLogger('IDArling.Interface')
 
 
 class StatusWidget(QWidget):

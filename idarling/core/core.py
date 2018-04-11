@@ -24,14 +24,14 @@ from ..shared.commands import Subscribe, Unsubscribe
 from ..utilities.misc import local_resource
 from .hooks import Hooks, IDBHooks, IDPHooks, HexRaysHooks
 
-logger = logging.getLogger('IDAConnect.Core')
+logger = logging.getLogger('IDArling.Core')
 
 
 class Core(Module):
     """
     The core module, responsible for all interactions with the IDA kernel.
     """
-    NETNODE_NAME = '$ idaconnect'
+    NETNODE_NAME = '$ idarling'
 
     def __init__(self, plugin):
         super(Core, self).__init__(plugin)

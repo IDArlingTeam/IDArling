@@ -26,7 +26,7 @@ import ida_struct
 
 from .events import *
 
-logger = logging.getLogger('IDAConnect.Core')
+logger = logging.getLogger('IDArling.Core')
 
 
 class Hooks(object):

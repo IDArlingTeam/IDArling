@@ -18,13 +18,13 @@ import urllib2
 import ida_diskio
 
 if 'URL' not in locals():
-    URL = 'https://github.com/IDAConnect/IDAConnect/archive/master.zip'
+    URL = 'https://github.com/IDArling/IDArling/archive/master.zip'
 
-print('[*] Installing IDAConnect...')
+print('[*] Installing IDArling...')
 userDir = ida_diskio.get_user_idadir()
 if not os.path.exists(userDir):
     os.makedirs(userDir, 0755)
-pluginDir = os.path.join(userDir, 'idaconnect')
+pluginDir = os.path.join(userDir, 'idarling')
 if not os.path.exists(pluginDir):
     os.makedirs(pluginDir, 0755)
 
@@ -36,7 +36,7 @@ with open(archivePath, 'wb') as f:
     f.write(urllib2.urlopen(URL).read())
 
 print('[*] Unzipping master.zip archive...')
-archiveDir = os.path.join(userDir, 'IDAConnect-master')
+archiveDir = os.path.join(userDir, 'IDArling-master')
 if os.path.exists(archiveDir):
     shutil.rmtree(archiveDir)
 with zipfile.ZipFile(archivePath, 'r') as zip:
@@ -44,13 +44,13 @@ with zipfile.ZipFile(archivePath, 'r') as zip:
         if zipfile.startswith(os.path.basename(archiveDir)):
             zip.extract(zipfile, userDir)
 
-print('[*] Moving the IDAConnect files...')
-srcPath = os.path.join(archiveDir, 'idaconnect_plugin.py')
+print('[*] Moving the IDArling files...')
+srcPath = os.path.join(archiveDir, 'idarling_plugin.py')
 dstPath = os.path.join(pluginDir, os.path.basename(srcPath))
 if os.path.exists(dstPath):
     os.remove(dstPath)
 shutil.move(srcPath, dstPath)
-srcDir = os.path.join(archiveDir, 'idaconnect')
+srcDir = os.path.join(archiveDir, 'idarling')
 dstDir = os.path.join(pluginDir, os.path.basename(srcDir))
 if os.path.exists(dstDir):
     shutil.rmtree(dstDir)
@@ -62,9 +62,9 @@ if os.path.exists(archivePath):
 if os.path.exists(archiveDir):
     shutil.rmtree(archiveDir)
 
-print('[*] Loading IDAConnect into IDA Pro...')
+print('[*] Loading IDArling into IDA Pro...')
 content = '''
-#-----BEGIN IDACONNECT-----
+#-----BEGIN IDARLING-----
 import os
 import ida_diskio
 import ida_kernwin
@@ -72,11 +72,11 @@ import ida_loader
 
 def load():
     userDir = ida_diskio.get_user_idadir()
-    pluginDir = os.path.join(userDir, 'idaconnect')
-    pluginPath = os.path.join(pluginDir, 'idaconnect_plugin.py')
+    pluginDir = os.path.join(userDir, 'idarling')
+    pluginPath = os.path.join(pluginDir, 'idarling_plugin.py')
     ida_loader.load_plugin(pluginPath)
 ida_kernwin.register_timer(0, load)
-#-----END IDACONNECT-----
+#-----END IDARLING-----
 '''
 exec(content)
 
@@ -91,4 +91,4 @@ if content.split('\n')[1] not in idapyrcContent:
     with open(idapyrcPath, 'a') as f:
         f.write(content)
 
-print('[*] IDAConnect installed successfully!')
+print('[*] IDArling installed successfully!')
