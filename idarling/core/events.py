@@ -840,3 +840,27 @@ class UserLvarSettingsEvent(HexRaysEvent):
         elif dct['atype'] == ida_typeinf.ALOC_CUSTOM:
             pass  # Not supported (yet)
         return location
+
+
+class UserNumformsEvent(HexRaysEvent):
+    __event__ = 'user_numforms'
+
+    def __init__(self, ea, numforms):
+        super(UserNumformsEvent, self).__init__()
+        self.ea = ea
+        self.numforms = numforms
+
+    def __call__(self):
+        numforms = ida_hexrays.user_numforms_new()
+        for _ol, _nf in self.numforms:
+            ol = ida_hexrays.operand_locator_t(_ol['ea'], _ol['opnum'])
+            nf = ida_hexrays.number_format_t()
+            nf.flags = _nf['flags']
+            nf.opnum = Event.encode(_nf['opnum'])
+            nf.props = Event.encode(_nf['props'])
+            nf.serial = _nf['serial']
+            nf.org_nbytes = Event.encode(_nf['org_nbytes'])
+            nf.type_name = Event.encode(_nf['type_name'])
+            ida_hexrays.user_numforms_insert(numforms, ol, nf)
+        ida_hexrays.save_user_numforms(self.ea, numforms)
+        HexRaysEvent.refresh_pseudocode_view()

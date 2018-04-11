@@ -571,3 +571,43 @@ class HexRaysHooks(Hooks):
         if lvar_settings != self._lvar_settings:
             self._send_event(UserLvarSettingsEvent(ea, lvar_settings))
             self._lvar_settings = lvar_settings
+
+    @staticmethod
+    def _get_user_numforms(ea):
+        user_numforms = ida_hexrays.restore_user_numforms(ea)
+        if user_numforms is None:
+            user_numforms = ida_hexrays.user_numforms_new()
+        numforms = []
+        it = ida_hexrays.user_numforms_begin(user_numforms)
+        while it != ida_hexrays.user_numforms_end(user_numforms):
+            ol = ida_hexrays.user_numforms_first(it)
+            nf = ida_hexrays.user_numforms_second(it)
+            numforms.append((HexRaysHooks._get_operand_locator(ol),
+                            HexRaysHooks._get_number_format(nf)))
+            it = ida_hexrays.user_numforms_next(it)
+        ida_hexrays.user_numforms_free(user_numforms)
+        return numforms
+
+    @staticmethod
+    def _get_operand_locator(ol):
+        return {
+            'ea': ol.ea,
+            'opnum': ol.opnum,
+        }
+
+    @staticmethod
+    def _get_number_format(nf):
+        return {
+            'flags': nf.flags,
+            'opnum': nf.opnum,
+            'props': nf.props,
+            'serial': nf.serial,
+            'org_nbytes': nf.org_nbytes,
+            'type_name': nf.type_name,
+        }
+
+    def _send_user_numforms(self, ea):
+        numforms = HexRaysHooks._get_user_numforms(ea)
+        if numforms != self._numforms:
+            self._send_event(UserNumformsEvent(ea, numforms))
+            self._numforms = numforms
