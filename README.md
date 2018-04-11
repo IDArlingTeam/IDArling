@@ -1,4 +1,6 @@
-# IDArling
+<p align="center">
+    <img src="https://i.imgur.com/9Vxm0Fn.png" />
+</p>
 
 ## Overview
 
