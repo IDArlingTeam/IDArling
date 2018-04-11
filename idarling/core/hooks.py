@@ -23,6 +23,7 @@ import ida_nalt
 import ida_pro
 import ida_segment
 import ida_struct
+import ida_typeinf
 
 from .events import *
 
@@ -112,7 +113,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         return 0
 
     def ti_changed(self, ea, type, fname):
-        type = ida_nalt.get_tinfo(ea)
+        type = ida_typeinf.idc_get_type_raw(ea)
         self._send_event(TiChangedEvent(ea, type))
         return 0
 
@@ -123,24 +124,29 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
             return id, serial
 
         extra = {}
-        flags = ida_bytes.get_full_flags(ea)
-        if flags & ida_bytes.hex_flag():
+        mask = ida_bytes.MS_0TYPE if not n else ida_bytes.MS_1TYPE
+        flags = ida_bytes.get_full_flags(ea) & mask
+
+        def is_flag(type):
+            return flags == mask & type
+
+        if is_flag(ida_bytes.hex_flag()):
             op = 'hex'
-        elif flags & ida_bytes.bin_flag():
-            op = 'bin'
-        elif flags & ida_bytes.dec_flag():
+        elif is_flag(ida_bytes.dec_flag()):
             op = 'dec'
-        elif flags & ida_bytes.char_flag():
+        elif is_flag(ida_bytes.char_flag()):
             op = 'chr'
-        elif flags & ida_bytes.oct_flag():
+        elif is_flag(ida_bytes.bin_flag()):
+            op = 'bin'
+        elif is_flag(ida_bytes.oct_flag()):
             op = 'oct'
-        elif flags & ida_bytes.enum_flag():
+        elif is_flag(ida_bytes.enum_flag()):
             op = 'enum'
             id, serial = gather_enum_info(ea, n)
             ename = ida_enum.get_enum_name(id)
             extra['ename'] = Event.decode(ename)
             extra['serial'] = serial
-        elif flags & ida_bytes.stroff_flag():
+        elif is_flag(flags & ida_bytes.stroff_flag()):
             op = 'struct'
             path = ida_pro.tid_array(1)
             delta = ida_pro.sval_pointer()
@@ -152,7 +158,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 spath.append(Event.decode(sname))
             extra['delta'] = delta.value()
             extra['spath'] = spath
-        elif flags & ida_bytes.stkvar_flag():
+        elif is_flag(ida_bytes.stkvar_flag()):
             op = 'stkvar'
         # IDA hooks for is_invsign seems broken
         # Inverting sign don't trigger the hook
@@ -403,6 +409,7 @@ class HexRaysHooks(Hooks):
         self._cmts = {}
         self._iflags = {}
         self._lvar_settings = {}
+        self._numforms = {}
 
     def hook(self):
         if self._available is None:
@@ -434,10 +441,12 @@ class HexRaysHooks(Hooks):
                 self._iflags = HexRaysHooks._get_user_iflags(self._funcEA)
                 self._lvar_settings = \
                     HexRaysHooks._get_user_lvar_settings(self._funcEA)
+                self._numforms = HexRaysHooks._get_user_numforms(self._funcEA)
             self._send_user_labels(func.startEA)
             self._send_user_cmts(func.startEA)
             self._send_user_iflags(func.startEA)
             self._send_user_lvar_settings(func.startEA)
+            self._send_user_numforms(func.startEA)
         return 0
 
     @staticmethod
