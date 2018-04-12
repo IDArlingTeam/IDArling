@@ -12,13 +12,14 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import os
 import shutil
-import zipfile
+import sys
 import urllib2
+import zipfile
 
 import ida_diskio
 
 if 'URL' not in locals():
-    URL = 'https://github.com/IDArling/IDArling/archive/master.zip'
+    URL = 'https://github.com/IDArlingTeam/IDArling/archive/master.zip'
 
 print('[*] Installing IDArling...')
 userDir = ida_diskio.get_user_idadir()
@@ -78,6 +79,7 @@ def load():
 ida_kernwin.register_timer(0, load)
 #-----END IDARLING-----
 '''
+sys.path.append(pluginDir)
 exec(content)
 
 print('[*] Editing idapythonrc.py file...')
