@@ -231,7 +231,7 @@ class OpenActionHandler(ActionHandler):
         :param reply: the reply from the server
         """
         # Close the progress dialog
-        self._on_progress(progress, 1, 1)
+        progress.close()
 
         # Get the absolute path of the file
         appPath = QCoreApplication.applicationFilePath()
@@ -299,7 +299,7 @@ class SaveActionHandler(ActionHandler):
 
         # Create the progress dialog
         text = "Uploading database to server, please wait..."
-        progress = QProgressDialog(text, "Cancel", 0, len(packet.content))
+        progress = QProgressDialog(text, "Cancel", 0, 1)
         progress.setCancelButton(None)  # Remove cancel button
         progress.setModal(True)  # Set as a modal dialog
         windowFlags = progress.windowFlags()  # Disable close button
@@ -307,15 +307,19 @@ class SaveActionHandler(ActionHandler):
         progress.setWindowTitle("Save to server")
         iconPath = self._plugin.resource('upload.png')
         progress.setWindowIcon(QIcon(iconPath))
-        progress.show()
 
         # Send the packet to upload the file
         packet.upback = partial(self._on_progress, progress)
         d = self._plugin.network.send_packet(packet)
-        d.add_callback(partial(self._database_uploaded, repo, branch))
+        d.add_callback(partial(self._database_uploaded,
+                               repo, branch, progress))
         d.add_errback(logger.exception)
+        progress.show()
 
-    def _database_uploaded(self, repo, branch, _):
+    def _database_uploaded(self, repo, branch, progress, _):
+        # Close the progress dialog
+        progress.close()
+
         # Show a success dialog
         success = QMessageBox()
         success.setIcon(QMessageBox.Information)

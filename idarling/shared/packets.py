@@ -596,14 +596,6 @@ class Container(Command):
         self._upback = None
         self._downback = None
 
-    def __len__(self):
-        """
-        Return the size of the content.
-
-        :return: the size
-        """
-        return self._size
-
     def build(self, dct):
         super(Container, self).build(dct)
         dct['__size__'] = len(self._content)
@@ -631,6 +623,24 @@ class Container(Command):
         :param content: the content
         """
         self._content = content
+
+    @property
+    def size(self):
+        """
+        Get the size of the content.
+
+        :return: the size
+        """
+        return self._size
+
+    @size.setter
+    def size(self, size):
+        """
+        Set the size of the content.
+
+        :param size: the size
+        """
+        self._size = size
 
     @property
     def upback(self):

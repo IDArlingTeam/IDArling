@@ -49,18 +49,19 @@ class ClientSocket(QObject):
         self._logger = logger
         self._socket = None
 
-        self._read_buffer = b''
+        self._read_buffer = bytearray()
         self._read_notifier = None
+        self._read_container = None
 
-        self._write_buffer = b''
+        self._write_buffer = bytearray()
         self._write_notifier = None
+        self._write_container = None
 
         self._connected = False
         self._outgoing = collections.deque()
         self._incoming = collections.deque()
-        self._container = None
 
-    @staticmethod
+    @ staticmethod
     def _chunkify(bs, n=65535):
         """
         Creates chunks of a specified size from a bytes string.
@@ -148,13 +149,20 @@ class ClientSocket(QObject):
                 if not self._outgoing:
                     break
                 data = self._outgoing.popleft()
-                self._write_buffer = data
+                self._write_buffer = bytearray(data)
             try:
                 count = self._socket.send(self._write_buffer)
             except socket.error as e:
                 if e.errno not in (errno.EAGAIN, errno.EWOULDBLOCK):
                     self.disconnect(e)
                 break
+            if self._write_container is not None \
+                    and self._write_container.upback:
+                self._write_container.size += count  # trigger upload callback
+                total = len(self._write_container.content)
+                self._write_container.upback(self._write_container.size, total)
+                if self._write_container.size >= total:
+                    self._write_container = None
             self._write_buffer = self._write_buffer[count:]
         if not self._write_buffer:
             self._write_notifier.setEnabled(False)
@@ -188,24 +196,24 @@ class ClientSocket(QObject):
 
         :param data: the raw bytes
         """
-        self._read_buffer += data
+        self._read_buffer.extend(data)
 
-        while b'\n' in self._read_buffer and not self._container:
+        while not self._read_container and b'\n' in self._read_buffer:
             lines = self._read_buffer.split(b'\n')
-            self._read_buffer = b'\n'.join(lines[1:])
+            self._read_buffer = bytearray(b'\n').join(lines[1:])
             self._read_line(lines[0])
 
-        if self._container:
+        if self._read_container is not None:
             # Append raw data to content already received
-            if self._container.downback:  # trigger download callback
-                self._container.downback(len(self._read_buffer),
-                                         len(self._container))
-            if len(self._read_buffer) >= len(self._container):
-                content = self._read_buffer[:len(self._container)]
+            if self._read_container.downback:  # trigger download callback
+                self._read_container.downback(len(self._read_buffer),
+                                              self._read_container.size)
+            if len(self._read_buffer) >= self._read_container.size:
+                content = self._read_buffer[:self._read_container.size]
                 self._read_buffer = self._read_buffer[len(content):]
-                self._container.content = content
-                self._handle_packet(self._container)
-                self._container = None
+                self._read_container.content = content
+                self._handle_packet(self._read_container)
+                self._read_container = None
 
     def _write_raw(self, data):
         """
@@ -236,7 +244,7 @@ class ClientSocket(QObject):
 
         # Wait for raw data if it is a container
         if isinstance(packet, Container):
-            self._container = packet
+            self._read_container = packet
             return  # do not go any further
 
         self._handle_packet(packet)
@@ -279,6 +287,8 @@ class ClientSocket(QObject):
         # Try to build then sent the line
         try:
             line = json.dumps(packet.build_packet())
+            if isinstance(packet, Container):
+                packet.size -= len(line.encode('utf-8') + b'\n')
             self._write_line(line)
         except Exception as e:
             self._logger.warning("Invalid packet being sent: %s" % packet)
@@ -288,13 +298,9 @@ class ClientSocket(QObject):
 
         # Write raw data for containers
         if isinstance(packet, Container):
-            data = packet.content
-            count, total = 0, len(data)
-            for chunk in self._chunkify(data):
+            self._write_container = packet
+            for chunk in self._chunkify(packet.content):
                 self._write_raw(chunk)
-                count += len(chunk)
-                if packet.upback:  # trigger upload callback
-                    packet.upback(count, total)
 
         # Queries return a packet deferred
         if isinstance(packet, Query):
