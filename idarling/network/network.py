@@ -12,6 +12,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import logging
 import socket
+import ssl
 
 from ..module import Module
 from .client import Client
@@ -86,6 +87,8 @@ class Network(Module):
         self._plugin.notify_connecting()
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+        ctx = ssl.create_default_context()
+        sock = ctx.wrap_socket(sock, server_hostname=host)
         try:
             sock.connect((host, port))
         except socket.error as e:
@@ -96,6 +99,8 @@ class Network(Module):
             # Notify the plugin
             self._plugin.notify_disconnected()
             return
+        sock.settimeout(0)
+        sock.setblocking(0)
         self._client.connect(sock)
 
         # We're connected now

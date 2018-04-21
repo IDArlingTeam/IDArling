@@ -14,6 +14,7 @@ import collections
 import logging
 import os
 import socket
+import ssl
 
 from .database import Database
 from .commands import (GetRepositories, GetBranches,
@@ -187,27 +188,35 @@ class Server(ServerSocket):
         self._clients = []
         self._database = Database(self.local_file('database.db'))
         self._database.initialize()
+        self._ctx = None
 
         # Register default event
         EventFactory._EVENTS = collections.defaultdict(lambda: DefaultEvent)
 
-    def start(self, host, port):
+    def start(self, host, port, cert, key):
         """
         Starts the server on the specified host and port.
 
         :param host: the host
         :param port: the port
+        :param cert: the certificate
+        :param key: the private key
         :return: did the operation succeed?
         """
         self._logger.info("Starting server on %s:%d" % (host, port))
+        self._ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        self._ctx.load_cert_chain(certfile=cert, keyfile=key)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.setsockopt(socket.SOL_SOCKET,
+                        socket.SO_REUSEADDR & socket.SO_REUSEPORT, 1)
         try:
             sock.bind((host, port))
         except socket.error as e:
             self._logger.warning("Could not start server")
             self._logger.exception(e)
             return False
+        sock.settimeout(0)
+        sock.setblocking(0)
         sock.listen(5)
         self.connect(sock)
         return True
@@ -224,9 +233,12 @@ class Server(ServerSocket):
         self.disconnect()
         return True
 
-    def _accept(self, socket):
+    def _accept(self, sock):
         client = ServerClient(self._logger, self)
-        client.connect(socket)
+        sock = self._ctx.wrap_socket(sock, server_side=True)
+        sock.settimeout(0)
+        sock.setblocking(0)
+        client.connect(sock)
 
     def local_file(self, filename):
         """

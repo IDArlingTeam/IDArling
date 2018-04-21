@@ -14,6 +14,7 @@ import collections
 import errno
 import json
 import socket
+import ssl
 
 from PyQt5.QtCore import QCoreApplication, QEvent, QObject, QSocketNotifier
 
@@ -88,7 +89,6 @@ class ClientSocket(QObject):
 
         :param sock: the socket
         """
-        sock.settimeout(0)
         self._read_notifier = QSocketNotifier(sock.fileno(),
                                               QSocketNotifier.Read, self)
         self._read_notifier.activated.connect(self._notify_read)
@@ -130,7 +130,9 @@ class ClientSocket(QObject):
             try:
                 data = self._socket.recv(4096)
             except socket.error as e:
-                if e.errno not in (errno.EAGAIN, errno.EWOULDBLOCK):
+                if e.errno not in (errno.EAGAIN, errno.EWOULDBLOCK) \
+                        and not isinstance(e, ssl.SSLWantReadError) \
+                        and not isinstance(e, ssl.SSLWantWriteError):
                     self.disconnect(e)
                 break
             if not data:
@@ -153,7 +155,9 @@ class ClientSocket(QObject):
             try:
                 count = self._socket.send(self._write_buffer)
             except socket.error as e:
-                if e.errno not in (errno.EAGAIN, errno.EWOULDBLOCK):
+                if e.errno not in (errno.EAGAIN, errno.EWOULDBLOCK) \
+                        and not isinstance(e, ssl.SSLWantReadError) \
+                        and not isinstance(e, ssl.SSLWantWriteError):
                     self.disconnect(e)
                 break
             if self._write_container is not None \
@@ -352,7 +356,6 @@ class ServerSocket(QObject):
 
         :param sock: the socket
         """
-        sock.settimeout(0)
         self._accept_notifier = QSocketNotifier(sock.fileno(),
                                                 QSocketNotifier.Read, self)
         self._accept_notifier.activated.connect(self._notify_accept)
@@ -392,7 +395,6 @@ class ServerSocket(QObject):
                     break
                 self.disconnect(e)
                 break
-            sock.setblocking(False)
             self._accept(sock)
 
     def _accept(self, socket):

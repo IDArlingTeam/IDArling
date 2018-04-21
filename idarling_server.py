@@ -74,7 +74,7 @@ def main(args):
     sys.excepthook = traceback.print_exception
 
     server = DedicatedServer()
-    server.start(args.host, args.port)
+    server.start(args.host, args.port, args.certfile, args.keyfile)
 
     # Allow the use of Ctrl-C to stop the server
     def sigint_handler(signum, frame):
@@ -97,4 +97,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', type=str, default='127.0.0.1')
     parser.add_argument('--port', type=int, default=31013)
+    parser.add_argument('--certfile', type=str, required=True)
+    parser.add_argument('--keyfile', type=str, required=True)
     main(parser.parse_args())
