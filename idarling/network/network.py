@@ -29,6 +29,7 @@ class Network(Module):
         super(Network, self).__init__(plugin)
         self._host = ''
         self._port = 0
+        self._no_ssl = False
         self._client = None
 
     @property
@@ -50,6 +51,15 @@ class Network(Module):
         return self._port if self._client else 0
 
     @property
+    def no_ssl(self):
+        """
+        Is SSL is disabled?
+
+        :return: is SSL disabled
+        """
+        return self._no_ssl
+
+    @property
     def connected(self):
         """
         Return if we are connected to any server.
@@ -65,12 +75,13 @@ class Network(Module):
         self.disconnect()
         return True
 
-    def connect(self, host, port):
+    def connect(self, host, port, no_ssl=False):
         """
         Connect to the specified host and port.
 
         :param host: the host
         :param port: the port
+        :param no_ssl: disable SSL
         """
         # Make sure we're not already connected
         if self.connected:
@@ -79,6 +90,7 @@ class Network(Module):
         # Create a client
         self._host = host
         self._port = port
+        self._no_ssl = no_ssl
         self._client = Client(self._plugin)
 
         # Do the actual connection process
@@ -87,8 +99,9 @@ class Network(Module):
         self._plugin.notify_connecting()
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-        ctx = ssl.create_default_context()
-        sock = ctx.wrap_socket(sock, server_hostname=host)
+        if not no_ssl:
+            ctx = ssl.create_default_context()
+            sock = ctx.wrap_socket(sock, server_hostname=host)
         try:
             sock.connect((host, port))
         except socket.error as e:

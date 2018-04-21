@@ -27,9 +27,9 @@ class DedicatedServer(Server):
     The dedicated server implementation.
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, ssl, parent=None):
         logger = self.start_logging()
-        Server.__init__(self, logger, parent)
+        Server.__init__(self, logger, ssl, parent)
 
     def local_file(self, filename):
         filesDir = os.path.join(os.path.dirname(__file__), 'files')
@@ -73,8 +73,8 @@ def main(args):
     app = QCoreApplication(sys.argv)
     sys.excepthook = traceback.print_exception
 
-    server = DedicatedServer()
-    server.start(args.host, args.port, args.certfile, args.keyfile)
+    server = DedicatedServer(args.ssl)
+    server.start(args.host, args.port)
 
     # Allow the use of Ctrl-C to stop the server
     def sigint_handler(signum, frame):
@@ -94,9 +94,20 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--host', type=str, default='127.0.0.1')
-    parser.add_argument('--port', type=int, default=31013)
-    parser.add_argument('--certfile', type=str, required=True)
-    parser.add_argument('--keyfile', type=str, required=True)
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument('--help', action='help',
+                        help='show this help message and exit')
+
+    parser.add_argument('-h', '--host', type=str, default='0.0.0.0',
+                        help='the hostname to start listening on')
+    parser.add_argument('-p', '--port', type=int, default=31013,
+                        help='the port to start listening on')
+
+    security = parser.add_mutually_exclusive_group(required=True)
+    security.add_argument('--ssl', type=str, nargs=2,
+                          metavar=('fullchain.pem', 'privkey.pem'),
+                          help='the certificate and private key files')
+    security.add_argument('--no-ssl', action='store_true',
+                          help='disable SSL (not recommended)')
+
     main(parser.parse_args())

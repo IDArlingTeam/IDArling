@@ -133,7 +133,8 @@ class StatusWidget(QWidget):
                 if not self._plugin.network.connected and \
                        serverAction.isChecked():
                     self._plugin.network.connect(serverAction._server.host,
-                                                 serverAction._server.port)
+                                                 serverAction._server.port,
+                                                 serverAction._server.no_ssl)
                 else:
                     self._plugin.network.disconnect()
 

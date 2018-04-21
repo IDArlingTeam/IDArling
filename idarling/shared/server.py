@@ -183,29 +183,29 @@ class Server(ServerSocket):
     The server implementation used by dedicated and integrated.
     """
 
-    def __init__(self, logger, parent=None):
+    def __init__(self, logger, ssl, parent=None):
         ServerSocket.__init__(self, logger, parent)
         self._clients = []
         self._database = Database(self.local_file('database.db'))
         self._database.initialize()
-        self._ctx = None
+        self._ssl = ssl
 
         # Register default event
         EventFactory._EVENTS = collections.defaultdict(lambda: DefaultEvent)
 
-    def start(self, host, port, cert, key):
+    def start(self, host, port):
         """
         Starts the server on the specified host and port.
 
         :param host: the host
         :param port: the port
-        :param cert: the certificate
-        :param key: the private key
         :return: did the operation succeed?
         """
         self._logger.info("Starting server on %s:%d" % (host, port))
-        self._ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        self._ctx.load_cert_chain(certfile=cert, keyfile=key)
+        if self._ssl:
+            cert, key = self._ssl
+            self._ssl = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+            self._ssl.load_cert_chain(certfile=cert, keyfile=key)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET,
                         socket.SO_REUSEADDR & socket.SO_REUSEPORT, 1)
@@ -235,7 +235,8 @@ class Server(ServerSocket):
 
     def _accept(self, sock):
         client = ServerClient(self._logger, self)
-        sock = self._ctx.wrap_socket(sock, server_side=True)
+        if self._ssl:
+            sock = self._ssl.wrap_socket(sock, server_side=True)
         sock.settimeout(0)
         sock.setblocking(0)
         client.connect(sock)

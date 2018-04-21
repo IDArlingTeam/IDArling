@@ -22,7 +22,8 @@ from PyQt5.QtCore import Qt, QRegExp
 from PyQt5.QtGui import QIcon, QRegExpValidator
 from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout, QGridLayout,
                              QWidget, QTableWidget, QTableWidgetItem, QLabel,
-                             QPushButton, QLineEdit, QGroupBox, QMessageBox)
+                             QPushButton, QLineEdit, QGroupBox, QMessageBox,
+                             QCheckBox)
 
 from ..shared.commands import GetRepositories, GetBranches, \
                                NewRepository, NewBranch
@@ -492,9 +493,9 @@ class NetworkSettingsDialog(QDialog):
 
         :param dialog: the add server dialog
         """
-        host, port = dialog.get_result()
-        Server = namedtuple('Server', ['host', 'port'])
-        server = Server(host, port)
+        host, port, no_ssl = dialog.get_result()
+        Server = namedtuple('Server', ['host', 'port', 'no_ssl'])
+        server = Server(host, port, no_ssl)
         servers = self._plugin.core.servers
         servers.append(server)
         self._plugin.core.servers = servers
@@ -552,6 +553,9 @@ class AddServerDialog(QDialog):
         self._serverPort.setPlaceholderText("31013")
         layout.addWidget(self._serverPort)
 
+        self._noSSLCheckbox = QCheckBox("Disable SSL")
+        layout.addWidget(self._noSSLCheckbox)
+
         downSide = QWidget(self)
         buttonsLayout = QHBoxLayout(downSide)
         self._addButton = QPushButton("Add")
@@ -568,4 +572,5 @@ class AddServerDialog(QDialog):
 
         :return: the result
         """
-        return self._serverName.text(), int(self._serverPort.text())
+        return self._serverName.text(), int(self._serverPort.text()), \
+            self._noSSLCheckbox.isChecked()
