@@ -253,7 +253,10 @@ class TiChangedEvent(Event):
 
     def __call__(self):
         py_type = [Event.encode_bytes(t) for t in self.py_type]
-        ida_typeinf.apply_type(self.ea, tuple(py_type))
+        if len(py_type) == 3:
+            py_type = py_type[1:]
+        ida_typeinf.apply_type(None, py_type[0], py_type[1], self.ea,
+                               ida_typeinf.TINFO_DEFINITE)
 
 
 class OpTypeChangedEvent(Event):
