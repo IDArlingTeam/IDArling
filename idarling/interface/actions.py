@@ -10,16 +10,21 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import ctypes
 import logging
+import shutil
+import tempfile
+import os
+import sys
 from functools import partial
 
 import ida_idaapi
 import ida_loader
 import ida_kernwin
 
-from PyQt5.QtCore import Qt, QProcess, QCoreApplication, QFileInfo
+from PyQt5.QtCore import Qt, QCoreApplication, QFileInfo
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import qApp, QProgressDialog, QMessageBox
+from PyQt5.QtWidgets import QProgressDialog, QMessageBox
 
 from ..utilities.misc import local_resource
 from ..shared.commands import DownloadDatabase, UploadDatabase, Subscribe
@@ -248,12 +253,59 @@ class OpenActionHandler(ActionHandler):
         # Save the old database
         database = ida_loader.get_path(ida_loader.PATH_TYPE_IDB)
         if database:
-            ida_loader.save_database(database, ida_loader.DBFL_KILL)
-        # Save the current state
-        self._plugin.core.save_state(True, database)
+            ida_loader.save_database(database, ida_loader.DBFL_TEMP)
+
+        # Get the dynamic library
+        idaname = 'ida64' if '64' in appName else 'ida'
+        if sys.platform == 'win32':
+            dll = ctypes.windll[idaname + '.dll']
+        elif sys.platform == 'linux2':
+            dll = ctypes.cdll['lib' + idaname + '.so']
+        elif sys.platform == 'darwin':
+            dll = ctypes.cdll['lib' + idaname + '.dylib']
+
+        # Close the old database
+        oldPath = ida_loader.get_path(ida_loader.PATH_TYPE_IDB)
+        if oldPath:
+            dll.term_database()
+
         # Open the new database
-        QProcess.startDetached(qApp.applicationFilePath(), [filePath])
-        qApp.quit()  # https://forum.hex-rays.com/viewtopic.php?f=8&t=4294
+        LP_c_char = ctypes.POINTER(ctypes.c_char)
+
+        args = [appName, filePath]
+        argc = len(args)
+        argv = (LP_c_char * (argc + 1))()
+        for i, arg in enumerate(args):
+            arg = arg.encode('utf-8')
+            argv[i] = ctypes.create_string_buffer(arg)
+
+        LP_c_int = ctypes.POINTER(ctypes.c_int)
+        v = ctypes.c_int(0)
+        av = ctypes.addressof(v)
+        pv = ctypes.cast(av, LP_c_int)
+        dll.init_database(argc, argv, pv)
+
+        # Create a copy of the new database
+        fileExt = '.i64' if '64' in appName else '.idb'
+        tmpFile, tmpPath = tempfile.mkstemp(suffix=fileExt)
+        shutil.copyfile(filePath, tmpPath)
+
+        class UIHooks(ida_kernwin.UI_Hooks):
+            def database_inited(self, is_new_database, idc_script):
+                self.unhook()
+
+                # Remove the tmp database
+                os.close(tmpFile)
+                if os.path.exists(tmpPath):
+                    os.remove(tmpPath)
+
+        hooks = UIHooks()
+        hooks.hook()
+
+        # Open the tmp database
+        s = ida_loader.snapshot_t()
+        s.filename = tmpPath
+        ida_kernwin.restore_database_snapshot(s, None, None)
 
 
 class SaveAction(Action):
@@ -290,7 +342,7 @@ class SaveActionHandler(ActionHandler):
         # Save the current database
         self._plugin.core.save_netnode()
         inputPath = ida_loader.get_path(ida_loader.PATH_TYPE_IDB)
-        ida_loader.save_database(inputPath, 0)
+        ida_loader.save_database(inputPath, ida_loader.DBFL_KILL)
 
         # Create the packet that will hold the database
         packet = UploadDatabase.Query(repo.name, branch.name)

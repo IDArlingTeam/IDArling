@@ -62,7 +62,7 @@ class ClientSocket(QObject):
         self._outgoing = collections.deque()
         self._incoming = collections.deque()
 
-    @ staticmethod
+    @staticmethod
     def _chunkify(bs, n=65535):
         """
         Creates chunks of a specified size from a bytes string.

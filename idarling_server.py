@@ -98,7 +98,7 @@ if __name__ == '__main__':
     parser.add_argument('--help', action='help',
                         help='show this help message and exit')
 
-    parser.add_argument('-h', '--host', type=str, default='0.0.0.0',
+    parser.add_argument('-h', '--host', type=str, default='127.0.0.1',
                         help='the hostname to start listening on')
     parser.add_argument('-p', '--port', type=int, default=31013,
                         help='the port to start listening on')

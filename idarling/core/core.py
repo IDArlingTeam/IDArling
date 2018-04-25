@@ -247,35 +247,14 @@ class Core(Module):
             if 'servers' in state:
                 self._servers = [Server(*addr) for addr in state['servers']]
 
-            # Reconnect to the same server as parent instance
-            if 'host' in state and 'port' in state and 'no_ssl' in state:
-                self._plugin.network.connect(state['host'], state['port'],
-                                             state['no_ssl'])
-
-            # Remove temporary files from parent instance
-            if 'temp' in state:
-                idbFile, idbExt = os.path.splitext(state['temp'])
-                for ext in ['.id0', '.id1', '.nam', '.til', '.seg']:
-                    if os.path.exists(idbFile + ext):
-                        os.remove(idbFile + ext)
-
-    def save_state(self, connect=False, database=None):
+    def save_state(self):
         """
         Save the state file.
-
-        :param connect: should we reconnect?
-        :param database: the opened database
         """
         statePath = local_resource('files', 'state.json')
         with open(statePath, 'wb') as stateFile:
             state = {'servers': [[s.host, s.port, s.no_ssl]
                                  for s in self._servers]}
-            if connect:
-                state['host'] = self._plugin.network.host
-                state['port'] = self._plugin.network.port
-                state['no_ssl'] = self._plugin.network.no_ssl
-            if database:
-                state['temp'] = database
 
             logger.debug("Saved state: %s" % state)
             stateFile.write(json.dumps(state))
