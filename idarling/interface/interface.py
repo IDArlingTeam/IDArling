@@ -101,21 +101,24 @@ class Interface(Module):
 
     def _install_our_icon(self):
         """
-        Install our icon in the about dialog.
+        Install our icon into the about dialog.
         """
         QApplication.instance().installEventFilter(self._eventFilter)
 
     def _uninstall_our_icon(self):
+        """
+        Uninstall our icon from the about dialog.
+        """
         QApplication.instance().removeEventFilter(self._eventFilter)
 
     def notify_disconnected(self):
         self._statusWidget.set_state(StatusWidget.STATE_DISCONNECTED)
-        self._statusWidget.set_server(StatusWidget.SERVER_DISCONNECTED)
+        self._statusWidget.set_server(None)
         self._update_actions()
 
     def notify_connecting(self):
         self._statusWidget.set_state(StatusWidget.STATE_CONNECTING)
-        self._statusWidget.set_server(self._plugin.network.host)
+        self._statusWidget.set_server(self._plugin.network.server)
         self._update_actions()
 
     def notify_connected(self):

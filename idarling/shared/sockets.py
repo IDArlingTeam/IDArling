@@ -44,7 +44,6 @@ class ClientSocket(QObject):
         Initializes the client socket.
 
         :param logger: the logger to user
-        :param parent: the parent object
         """
         QObject.__init__(self, parent)
         self._logger = logger
@@ -333,7 +332,6 @@ class ServerSocket(QObject):
         Initialize the server socket.
 
         :param logger: the logger to use
-        :param parent: the parent object
         """
         QObject.__init__(self, parent)
         self._logger = logger

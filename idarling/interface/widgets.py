@@ -25,13 +25,10 @@ class StatusWidget(QWidget):
     """
     The widget that displays the status of the connection to the server.
     """
-    # States enumeration
+    # Network States
     STATE_DISCONNECTED = 0
     STATE_CONNECTING = 1
     STATE_CONNECTED = 2
-
-    # Server enumeration
-    SERVER_DISCONNECTED = '&lt;no server&gt;'
 
     def __init__(self, plugin):
         """
@@ -43,7 +40,7 @@ class StatusWidget(QWidget):
         self._plugin = plugin
 
         self._state = self.STATE_DISCONNECTED
-        self._server = self.SERVER_DISCONNECTED
+        self._server = None
 
         # Create the sub-widgets
         self._textWidget = QLabel()
@@ -68,19 +65,24 @@ class StatusWidget(QWidget):
         logger.debug("Updating widget state")
 
         # Get color, text and icon from state
-        color, text, icon = {
-            StatusWidget.STATE_DISCONNECTED: ('red', 'Disconnected',
-                                              'disconnected.png'),
-            StatusWidget.STATE_CONNECTING: ('orange', 'Connecting',
-                                            'connecting.png'),
-            StatusWidget.STATE_CONNECTED: ('green', 'Connected',
-                                           'connected.png')
-        }[self._state]
+        if self._state == StatusWidget.STATE_DISCONNECTED:
+            color, text, icon = 'red', 'Disconnected', 'disconnected.png'
+        elif self._state == StatusWidget.STATE_CONNECTING:
+            color, text, icon = 'orange', 'Connecting', 'connecting.png'
+        elif self._state == StatusWidget.STATE_CONNECTED:
+            color, text, icon = 'green', 'Connected', 'connected.png'
+        else:
+            logger.warning('Invalid server state')
+            return
 
         # Update the text of the widget
-        textFmt = '%s | %s -- <span style="color: %s;">%s</span>'
-        self._textWidget.setText(textFmt % (self._plugin.description(),
-                                            self._server, color, text))
+        if self._server is None:
+            server = '&lt;no server&gt;'
+        else:
+            server = '%s:%d' % (self._server.host, self._server.port)
+        textFormat = '%s | %s -- <span style="color: %s;">%s</span>'
+        self._textWidget.setText(textFormat % (self._plugin.description(),
+                                               server, color, text))
 
         # Update the icon of the widget
         pixmap = QPixmap(self._plugin.resource(icon))
@@ -88,9 +90,9 @@ class StatusWidget(QWidget):
         self._iconWidget.setPixmap(pixmap.scaled(pixmapHeight, pixmapHeight,
                                                  Qt.KeepAspectRatio,
                                                  Qt.SmoothTransformation))
-        self.update()
-        self.setMinimumSize(self.sizeHint())
-        self.setMaximumSize(self.sizeHint())
+
+        # Update the size of the widget
+        self.updateGeometry()
 
     def sizeHint(self):
         """
@@ -124,27 +126,43 @@ class StatusWidget(QWidget):
         settings.triggered.connect(settingsActionTriggered)
         menu.addAction(settings)
 
+        menu.addSeparator()
+        integrated = QAction('Integrated Server', menu)
+        integrated.setCheckable(True)
+
+        def integratedActionTriggered():
+            if integrated.isChecked():
+                self._plugin.network.start_server()
+            else:
+                self._plugin.network.stop_server()
+        integrated.setChecked(self._plugin.network.server_running())
+        integrated.triggered.connect(integratedActionTriggered)
+        menu.addAction(integrated)
+
         # Add each of the servers
         if self._plugin.core.servers:
             menu.addSeparator()
             serverGroup = QActionGroup(self)
+            currentServer = self._plugin.network.server
 
             def serverActionTriggered(serverAction):
-                if not self._plugin.network.connected and \
-                       serverAction.isChecked():
+                isConnected = self._plugin.network.connected \
+                    and server.host == currentServer.host \
+                    and server.port == currentServer.port
+                self._plugin.network.stop_server()
+                if not isConnected:
                     self._plugin.network.connect(serverAction._server.host,
                                                  serverAction._server.port,
                                                  serverAction._server.no_ssl)
-                else:
-                    self._plugin.network.disconnect()
 
             for server in self._plugin.core.servers:
                 isConnected = self._plugin.network.connected \
-                              and server.host == self._plugin.network.host \
-                              and server.port == self._plugin.network.port
-                serverAction = QAction('%s:%d' % (server.host, server.port),
-                                       menu, checkable=True)
+                              and server.host == currentServer.host \
+                              and server.port == currentServer.port
+                serverText = '%s:%d' % (server.host, server.port)
+                serverAction = QAction(serverText, menu)
                 serverAction._server = server
+                serverAction.setCheckable(True)
                 serverAction.setChecked(isConnected)
                 serverGroup.addAction(serverAction)
 
@@ -187,7 +205,7 @@ class StatusWidget(QWidget):
         """
         Set the server we're connected to.
 
-        :param server: the server host
+        :param server: the server
         """
         if server != self._server:
             self._server = server

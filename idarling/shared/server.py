@@ -193,7 +193,7 @@ class Server(ServerSocket):
         # Register default event
         EventFactory._EVENTS = collections.defaultdict(lambda: DefaultEvent)
 
-    def start(self, host, port):
+    def start(self, host, port=0):
         """
         Starts the server on the specified host and port.
 
@@ -208,7 +208,6 @@ class Server(ServerSocket):
             self._ssl.load_cert_chain(certfile=cert, keyfile=key)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         try:
             sock.bind((host, port))
         except socket.error as e:
@@ -232,6 +231,23 @@ class Server(ServerSocket):
             client.disconnect()
         self.disconnect()
         return True
+
+    @property
+    def host(self):
+        """
+        Gets the host name.
+
+        :return: the host name
+        """
+        return self._socket.getsockname()[0]
+
+    @property
+    def port(self):
+        """
+        Gets the port number.
+        :return:
+        """
+        return self._socket.getsockname()[1]
 
     def _accept(self, sock):
         client = ServerClient(self._logger, self)

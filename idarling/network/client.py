@@ -28,7 +28,6 @@ class Client(ClientSocket):
         Initializes the client.
 
         :param plugin: the plugin instance
-        :param parent: the parent object
         """
         ClientSocket.__init__(self, logger, parent)
         self._plugin = plugin
