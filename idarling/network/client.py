@@ -12,7 +12,10 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import logging
 
-from ..shared.packets import Event
+import ida_funcs
+
+from ..shared.commands import UpdateCursors
+from ..shared.packets import Command, Event
 from ..shared.sockets import ClientSocket
 
 logger = logging.getLogger('IDArling.Network')
@@ -31,6 +34,10 @@ class Client(ClientSocket):
         """
         ClientSocket.__init__(self, logger, parent)
         self._plugin = plugin
+        self._users = {}
+        self._handlers = {
+            UpdateCursors: self._handle_update_cursors
+        }
 
     def disconnect(self, err=None):
         ClientSocket.disconnect(self, err)
@@ -40,7 +47,11 @@ class Client(ClientSocket):
         self._plugin.notify_disconnected()
 
     def recv_packet(self, packet):
-        if isinstance(packet, Event):
+        if isinstance(packet, Command):
+            # Call the corresponding handler
+            self._handlers[packet.__class__](packet)
+
+        elif isinstance(packet, Event):
             # Call the event
             self._plugin.core.unhook_all()
             try:
@@ -62,3 +73,24 @@ class Client(ClientSocket):
             self._plugin.core.tick += 1
             packet.tick = self._plugin.core.tick
         return ClientSocket.send_packet(self, packet)
+
+    def _handle_update_cursors(self, packet):
+        prev_ea = self._users.get(packet.color)
+        cur_func = ida_funcs.get_func(packet.ea)
+        if prev_ea:
+            prev_func = ida_funcs.get_func(prev_ea)
+        self._users[packet.color] = packet.ea
+
+        self._plugin.interface.color_navbar(self._users)
+        self._plugin.interface.color_current_func(cur_func, packet.color)
+        self._plugin.interface.color_func_insts(packet.ea)
+        self._plugin.interface.color_current_inst(packet.ea, packet.color)
+        if prev_ea:
+            self._plugin.interface.clear_prev_inst(packet.ea, prev_ea)
+            self._plugin.interface.clear_prev_func_insts(prev_ea, cur_func)
+            self._plugin.interface.clear_prev_func(packet.ea, prev_ea,
+                                                   cur_func, prev_func)
+
+    @property
+    def users(self):
+        return self._users

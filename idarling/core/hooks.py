@@ -11,6 +11,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import logging
+import sip
+import struct
 
 import ida_bytes
 import ida_enum
@@ -25,7 +27,13 @@ import ida_segment
 import ida_struct
 import ida_typeinf
 
+import PyQt5.QtGui as QtGui
+import PyQt5.QtCore as QtCore
+import PyQt5.QtWidgets as QtWidgets
+
 from .events import *
+from ..shared.commands import UpdateCursors
+from functools import partial
 
 logger = logging.getLogger('IDArling.Core')
 
@@ -620,3 +628,41 @@ class HexRaysHooks(Hooks):
         if numforms != self._numforms:
             self._send_event(UserNumformsEvent(ea, numforms))
             self._numforms = numforms
+
+
+class ViewHooks(Hooks, ida_kernwin.View_Hooks):
+    """
+    The concrete class for View-related events.
+    """
+
+    def __init__(self, plugin):
+        ida_kernwin.View_Hooks.__init__(self)
+        Hooks.__init__(self, plugin)
+
+    def view_loc_changed(self, view, now, was):
+        if now.plce.toea() != was.plce.toea():
+            self._plugin.network.send_packet(UpdateCursors(now.plce.toea()))
+
+
+class UIHooks(Hooks, ida_kernwin.UI_Hooks):
+    """
+    The concrete class for UI-related events.
+    """
+
+    def __init__(self, plugin):
+        ida_kernwin.UI_Hooks.__init__(self)
+        Hooks.__init__(self, plugin)
+
+    def get_ea_hint(self, ea):
+        # TODO change IDArling team by username
+        if self._plugin.network.connected:
+            nbytes = self._plugin.interface.nbytes
+            for _, cur_ea in self._plugin.network._client.current_pos.items():
+                if cur_ea - nbytes * 4 <= ea <= cur_ea + nbytes * 4:
+                    return("IDArling team")
+
+    def saving(self):
+        if self._plugin.network.connected:
+            for _, ea in self._plugin.network._client.users.items():
+                self._plugin.interface.clear_current_inst(ea)
+                self._plugin.interface.clear_current_func(ea)
