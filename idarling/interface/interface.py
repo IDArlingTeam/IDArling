@@ -187,12 +187,13 @@ class Interface(Module):
         ida_kernwin.set_nav_colorizer(partial(self.cust_colorizer,
                                               users))
 
-    def color_current_func(self, func, color):
-        if func:
-            self._prev_func_color = self._cur_func_color
-            self._cur_func_color = func.color
-            func.color = color
-            ida_funcs.update_func(func)
+    def color_current_func(self, cur_func, prev_func, color):
+        if cur_func:
+            if prev_func and cur_func != prev_func:
+                self._prev_func_color = self._cur_func_color
+                self._cur_func_color = cur_func.color
+            cur_func.color = color
+            ida_funcs.update_func(cur_func)
 
     def color_func_insts(self, ea):
         for item_ea in idautils.FuncItems(ea):
@@ -212,12 +213,12 @@ class Interface(Module):
             color = self._default_bg
         ida_nalt.set_item_color(prev_ea, color)
 
-    def clear_prev_func_insts(self, prev_ea, func):
+    def clear_prev_func_insts(self, prev_ea):
         for item_ea in idautils.FuncItems(prev_ea):
             color = ida_nalt.get_item_color(item_ea)
             ida_nalt.set_item_color(item_ea, color if color else self.DEFCOLOR)
 
-    def clear_prev_func(self, ea, prev_ea, func, prev_func):
+    def clear_prev_func(self, ea, func, prev_func):
         if (not func and prev_func) or \
            (func and prev_func and prev_func != func):
             if prev_func:

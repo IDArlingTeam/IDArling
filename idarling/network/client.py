@@ -76,20 +76,27 @@ class Client(ClientSocket):
 
     def _handle_update_cursors(self, packet):
         prev_ea = self._users.get(packet.color)
+        self._users[packet.color] = packet.ea
         cur_func = ida_funcs.get_func(packet.ea)
         if prev_ea:
+            # Hack, two packets are received...
+            # TODO find why and remove this hack
+            if prev_ea == packet.ea:
+                return
             prev_func = ida_funcs.get_func(prev_ea)
-        self._users[packet.color] = packet.ea
+        else:
+            prev_func = None
 
         self._plugin.interface.color_navbar(self._users)
-        self._plugin.interface.color_current_func(cur_func, packet.color)
+        self._plugin.interface.color_current_func(cur_func, prev_func,
+                                                  packet.color)
         self._plugin.interface.color_func_insts(packet.ea)
         self._plugin.interface.color_current_inst(packet.ea, packet.color)
         if prev_ea:
             self._plugin.interface.clear_prev_inst(packet.ea, prev_ea)
-            self._plugin.interface.clear_prev_func_insts(prev_ea, cur_func)
-            self._plugin.interface.clear_prev_func(packet.ea, prev_ea,
-                                                   cur_func, prev_func)
+            self._plugin.interface.clear_prev_func_insts(prev_ea)
+            self._plugin.interface.clear_prev_func(packet.ea, cur_func,
+                                                   prev_func)
 
     @property
     def users(self):
