@@ -657,7 +657,7 @@ class UIHooks(Hooks, ida_kernwin.UI_Hooks):
         # TODO change IDArling team by username
         if self._plugin.network.connected:
             nbytes = self._plugin.interface.nbytes
-            for _, cur_ea in self._plugin.network._client.current_pos.items():
+            for _, cur_ea in self._plugin.network._client.users.items():
                 if cur_ea - nbytes * 4 <= ea <= cur_ea + nbytes * 4:
                     return("IDArling team")
 
