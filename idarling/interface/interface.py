@@ -10,6 +10,7 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import colorsys
 import logging
 import random
 
@@ -89,7 +90,8 @@ class Interface(Module):
         self._eventFilter = EventHandler(self._plugin)
         self._statusWidget = StatusWidget(self._plugin)
 
-        self._color = random.randint(0, 0xFFFFFF)
+        r, g, b = colorsys.hls_to_rgb(random.random(), 0.5, 1.0)
+        self._color = int(r * 255) << 16 | int(g * 255) << 8 | int(b * 255)
 
     def _install(self):
         self._openAction.install()
