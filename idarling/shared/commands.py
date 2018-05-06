@@ -143,3 +143,11 @@ class UpdateCursors(DefaultCommand):
     def __init__(self, ea):
         super(UpdateCursors, self).__init__()
         self.ea = ea
+
+
+class RemoveCursor(DefaultCommand):
+    __command__ = 'remove_cursor'
+
+    def __init__(self, color):
+        super(RemoveCursor, self).__init__()
+        self.color = color

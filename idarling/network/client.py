@@ -14,7 +14,7 @@ import logging
 
 import ida_funcs
 
-from ..shared.commands import UpdateCursors
+from ..shared.commands import UpdateCursors, RemoveCursor
 from ..shared.packets import Command, Event
 from ..shared.sockets import ClientSocket
 
@@ -36,7 +36,8 @@ class Client(ClientSocket):
         self._plugin = plugin
         self._users = {}
         self._handlers = {
-            UpdateCursors: self._handle_update_cursors
+            UpdateCursors: self._handle_update_cursors,
+            RemoveCursor: self._handle_remove_cursor,
         }
 
     def disconnect(self, err=None):
@@ -97,6 +98,12 @@ class Client(ClientSocket):
             self._plugin.interface.clear_prev_func_insts(prev_ea)
             self._plugin.interface.clear_prev_func(packet.ea, cur_func,
                                                    prev_func)
+
+    def _handle_remove_cursor(self, packet):
+        ea = self._users.pop(packet.color)
+        self._plugin.interface.color_navbar(self._users)
+        self._plugin.interface.clear_current_inst(ea)
+        self._plugin.interface.clear_current_func(ea)
 
     @property
     def users(self):

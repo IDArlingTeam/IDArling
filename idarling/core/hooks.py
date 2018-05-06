@@ -662,7 +662,19 @@ class UIHooks(Hooks, ida_kernwin.UI_Hooks):
                     return("IDArling team")
 
     def saving(self):
+        # Clean users cursor
         if self._plugin.network.connected:
             for _, ea in self._plugin.network._client.users.items():
                 self._plugin.interface.clear_current_inst(ea)
                 self._plugin.interface.clear_current_func(ea)
+
+    def saved(self):
+        # Restore users cursor
+        if self._plugin.network.connected:
+            users = self._plugin.network._client.users
+            for color, ea in users.items():
+                cur_func = ida_funcs.get_func(ea)
+                self._plugin.interface.color_current_func(cur_func, None,
+                                                          color)
+                self._plugin.interface.color_func_insts(ea)
+                ida_nalt.set_item_color(ea, color)

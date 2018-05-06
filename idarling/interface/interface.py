@@ -236,8 +236,9 @@ class Interface(Module):
 
     def clear_current_func(self, ea):
         func = ida_funcs.get_func(ea)
-        func.color = self._prev_func_color
-        ida_funcs.update_func(func)
+        if func:
+            func.color = self._prev_func_color
+            ida_funcs.update_func(func)
 
     def get_ida_bg_color_html_code(self):
         b, g, r, _ = self.get_ida_bg_color().getRgb()
