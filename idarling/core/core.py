@@ -247,7 +247,11 @@ class Core(Module):
         if not os.path.isfile(statePath):
             return
         with open(statePath, 'rb') as stateFile:
-            state = json.loads(stateFile.read())
+            try:
+                state = json.loads(stateFile.read())
+            except ValueError:
+                logger.warning("Couldn't load state file")
+                return
             logger.debug("Loaded state: %s" % state)
 
             # Load the server list from state

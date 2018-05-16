@@ -472,11 +472,10 @@ class NetworkSettingsDialog(QDialog):
         buttonsLayout.addWidget(self._quitButton)
         layout.addWidget(buttonsWidget)
 
-    def _server_clicked(self, item):
+    def _server_clicked(self, _):
         """
         Called when a server item is clicked.
         """
-        self._itemClicked = item
         self._deleteButton.setEnabled(True)
 
     def _add_button_clicked(self, _):
@@ -511,11 +510,12 @@ class NetworkSettingsDialog(QDialog):
         """
         Called when the delete button is clicked.
         """
-        server = self._itemClicked.data(Qt.UserRole)
+        item = self._serversTable.selectedItems()[0]
+        server = item.data(Qt.UserRole)
         servers = self._plugin.core.servers
         servers.remove(server)
         self._plugin.core.servers = servers
-        self._serversTable.removeRow(self._itemClicked.row())
+        self._serversTable.removeRow(item.row())
         self.update()
 
 

@@ -12,8 +12,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import logging
 
-from PyQt5.QtCore import Qt, QSize, QPoint
-from PyQt5.QtGui import QPixmap, QIcon, QPainter
+from PyQt5.QtCore import Qt, QSize, QPoint, QRect
+from PyQt5.QtGui import QPixmap, QIcon, QPainter, QRegion
 from PyQt5.QtWidgets import QWidget, QLabel, QMenu, QAction, QActionGroup
 
 from .dialogs import NetworkSettingsDialog
@@ -182,9 +182,13 @@ class StatusWidget(QWidget):
         buffer.fill(Qt.transparent)
 
         painter = QPainter(buffer)
-        self._textWidget.render(painter, QPoint(0, 0))
+        region = QRegion(QRect(0, 0, self._textWidget.sizeHint().width(),
+                               self._textWidget.sizeHint().height()))
+        self._textWidget.render(painter, QPoint(0, 0), region)
+        region = QRegion(QRect(0, 0, self._iconWidget.sizeHint().width(),
+                               self._iconWidget.sizeHint().height()))
         x = self._textWidget.sizeHint().width() + 3
-        self._iconWidget.render(painter, QPoint(x, 0))
+        self._iconWidget.render(painter, QPoint(x, 0), region)
         painter.end()
 
         painter = QPainter(self)
