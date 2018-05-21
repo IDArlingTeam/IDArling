@@ -18,6 +18,7 @@ import os
 import sys
 from functools import partial
 
+import ida_diskio
 import ida_idaapi
 import ida_loader
 import ida_kernwin
@@ -258,11 +259,15 @@ class OpenActionHandler(ActionHandler):
         # Get the dynamic library
         idaname = 'ida64' if '64' in appName else 'ida'
         if sys.platform == 'win32':
-            dll = ctypes.windll[idaname + '.dll']
+            dllname, dlltype = idaname + '.dll', ctypes.windll
         elif sys.platform == 'linux2':
-            dll = ctypes.cdll['lib' + idaname + '.so']
+            dllname, dlltype = 'lib' + idaname + '.so', ctypes.cdll
         elif sys.platform == 'darwin':
-            dll = ctypes.cdll['lib' + idaname + '.dylib']
+            dllname, dlltype = 'lib' + idaname + '.dylib', ctypes.cdll
+        dllpath = ida_diskio.idadir(None)
+        if not os.path.exists(os.path.join(dllpath, dllname)):
+            dllpath = dllpath.replace('ida64', 'ida')
+        dll = dlltype[os.path.join(dllpath, dllname)]
 
         # Close the old database
         oldPath = ida_loader.get_path(ida_loader.PATH_TYPE_IDB)
