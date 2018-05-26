@@ -22,7 +22,7 @@ import ida_netnode
 from ..module import Module
 from ..shared.commands import Subscribe, Unsubscribe
 from ..utilities.misc import local_resource
-from .hooks import Hooks, IDBHooks, IDPHooks, HexRaysHooks, ViewHooks, UIHooks
+from .hooks import Hooks, IDBHooks, IDPHooks, HexRaysHooks
 
 logger = logging.getLogger('IDArling.Core')
 
@@ -39,8 +39,6 @@ class Core(Module):
         self._idbHooks = None
         self._idpHooks = None
         self._hxeHooks = None
-        self._ViewHooks = None
-        self._UIHooks = None
 
         self._uiHooksCore = None
         self._idbHooksCore = None
@@ -61,8 +59,6 @@ class Core(Module):
         self._idbHooks = IDBHooks(self._plugin)
         self._idpHooks = IDPHooks(self._plugin)
         self._hxeHooks = HexRaysHooks(self._plugin)
-        self._ViewHooks = ViewHooks(self._plugin)
-        self._UIHooks = UIHooks(self._plugin)
 
         class UIHooksCore(Hooks, ida_kernwin.UI_Hooks):
             """
@@ -79,8 +75,7 @@ class Core(Module):
                 # Subscribe to the events stream if needed
                 if core.repo and core.branch:
                     self._plugin.network.send_packet(Subscribe(
-                        core.repo, core.branch, core.tick,
-                        self._plugin.interface.color))
+                        core.repo, core.branch, core.tick))
                     core.hook_all()
 
         self._uiHooksCore = UIHooksCore(self._plugin)
@@ -123,8 +118,6 @@ class Core(Module):
         self._idbHooks.hook()
         self._idpHooks.hook()
         self._hxeHooks.hook()
-        self._ViewHooks.hook()
-        self._UIHooks.hook()
 
     def unhook_all(self):
         """
@@ -133,8 +126,6 @@ class Core(Module):
         self._idbHooks.unhook()
         self._idpHooks.unhook()
         self._hxeHooks.unhook()
-        self._ViewHooks.unhook()
-        self._UIHooks.unhook()
 
     @property
     def repo(self):
@@ -275,6 +266,5 @@ class Core(Module):
     def notify_connected(self):
         if self._repo and self._branch:
             self._plugin.network.send_packet(
-                Subscribe(self._repo, self._branch, self._tick,
-                          self._plugin.interface.color))
+                Subscribe(self._repo, self._branch, self._tick))
             self.hook_all()

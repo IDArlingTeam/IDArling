@@ -20,8 +20,7 @@ from .database import Database
 from .commands import (GetRepositories, GetBranches,
                        NewRepository, NewBranch,
                        UploadDatabase, DownloadDatabase,
-                       Subscribe, Unsubscribe,
-                       UpdateCursors, RemoveCursor)
+                       Subscribe, Unsubscribe)
 from .packets import Command, DefaultEvent, Event, EventFactory
 from .sockets import ClientSocket, ServerSocket
 
@@ -59,7 +58,6 @@ class ServerClient(ClientSocket):
             DownloadDatabase.Query: self._handle_download_database,
             Subscribe: self._handle_subscribe,
             Unsubscribe: self._handle_unsubscribe,
-            UpdateCursors: self._handle_update_cursors,
         }
 
     @property
@@ -106,7 +104,11 @@ class ServerClient(ClientSocket):
             self.parent().database.insert_event(self, packet)
 
             # Forward the event to the other clients
-            for client in self.parent().find_clients(self.should_forward):
+            def should_forward(client):
+                return client.repo == self._repo \
+                       and client.branch == self._branch and client != self
+
+            for client in self.parent().find_clients(should_forward):
                 client.send_packet(packet)
         else:
             return False
@@ -161,7 +163,6 @@ class ServerClient(ClientSocket):
     def _handle_subscribe(self, packet):
         self._repo = packet.repo
         self._branch = packet.branch
-        self._color = packet.color
         self.parent().register_client(self)
 
         # Send all missed events
@@ -173,24 +174,8 @@ class ServerClient(ClientSocket):
 
     def _handle_unsubscribe(self, _):
         self.parent().unregister_client(self)
-        packet = RemoveCursor(self._color)
-        for client in self.parent().find_clients(self.should_forward):
-            client.send_packet(packet)
         self._repo = None
         self._branch = None
-        self._color = None
-
-    def _handle_update_cursors(self, packet):
-        self._ea = packet.ea
-        packet.color = self._color
-
-        # Forward the event to the other clients
-        for client in self.parent().find_clients(self.should_forward):
-            client.send_packet(packet)
-
-    def should_forward(self, client):
-        return client.repo == self._repo \
-                and client.branch == self._branch and client != self
 
 
 class Server(ServerSocket):
