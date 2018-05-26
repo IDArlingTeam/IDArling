@@ -38,6 +38,8 @@ class ClientSocket(QObject):
     """
     A class wrapping a Python socket and integrated into the Qt event loop.
     """
+    MAX_READ_SIZE = 4096
+    MAX_WRITE_SIZE = 65535
 
     def __init__(self, logger, parent=None):
         """
@@ -51,27 +53,15 @@ class ClientSocket(QObject):
 
         self._read_buffer = bytearray()
         self._read_notifier = None
-        self._read_container = None
+        self._read_packet = None
 
         self._write_buffer = bytearray()
         self._write_notifier = None
-        self._write_container = None
+        self._write_packet = None
 
         self._connected = False
         self._outgoing = collections.deque()
         self._incoming = collections.deque()
-
-    @staticmethod
-    def _chunkify(bs, n=65535):
-        """
-        Creates chunks of a specified size from a bytes string.
-
-        :param bs: the bytes
-        :param n: the size of a chunk
-        :return: generator of chunks
-        """
-        for i in range(0, len(bs), n):
-            yield bs[i:i + n]
 
     @property
     def connected(self):
@@ -125,19 +115,59 @@ class ClientSocket(QObject):
         """
         Callback called when some data is ready to be read on the socket.
         """
+        # Read as much data as is available
         while True:
             try:
-                data = self._socket.recv(4096)
+                data = self._socket.recv(ClientSocket.MAX_READ_SIZE)
+                if not data:
+                    self.disconnect()
+                    break
             except socket.error as e:
                 if e.errno not in (errno.EAGAIN, errno.EWOULDBLOCK) \
                         and not isinstance(e, ssl.SSLWantReadError) \
                         and not isinstance(e, ssl.SSLWantWriteError):
                     self.disconnect(e)
-                break
-            if not data:
-                self.disconnect()
-                break
-            self._incoming.append(data)
+                break  # No more data available
+            self._read_buffer.extend(data)
+
+        while True:
+            if self._read_packet is None:
+                if b'\n' in self._read_buffer:
+                    pos = self._read_buffer.index(b'\n')
+                    line = self._read_buffer[:pos]
+                    self._read_buffer = self._read_buffer[pos + 1:]
+
+                    # Try to parse the line as a packet
+                    try:
+                        dct = json.loads(line.decode('utf-8'))
+                        self._read_packet = Packet.parse_packet(dct)
+                    except Exception as e:
+                        msg = "Invalid packet received: %s" % line
+                        self._logger.warning(msg)
+                        self._logger.exception(e)
+                        continue
+                else:
+                    break  # Not enough data for a packet
+
+            else:
+                if isinstance(self._read_packet, Container):
+                    avail = len(self._read_buffer)
+                    total = self._read_packet.size
+
+                    # Trigger the downback
+                    if self._read_packet.downback:
+                        self._read_packet.downback(min(avail, total), total)
+
+                    # Read the container's content
+                    if avail >= total:
+                        self._read_packet.content = self._read_buffer[:total]
+                        self._read_buffer = self._read_buffer[total:]
+                    else:
+                        break  # Not enough data for a packet
+
+                self._incoming.append(self._read_packet)
+                self._read_packet = None
+
         if self._incoming:
             QCoreApplication.instance().postEvent(self, PacketEvent())
 
@@ -148,25 +178,47 @@ class ClientSocket(QObject):
         while True:
             if not self._write_buffer:
                 if not self._outgoing:
-                    break
-                data = self._outgoing.popleft()
-                self._write_buffer = bytearray(data)
+                    break  # No more packets to send
+                self._write_packet = self._outgoing.popleft()
+
+                try:
+                    line = json.dumps(self._write_packet.build_packet())
+                    line = line.encode('utf-8') + b'\n'
+                except Exception as e:
+                    msg = "Invalid packet being sent: %s" % self._write_packet
+                    self._logger.warning(msg)
+                    self._logger.exception(e)
+                    continue
+
+                # Write the container's content
+                self._write_buffer.extend(bytearray(line))
+                if isinstance(self._write_packet, Container):
+                    data = self._write_packet.content
+                    self._write_buffer.extend(bytearray(data))
+                    self._write_packet.size += len(line)
+
+            # Send as many bytes as possible
             try:
-                count = self._socket.send(self._write_buffer)
+                count = min(len(self._write_buffer),
+                            ClientSocket.MAX_WRITE_SIZE)
+                sent = self._socket.send(self._write_buffer[:count])
+                self._write_buffer = self._write_buffer[sent:]
             except socket.error as e:
                 if e.errno not in (errno.EAGAIN, errno.EWOULDBLOCK) \
                         and not isinstance(e, ssl.SSLWantReadError) \
                         and not isinstance(e, ssl.SSLWantWriteError):
                     self.disconnect(e)
+                break  # Can't write anything
+
+            # Trigger the upback
+            if isinstance(self._write_packet, Container) \
+                    and self._write_packet.upback:
+                self._write_packet.size -= count
+                total = len(self._write_packet.content)
+                sent = max(total - self._write_packet.size, 0)
+                self._write_packet.upback(sent, total)
                 break
-            if self._write_container is not None \
-                    and self._write_container.upback:
-                self._write_container.size += count  # trigger upload callback
-                total = len(self._write_container.content)
-                self._write_container.upback(self._write_container.size, total)
-                if self._write_container.size >= total:
-                    self._write_container = None
-            self._write_buffer = self._write_buffer[count:]
+
         if not self._write_buffer:
             self._write_notifier.setEnabled(False)
 
@@ -190,91 +242,16 @@ class ClientSocket(QObject):
         Callback called when a packet event is fired.
         """
         while self._incoming:
-            data = self._incoming.popleft()
-            self._read_raw(data)
+            packet = self._incoming.popleft()
+            self._logger.debug("Received packet: %s" % packet)
 
-    def _read_raw(self, data):
-        """
-        Reads some raw from the underlying socket.
+            # Notify for replies
+            if isinstance(packet, Reply):
+                packet.trigger_callback()
 
-        :param data: the raw bytes
-        """
-        self._read_buffer.extend(data)
-
-        while not self._read_container and b'\n' in self._read_buffer:
-            lines = self._read_buffer.split(b'\n')
-            self._read_buffer = bytearray(b'\n').join(lines[1:])
-            self._read_line(lines[0])
-
-        if self._read_container is not None:
-            # Append raw data to content already received
-            if self._read_container.downback:  # trigger download callback
-                self._read_container.downback(len(self._read_buffer),
-                                              self._read_container.size)
-            if len(self._read_buffer) >= self._read_container.size:
-                content = self._read_buffer[:self._read_container.size]
-                self._read_buffer = self._read_buffer[len(content):]
-                self._read_container.content = content
-                self._handle_packet(self._read_container)
-                self._read_container = None
-
-    def _write_raw(self, data):
-        """
-        Writes some raw bytes to the underlying socket.
-
-        :param data: the raw bytes
-        """
-        if not self._socket:
-            return
-        self._outgoing.append(data)
-        if not self._write_notifier.isEnabled():
-            self._write_notifier.setEnabled(True)
-
-    def _read_line(self, line):
-        """
-        Reads a line from the underlying socket.
-
-        :param line: the line
-        """
-        # Try to parse the line as a packet
-        try:
-            dct = json.loads(line.decode('utf-8'))
-            packet = Packet.parse_packet(dct)
-        except Exception as e:
-            self._logger.warning("Invalid packet received: %s" % line)
-            self._logger.exception(e)
-            return
-
-        # Wait for raw data if it is a container
-        if isinstance(packet, Container):
-            self._read_container = packet
-            return  # do not go any further
-
-        self._handle_packet(packet)
-
-    def _write_line(self, line):
-        """
-        Writes a line to the underlying socket.
-
-        :param line: the line
-        """
-        self._write_raw(line.encode('utf-8') + b'\n')
-
-    def _handle_packet(self, packet):
-        """
-        Handle an incoming packet (used for replies).
-
-        :param packet: the packet
-        """
-        self._logger.debug("Received packet: %s" % packet)
-
-        # Notify for replies
-        if isinstance(packet, Reply):
-            packet.trigger_callback()
-
-        # Otherwise forward to the subclass
-        elif not self.recv_packet(packet):
-            self._logger.warning("Unhandled packet received: %s" % packet)
+            # Otherwise forward to the subclass
+            elif not self.recv_packet(packet):
+                self._logger.warning("Unhandled packet received: %s" % packet)
 
     def send_packet(self, packet):
         """
@@ -287,23 +264,12 @@ class ClientSocket(QObject):
             self._logger.warning("Sending packet while disconnected")
             return None
 
-        # Try to build then sent the line
-        try:
-            line = json.dumps(packet.build_packet())
-            if isinstance(packet, Container):
-                packet.size -= len(line.encode('utf-8') + b'\n')
-            self._write_line(line)
-        except Exception as e:
-            self._logger.warning("Invalid packet being sent: %s" % packet)
-            self._logger.exception(e)
-
         self._logger.debug("Sending packet: %s" % packet)
 
-        # Write raw data for containers
-        if isinstance(packet, Container):
-            self._write_container = packet
-            for chunk in self._chunkify(packet.content):
-                self._write_raw(chunk)
+        # Enqueue the packet
+        self._outgoing.append(packet)
+        if not self._write_notifier.isEnabled():
+            self._write_notifier.setEnabled(True)
 
         # Queries return a packet deferred
         if isinstance(packet, Query):

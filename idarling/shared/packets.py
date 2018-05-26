@@ -623,6 +623,7 @@ class Container(Command):
         :param content: the content
         """
         self._content = content
+        self._size = len(content)
 
     @property
     def size(self):
