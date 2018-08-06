@@ -786,9 +786,10 @@ class UserLvarSettingsEvent(HexRaysEvent):
         for lv in self.lvar_settings['lvvec']:
             lvinf.lvvec.push_back(
                 UserLvarSettingsEvent._get_lvar_saved_info(lv))
-        lvinf.sizes = ida_pro.intvec_t()
-        for i in self.lvar_settings['sizes']:
-            lvinf.sizes.push_back(i)
+        if hasattr(lvinf, 'sizes'):
+            lvinf.sizes = ida_pro.intvec_t()
+            for i in self.lvar_settings['sizes']:
+                lvinf.sizes.push_back(i)
         lvinf.lmaps = ida_hexrays.lvar_mapping_t()
         for key, val in self.lvar_settings['lmaps']:
             key = UserLvarSettingsEvent._get_lvar_locator(key)
