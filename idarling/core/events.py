@@ -249,15 +249,18 @@ class TiChangedEvent(Event):
     def __init__(self, ea, py_type):
         super(TiChangedEvent, self).__init__()
         self.ea = ea
-        self.py_type = [Event.decode_bytes(t) for t in py_type]
+        if py_type is None:
+            self.py_type = []
+        else:
+            self.py_type = [Event.decode_bytes(t) for t in py_type]
 
     def __call__(self):
         py_type = [Event.encode_bytes(t) for t in self.py_type]
         if len(py_type) == 3:
             py_type = py_type[1:]
-        ida_typeinf.apply_type(None, py_type[0], py_type[1], self.ea,
-                               ida_typeinf.TINFO_DEFINITE)
-
+        if len(py_type) >= 2:
+            ida_typeinf.apply_type(None, py_type[0], py_type[1], self.ea,
+                                   ida_typeinf.TINFO_DEFINITE)
 
 class OpTypeChangedEvent(Event):
     __event__ = 'op_type_changed'
