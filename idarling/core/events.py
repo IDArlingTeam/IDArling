@@ -571,7 +571,7 @@ class SegmAddedEvent(Event):
                  comb, perm, bitness, flags):
         super(SegmAddedEvent, self).__init__()
         self.name = Event.decode(name)
-        self.class_ = class_
+        self.class_ = Event.decode(class_)
         self.start_ea = start_ea
         self.end_ea = end_ea
         self.orgbase = orgbase
@@ -591,7 +591,9 @@ class SegmAddedEvent(Event):
         seg.perm = self.perm
         seg.bitness = self.bitness
         seg.flags = self.flags
-        ida_segment.add_segm_ex(seg, Event.encode(self.name), self.class_,
+        ida_segment.add_segm_ex(seg,
+                                Event.encode(self.name),
+                                Event.encode(self.class_),
                                 ida_segment.ADDSEG_QUIET |
                                 ida_segment.ADDSEG_NOSREG)
 
@@ -651,11 +653,11 @@ class SegmClassChangedEvent(Event):
     def __init__(self, ea, sclass):
         super(SegmClassChangedEvent, self).__init__()
         self.ea = ea
-        self.sclass = sclass
+        self.sclass = Event.decode(sclass)
 
     def __call__(self):
         seg = ida_segment.getseg(self.ea)
-        ida_segment.set_segm_class(seg, self.sclass)
+        ida_segment.set_segm_class(seg, Event.encode(self.sclass))
 
 
 class SegmAttrsUpdatedEvent(Event):
