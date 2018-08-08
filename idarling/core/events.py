@@ -816,7 +816,7 @@ class UserLvarSettingsEvent(HexRaysEvent):
         for lv in self.lvar_settings['lvvec']:
             lvinf.lvvec.push_back(
                 UserLvarSettingsEvent._get_lvar_saved_info(lv))
-        if hasattr(lvinf, 'sizes'):
+        if hasattr(self.lvar_settings, 'sizes'):
             lvinf.sizes = ida_pro.intvec_t()
             for i in self.lvar_settings['sizes']:
                 lvinf.sizes.push_back(i)
