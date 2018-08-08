@@ -842,6 +842,7 @@ class UserLvarSettingsEvent(HexRaysEvent):
 
     @staticmethod
     def _get_tinfo(dct):
+        dct = [Event.encode(s) if isinstance(s, unicode) else s for s in dct]
         type = ida_typeinf.tinfo_t()
         if dct[0] is not None:
             type.deserialize(None, *dct)
