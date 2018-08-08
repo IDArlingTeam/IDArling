@@ -528,7 +528,8 @@ class HexRaysHooks(Hooks):
             dct['lvvec'] = []
             for lv in lvinf.lvvec:
                 dct['lvvec'].append(HexRaysHooks._get_lvar_saved_info(lv))
-            dct['sizes'] = list(lvinf.sizes)
+            if hasattr(lvinf, 'sizes'):
+                dct['sizes'] = list(lvinf.sizes)
             dct['lmaps'] = []
             it = ida_hexrays.lvar_mapping_begin(lvinf.lmaps)
             while it != ida_hexrays.lvar_mapping_end(lvinf.lmaps):
