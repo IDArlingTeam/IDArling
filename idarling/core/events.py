@@ -23,6 +23,7 @@ import ida_lines
 import ida_nalt
 import ida_name
 import ida_pro
+import ida_range
 import ida_segment
 import ida_struct
 import ida_typeinf
@@ -226,6 +227,29 @@ class CmtChangedEvent(Event):
         ida_bytes.set_cmt(self.ea, Event.encode(self.comment), self.rptble)
 
 
+class RangeCmtChangedEvent(Event):
+    __event__ = 'range_cmt_changed'
+
+    def __init__(self, kind, a, cmt, rptble):
+        super(RangeCmtChangedEvent, self).__init__()
+        self.kind = kind
+        self.start_ea = a.start_ea
+        self.end_ea = a.end_ea
+        self.cmt = Event.decode(cmt)
+        self.rptble = rptble
+
+    def __call__(self):
+        cmt = Event.encode(self.cmt)
+        if self.kind == ida_range.RANGE_KIND_FUNC:
+            func = ida_funcs.get_func(self.start_ea)
+            ida_funcs.set_func_cmt(func, cmt, self.rptble)
+        elif self.kind == ida_range.RANGE_KIND_SEGMENT:
+            segment = ida_segment.getseg(self.start_ea)
+            ida_segment.set_segment_cmt(segment, cmt, self.rptble)
+        else:
+            logger.warning("Unsupported range kind: %d" % self.kind)
+
+
 class ExtraCmtChangedEvent(Event):
     __event__ = 'extra_cmt_changed'
 
@@ -261,6 +285,7 @@ class TiChangedEvent(Event):
         if len(py_type) >= 2:
             ida_typeinf.apply_type(None, py_type[0], py_type[1], self.ea,
                                    ida_typeinf.TINFO_DEFINITE)
+
 
 class OpTypeChangedEvent(Event):
     __event__ = 'op_type_changed'

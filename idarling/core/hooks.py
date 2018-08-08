@@ -108,6 +108,10 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         self._send_event(CmtChangedEvent(ea, cmt, repeatable_cmt))
         return 0
 
+    def range_cmt_changed(self, kind, a, cmt, repeatable):
+        self._send_event(RangeCmtChangedEvent(kind, a, cmt, repeatable))
+        return 0
+
     def extra_cmt_changed(self, ea, line_idx, cmt):
         self._send_event(ExtraCmtChangedEvent(ea, line_idx, cmt))
         return 0
