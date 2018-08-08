@@ -451,7 +451,7 @@ class StrucDeletedEvent(Event):
         self.sname = Event.decode(sname)
 
     def __call__(self):
-        ida_struct.del_struc(ida_struct.get_struc_id(Event.encode(self.sname)))
+        ida_struct.del_struc(ida_struct.get_struc(ida_struct.get_struc_id(Event.encode(self.sname))))
 
 
 class StrucRenamedEvent(Event):
