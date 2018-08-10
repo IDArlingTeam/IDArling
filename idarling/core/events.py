@@ -273,10 +273,9 @@ class TiChangedEvent(Event):
     def __init__(self, ea, py_type):
         super(TiChangedEvent, self).__init__()
         self.ea = ea
-        if py_type is None:
-            self.py_type = []
-        else:
-            self.py_type = [Event.decode_bytes(t) for t in py_type]
+        self.py_type = []
+        if py_type:
+            self.py_type.extend(Event.decode_bytes(t) for t in py_type)
 
     def __call__(self):
         py_type = [Event.encode_bytes(t) for t in self.py_type]
@@ -451,7 +450,8 @@ class StrucDeletedEvent(Event):
         self.sname = Event.decode(sname)
 
     def __call__(self):
-        ida_struct.del_struc(ida_struct.get_struc(ida_struct.get_struc_id(Event.encode(self.sname))))
+        struc = ida_struct.get_struc_id(Event.encode(self.sname))
+        ida_struct.del_struc(ida_struct.get_struc(struc))
 
 
 class StrucRenamedEvent(Event):
@@ -816,8 +816,8 @@ class UserLvarSettingsEvent(HexRaysEvent):
         for lv in self.lvar_settings['lvvec']:
             lvinf.lvvec.push_back(
                 UserLvarSettingsEvent._get_lvar_saved_info(lv))
-        if hasattr(self.lvar_settings, 'sizes'):
-            lvinf.sizes = ida_pro.intvec_t()
+        lvinf.sizes = ida_pro.intvec_t()
+        if 'sizes' in self.lvar_settings:
             for i in self.lvar_settings['sizes']:
                 lvinf.sizes.push_back(i)
         lvinf.lmaps = ida_hexrays.lvar_mapping_t()
