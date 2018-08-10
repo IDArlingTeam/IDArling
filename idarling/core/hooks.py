@@ -281,11 +281,8 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                                                          extra))
             elif flag & ida_bytes.stru_flag():
                 extra['id'] = mt.tid
-                self._send_event(StrucMemberCreatedEvent(sname, fieldname,
-                                                         offset, flag, nbytes,
-                                                         extra))
-            elif flag & ida_bytes.strlit_flag():
-                extra['strtype'] = mt.strtype
+                if flag & ida_bytes.strlit_flag():
+                    extra['strtype'] = mt.strtype
                 self._send_event(StrucMemberCreatedEvent(sname, fieldname,
                                                          offset, flag, nbytes,
                                                          extra))
@@ -343,11 +340,8 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                                                          extra))
             elif flag & ida_bytes.stru_flag():
                 extra['id'] = mt.tid
-                self._send_event(StrucMemberChangedEvent(sname, soff,
-                                                         mptr.eoff, flag,
-                                                         extra))
-            elif flag & ida_bytes.strlit_flag():
-                extra['strtype'] = mt.strtype
+                if flag & ida_bytes.strlit_flag():
+                    extra['strtype'] = mt.strtype
                 self._send_event(StrucMemberChangedEvent(sname, soff,
                                                          mptr.eoff, flag,
                                                          extra))
