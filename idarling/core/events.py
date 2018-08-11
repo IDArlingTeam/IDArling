@@ -285,6 +285,47 @@ class TiChangedEvent(Event):
             ida_typeinf.apply_type(None, py_type[0], py_type[1], self.ea,
                                    ida_typeinf.TINFO_DEFINITE)
 
+class LocalTypesChangedEvent(Event):
+    __event__ = 'local_types_changed'
+
+    def __init__(self, local_type):
+        super(LocalTypesChangedEvent, self).__init__()
+        if local_type is None:
+            self.local_type = []
+        else:
+            self.local_type = []
+            for t in local_type:
+                if t is not None:
+                    self.local_type.append(( Event.decode_bytes(t[0]) if t[0] is not None else None,
+                      Event.decode_bytes(t[1]) if t[1] is not None else None,
+                      Event.decode_bytes(t[2]) if t[2] is not None else None,
+                    ))
+                else:
+                    self.local_type.append(None)
+
+    def __call__(self):
+        local_type = []
+        for t in self.local_type:
+            if t is not None:
+                local_type.append((Event.encode_bytes(t[0]) if t[0] is not None else None,
+                                        Event.encode_bytes(t[1]) if t[1] is not None else None,
+                                        Event.encode_bytes(t[2]) if t[2] is not None else None,
+                                        ))
+            else:
+                local_type.append(None)
+        missing_ord = len(local_type) - ida_typeinf.get_ordinal_qty(None) + 1
+        if missing_ord > 0:
+            ida_typeinf.alloc_type_ordinals(None,missing_ord)
+        for i, t in enumerate(local_type):
+            logger.debug("Processing: %d %s", i, str(t))
+            if t is not None:
+                cur_tinfo = ida_typeinf.tinfo_t()
+                cur_tinfo.deserialize(None,t[0], t[1])
+                logger.debug("set_numbered_type ret: %d", cur_tinfo.set_numbered_type(None, i+1, 0, t[2]))
+            else:
+                ida_typeinf.del_numbered_type(None,i+1)
+        ida_kernwin.request_refresh(ida_kernwin.IWID_LOCTYPS)
+
 
 class OpTypeChangedEvent(Event):
     __event__ = 'op_type_changed'
