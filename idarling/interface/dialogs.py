@@ -103,6 +103,7 @@ class OpenDialog(QDialog):
         self._branchesTable.setSelectionBehavior(QTableWidget.SelectRows)
         self._branchesTable.setSelectionMode(QTableWidget.SingleSelection)
         self._branchesTable.itemSelectionChanged.connect(self._branch_clicked)
+        self._branchesTable.itemDoubleClicked.connect(self._branch_dblclicked)
         self._branchesLayout.addWidget(self._branchesTable)
         rightLayout.addWidget(self._branchesGroup)
 
@@ -190,6 +191,12 @@ class OpenDialog(QDialog):
         Called when a branch item is clicked.
         """
         self._acceptButton.setEnabled(True)
+
+    def _branch_dblclicked(self):
+        """
+        Called when a branch item is clicked.
+        """
+        self.accept()
 
     def get_result(self):
         """
@@ -428,9 +435,8 @@ class NetworkSettingsDialog(QDialog):
         self.setWindowTitle("Network Settings")
         iconPath = self._plugin.resource('settings.png')
         self.setWindowIcon(QIcon(iconPath))
-        self.resize(300, 300)
 
-        layout = QVBoxLayout(self)
+        layout = QHBoxLayout(self)
         servers = self._plugin.core.servers
         self._serversTable = QTableWidget(len(servers), 1, self)
         self._serversTable.setHorizontalHeaderLabels(("Servers",))
@@ -448,17 +454,21 @@ class NetworkSettingsDialog(QDialog):
         self._serversTable.itemClicked.connect(self._server_clicked)
         minSZ = self._serversTable.minimumSize()
         self._serversTable.setMinimumSize(300, minSZ.height())
-        maxSZ = self._serversTable.maximumSize()
-        self._serversTable.setMaximumSize(300, maxSZ.height())
         layout.addWidget(self._serversTable)
 
         buttonsWidget = QWidget(self)
-        buttonsLayout = QHBoxLayout(buttonsWidget)
+        buttonsLayout = QVBoxLayout(buttonsWidget)
 
         # Add server button
         self._addButton = QPushButton("Add Server")
         self._addButton.clicked.connect(self._add_button_clicked)
         buttonsLayout.addWidget(self._addButton)
+
+        # Edit server button
+        self._editButton = QPushButton("Edit Server")
+        self._editButton.setEnabled(False)
+        self._editButton.clicked.connect(self._edit_button_clicked)
+        buttonsLayout.addWidget(self._editButton)
 
         # Delete server button
         self._deleteButton = QPushButton("Delete Server")
@@ -472,21 +482,34 @@ class NetworkSettingsDialog(QDialog):
         buttonsLayout.addWidget(self._quitButton)
         layout.addWidget(buttonsWidget)
 
+    def get_selected_server_idx(self):
+        return self._serversTable.row(self._serversTable.selectedItems()[0])
+
     def _server_clicked(self, _):
         """
         Called when a server item is clicked.
         """
+        self._editButton.setEnabled(True)
         self._deleteButton.setEnabled(True)
 
     def _add_button_clicked(self, _):
         """
         Called when the add button is clicked.
         """
-        dialog = AddServerDialog(self._plugin)
-        dialog.accepted.connect(partial(self._dialog_accepted, dialog))
+        dialog = ServerInfoInputDialog(self._plugin, "Add server")
+        dialog.accepted.connect(partial(self._add_dialog_accepted, dialog))
         dialog.exec_()
 
-    def _dialog_accepted(self, dialog):
+    def _edit_button_clicked(self, _):
+        """
+        Called when the add button is clicked.
+        """
+        cur_server = self._plugin.core.servers[self.get_selected_server_idx()]
+        dialog = ServerInfoInputDialog(self._plugin, "Edit server", cur_server)
+        dialog.accepted.connect(partial(self._edit_dialog_accepted, dialog))
+        dialog.exec_()
+
+    def _add_dialog_accepted(self, dialog):
         """
         Called when the add server dialog is accepted by the user.
 
@@ -506,6 +529,27 @@ class NetworkSettingsDialog(QDialog):
         self._serversTable.setItem(rowCount, 0, newServer)
         self.update()
 
+    def _edit_dialog_accepted(self, dialog):
+        """
+        Called when the add server dialog is accepted by the user.
+
+        :param dialog: the add server dialog
+        """
+        cur_server_row = self.get_selected_server_idx()
+
+        host, port, no_ssl = dialog.get_result()
+        Server = namedtuple('Server', ['host', 'port', 'no_ssl'])
+        server = Server(host, port, no_ssl)
+        servers = self._plugin.core.servers
+        servers[cur_server_row] = server
+        self._plugin.core.servers = servers
+
+        newServer = QTableWidgetItem('%s:%d' % (server.host, server.port))
+        newServer.setData(Qt.UserRole, server)
+        newServer.setFlags(newServer.flags() & ~Qt.ItemIsEditable)
+        self._serversTable.setItem(cur_server_row, 0, newServer)
+        self.update()
+
     def _delete_button_clicked(self, _):
         """
         Called when the delete button is clicked.
@@ -519,22 +563,22 @@ class NetworkSettingsDialog(QDialog):
         self.update()
 
 
-class AddServerDialog(QDialog):
+class ServerInfoInputDialog(QDialog):
     """
     The dialog allowing an user to add a remote server to connect to.
     """
 
-    def __init__(self, plugin):
+    def __init__(self, plugin, title, preset_server=None):
         """
         Initialize the network setting dialog.
 
         :param plugin: the plugin instance
         """
-        super(AddServerDialog, self).__init__()
+        super(ServerInfoInputDialog, self).__init__()
 
         # General setup of the dialog
         logger.debug("Add server settings dialog")
-        self.setWindowTitle("Add Server")
+        self.setWindowTitle(title)
         iconPath = plugin.resource('settings.png')
         self.setWindowIcon(QIcon(iconPath))
         self.resize(100, 100)
@@ -556,9 +600,14 @@ class AddServerDialog(QDialog):
         self._noSSLCheckbox = QCheckBox("Disable SSL")
         layout.addWidget(self._noSSLCheckbox)
 
+        if preset_server is not None:
+            self._serverName.setText(preset_server.host)
+            self._serverPort.setText(str(preset_server.port))
+            self._noSSLCheckbox.setChecked(preset_server.no_ssl)
+
         downSide = QWidget(self)
         buttonsLayout = QHBoxLayout(downSide)
-        self._addButton = QPushButton("Add")
+        self._addButton = QPushButton("OK")
         self._addButton.clicked.connect(self.accept)
         buttonsLayout.addWidget(self._addButton)
         self._cancelButton = QPushButton("Cancel")
@@ -572,5 +621,5 @@ class AddServerDialog(QDialog):
 
         :return: the result
         """
-        return self._serverName.text(), int(self._serverPort.text()), \
+        return self._serverName.text() or "127.0.0.1", int(self._serverPort.text() or "31013"), \
             self._noSSLCheckbox.isChecked()
