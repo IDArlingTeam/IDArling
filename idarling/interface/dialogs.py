@@ -103,7 +103,8 @@ class OpenDialog(QDialog):
         self._branchesTable.setSelectionBehavior(QTableWidget.SelectRows)
         self._branchesTable.setSelectionMode(QTableWidget.SingleSelection)
         self._branchesTable.itemSelectionChanged.connect(self._branch_clicked)
-        self._branchesTable.itemDoubleClicked.connect(self._branch_double_clicked)
+        branch_double_clicked = self._branch_double_clicked
+        self._branchesTable.itemDoubleClicked.connect(branch_double_clicked)
         self._branchesLayout.addWidget(self._branchesTable)
         rightLayout.addWidget(self._branchesGroup)
 
@@ -622,5 +623,5 @@ class ServerInfoInputDialog(QDialog):
         :return: the result
         """
         return (self._serverName.text() or "127.0.0.1",
-               int(self._serverPort.text() or "31013"),
-               self._noSSLCheckbox.isChecked())
+                int(self._serverPort.text() or "31013"),
+                self._noSSLCheckbox.isChecked())
