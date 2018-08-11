@@ -124,15 +124,19 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
     def local_types_changed(self):
         local_types = []
         logger.debug("local_types_changed")
-        for ordinal in range(1,ida_typeinf.get_ordinal_qty(None)):
+        for ordinal in range(1, ida_typeinf.get_ordinal_qty(None)):
             ret = ida_typeinf.idc_get_local_type_raw(ordinal)
             if ret is not None:
                 type_str, fields_str = ret
-                type_name = ida_typeinf.get_numbered_type_name(ida_typeinf.cvar.idati,ordinal)
+                type_name = ida_typeinf.get_numbered_type_name(
+                                ida_typeinf.cvar.idati, ordinal)
                 cur_ti = ida_typeinf.tinfo_t()
-                cur_ti.deserialize(ida_typeinf.cvar.idati, type_str, fields_str)
+                cur_ti.deserialize(ida_typeinf.cvar.idati, type_str,
+                                   fields_str)
                 type_serialized = cur_ti.serialize()
-                local_types.append((type_serialized[0],type_serialized[1],type_name))
+                local_types.append((type_serialized[0],
+                                    type_serialized[1],
+                                    type_name))
             else:
                 local_types.append(None)
         self._send_event(LocalTypesChangedEvent(local_types))
