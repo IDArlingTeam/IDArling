@@ -273,10 +273,9 @@ class TiChangedEvent(Event):
     def __init__(self, ea, py_type):
         super(TiChangedEvent, self).__init__()
         self.ea = ea
-        if py_type is None:
-            self.py_type = []
-        else:
-            self.py_type = [Event.decode_bytes(t) for t in py_type]
+        self.py_type = []
+        if py_type:
+            self.py_type.extend(Event.decode_bytes(t) for t in py_type)
 
     def __call__(self):
         py_type = [Event.encode_bytes(t) for t in self.py_type]
@@ -285,6 +284,47 @@ class TiChangedEvent(Event):
         if len(py_type) >= 2:
             ida_typeinf.apply_type(None, py_type[0], py_type[1], self.ea,
                                    ida_typeinf.TINFO_DEFINITE)
+
+class LocalTypesChangedEvent(Event):
+    __event__ = 'local_types_changed'
+
+    def __init__(self, local_type):
+        super(LocalTypesChangedEvent, self).__init__()
+        if local_type is None:
+            self.local_type = []
+        else:
+            self.local_type = []
+            for t in local_type:
+                if t is not None:
+                    self.local_type.append(( Event.decode_bytes(t[0]) if t[0] is not None else None,
+                      Event.decode_bytes(t[1]) if t[1] is not None else None,
+                      Event.decode_bytes(t[2]) if t[2] is not None else None,
+                    ))
+                else:
+                    self.local_type.append(None)
+
+    def __call__(self):
+        local_type = []
+        for t in self.local_type:
+            if t is not None:
+                local_type.append((Event.encode_bytes(t[0]) if t[0] is not None else None,
+                                        Event.encode_bytes(t[1]) if t[1] is not None else None,
+                                        Event.encode_bytes(t[2]) if t[2] is not None else None,
+                                        ))
+            else:
+                local_type.append(None)
+        missing_ord = len(local_type) - ida_typeinf.get_ordinal_qty(None) + 1
+        if missing_ord > 0:
+            ida_typeinf.alloc_type_ordinals(None,missing_ord)
+        for i, t in enumerate(local_type):
+            logger.debug("Processing: %d %s", i, str(t))
+            if t is not None:
+                cur_tinfo = ida_typeinf.tinfo_t()
+                cur_tinfo.deserialize(None,t[0], t[1])
+                logger.debug("set_numbered_type ret: %d", cur_tinfo.set_numbered_type(None, i+1, 0, t[2]))
+            else:
+                ida_typeinf.del_numbered_type(None,i+1)
+        ida_kernwin.request_refresh(ida_kernwin.IWID_LOCTYPS)
 
 
 class OpTypeChangedEvent(Event):
@@ -451,7 +491,8 @@ class StrucDeletedEvent(Event):
         self.sname = Event.decode(sname)
 
     def __call__(self):
-        ida_struct.del_struc(ida_struct.get_struc_id(Event.encode(self.sname)))
+        struc = ida_struct.get_struc_id(Event.encode(self.sname))
+        ida_struct.del_struc(ida_struct.get_struc(struc))
 
 
 class StrucRenamedEvent(Event):
@@ -816,8 +857,8 @@ class UserLvarSettingsEvent(HexRaysEvent):
         for lv in self.lvar_settings['lvvec']:
             lvinf.lvvec.push_back(
                 UserLvarSettingsEvent._get_lvar_saved_info(lv))
-        if hasattr(lvinf, 'sizes'):
-            lvinf.sizes = ida_pro.intvec_t()
+        lvinf.sizes = ida_pro.intvec_t()
+        if 'sizes' in self.lvar_settings:
             for i in self.lvar_settings['sizes']:
                 lvinf.sizes.push_back(i)
         lvinf.lmaps = ida_hexrays.lvar_mapping_t()
@@ -842,6 +883,7 @@ class UserLvarSettingsEvent(HexRaysEvent):
 
     @staticmethod
     def _get_tinfo(dct):
+        dct = [Event.encode(s) if isinstance(s, unicode) else s for s in dct]
         type = ida_typeinf.tinfo_t()
         if dct[0] is not None:
             type.deserialize(None, *dct)
