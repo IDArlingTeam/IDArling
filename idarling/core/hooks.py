@@ -121,6 +121,8 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         self._send_event(TiChangedEvent(ea, type))
         return 0
 
+    last_local_type = None
+
     def local_types_changed(self):
         local_types = []
         logger.debug("local_types_changed")
@@ -139,6 +141,28 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                                     type_name))
             else:
                 local_types.append(None)
+        if self.last_local_type is None:
+            self.last_local_type = local_types
+        else:
+            def differ_local_types(types1, types2):
+                # [(i, types1, types2), ...]
+                ret_types = []
+                for i in range(max([len(types1), len(types2)])):
+                    if i >= len(types1):
+                        ret_types.append((i, None, types2[i]))
+                    elif i >= len(types2):
+                        ret_types.append((i, types1[i], None))
+                    else:
+                        if types1[i] != types2[i]:
+                            ret_types.append((i, types1[i], types2[i]))
+                return ret_types
+            diff = differ_local_types(self.last_local_type,local_types)
+            self.last_local_type = local_types
+            if len(diff) == 1 and diff[0][2] is None:
+                return 0
+            elif len(diff) == 0:
+                return 0
+
         self._send_event(LocalTypesChangedEvent(local_types))
         return 0
 
