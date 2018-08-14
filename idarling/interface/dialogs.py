@@ -195,7 +195,7 @@ class OpenDialog(QDialog):
 
     def _branch_double_clicked(self):
         """
-        Called when a branch item is clicked.
+        Called when a branch item is double-clicked.
         """
         self.accept()
 
@@ -483,9 +483,6 @@ class NetworkSettingsDialog(QDialog):
         buttonsLayout.addWidget(self._quitButton)
         layout.addWidget(buttonsWidget)
 
-    def get_selected_server_idx(self):
-        return self._serversTable.row(self._serversTable.selectedItems()[0])
-
     def _server_clicked(self, _):
         """
         Called when a server item is clicked.
@@ -497,7 +494,7 @@ class NetworkSettingsDialog(QDialog):
         """
         Called when the add button is clicked.
         """
-        dialog = ServerInfoInputDialog(self._plugin, "Add server")
+        dialog = ServerInfoDialog(self._plugin, "Add server")
         dialog.accepted.connect(partial(self._add_dialog_accepted, dialog))
         dialog.exec_()
 
@@ -505,8 +502,9 @@ class NetworkSettingsDialog(QDialog):
         """
         Called when the add button is clicked.
         """
-        cur_server = self._plugin.core.servers[self.get_selected_server_idx()]
-        dialog = ServerInfoInputDialog(self._plugin, "Edit server", cur_server)
+        item = self._serversTable.selectedItems()[0]
+        server = item.data(Qt.UserRole)
+        dialog = ServerInfoDialog(self._plugin, "Edit server", server)
         dialog.accepted.connect(partial(self._edit_dialog_accepted, dialog))
         dialog.exec_()
 
@@ -534,21 +532,19 @@ class NetworkSettingsDialog(QDialog):
         """
         Called when the add server dialog is accepted by the user.
 
-        :param dialog: the add server dialog
+        :param dialog: the edit server dialog
         """
-        cur_server_row = self.get_selected_server_idx()
-
         host, port, no_ssl = dialog.get_result()
         Server = namedtuple('Server', ['host', 'port', 'no_ssl'])
         server = Server(host, port, no_ssl)
         servers = self._plugin.core.servers
-        servers[cur_server_row] = server
+        item = self._serversTable.selectedItems()[0]
+        servers[item.row()] = server
         self._plugin.core.servers = servers
 
-        newServer = QTableWidgetItem('%s:%d' % (server.host, server.port))
-        newServer.setData(Qt.UserRole, server)
-        newServer.setFlags(newServer.flags() & ~Qt.ItemIsEditable)
-        self._serversTable.setItem(cur_server_row, 0, newServer)
+        item.setText('%s:%d' % (server.host, server.port))
+        item.setData(Qt.UserRole, server)
+        item.setFlags(item.flags() & ~Qt.ItemIsEditable)
         self.update()
 
     def _delete_button_clicked(self, _):
@@ -564,18 +560,20 @@ class NetworkSettingsDialog(QDialog):
         self.update()
 
 
-class ServerInfoInputDialog(QDialog):
+class ServerInfoDialog(QDialog):
     """
     The dialog allowing an user to add a remote server to connect to.
     """
 
-    def __init__(self, plugin, title, preset_server=None):
+    def __init__(self, plugin, title, server=None):
         """
         Initialize the network setting dialog.
 
         :param plugin: the plugin instance
+        :param title: the dialog title
+        :param server: the current server information
         """
-        super(ServerInfoInputDialog, self).__init__()
+        super(ServerInfoDialog, self).__init__()
 
         # General setup of the dialog
         logger.debug("Add server settings dialog")
@@ -601,10 +599,10 @@ class ServerInfoInputDialog(QDialog):
         self._noSSLCheckbox = QCheckBox("Disable SSL")
         layout.addWidget(self._noSSLCheckbox)
 
-        if preset_server is not None:
-            self._serverName.setText(preset_server.host)
-            self._serverPort.setText(str(preset_server.port))
-            self._noSSLCheckbox.setChecked(preset_server.no_ssl)
+        if server is not None:
+            self._serverName.setText(server.host)
+            self._serverPort.setText(str(server.port))
+            self._noSSLCheckbox.setChecked(server.no_ssl)
 
         downSide = QWidget(self)
         buttonsLayout = QHBoxLayout(downSide)

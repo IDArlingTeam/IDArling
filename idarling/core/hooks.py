@@ -123,7 +123,6 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
 
     def local_types_changed(self):
         local_types = []
-        logger.debug("local_types_changed")
         for ordinal in range(1, ida_typeinf.get_ordinal_qty(None)):
             ret = ida_typeinf.idc_get_local_type_raw(ordinal)
             if ret is not None:
