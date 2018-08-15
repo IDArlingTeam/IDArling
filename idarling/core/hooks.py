@@ -60,6 +60,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
     def __init__(self, plugin):
         ida_idp.IDB_Hooks.__init__(self)
         Hooks.__init__(self, plugin)
+        self.last_local_type = None
 
     def make_code(self, insn):
         self._send_event(MakeCodeEvent(insn.ea))
@@ -120,8 +121,6 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         type = ida_typeinf.idc_get_type_raw(ea)
         self._send_event(TiChangedEvent(ea, type))
         return 0
-
-    last_local_type = None
 
     def local_types_changed(self):
         local_types = []
