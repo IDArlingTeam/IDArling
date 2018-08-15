@@ -10,7 +10,6 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import collections
 import logging
 import os
 import socket
@@ -21,7 +20,7 @@ from .commands import (GetRepositories, GetBranches,
                        NewRepository, NewBranch,
                        UploadDatabase, DownloadDatabase,
                        Subscribe, Unsubscribe)
-from .packets import Command, DefaultEvent, Event, EventFactory
+from .packets import Command, Event
 from .sockets import ClientSocket, ServerSocket
 
 
@@ -189,9 +188,6 @@ class Server(ServerSocket):
         self._database = Database(self.local_file('database.db'))
         self._database.initialize()
         self._ssl = ssl
-
-        # Register default event
-        EventFactory._EVENTS = collections.defaultdict(lambda: DefaultEvent)
 
     def start(self, host, port=0):
         """
