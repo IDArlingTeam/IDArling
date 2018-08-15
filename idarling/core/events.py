@@ -10,9 +10,7 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import locale
 import logging
-import os
 
 import ida_bytes
 import ida_enum
@@ -39,45 +37,49 @@ class Event(DefaultEvent):
     @staticmethod
     def encode(s):
         """
-        Encodes a unicode string to a string using the appropriate charset.
+        Encodes a unicode string into UTF-8 bytes.
 
-        :param s: the Python string
-        :return: the IDA string
+        :param s: the unicode string
+        :return: the utf-8 bytes
         """
-        if os.name == 'nt':
-            return s.encode(locale.getpreferredencoding())
+        if not isinstance(s, unicode):
+            return s
         return s.encode('utf-8')
 
     @staticmethod
     def encode_bytes(s):
         """
-        Encodes a unicode string to a string of bytes (no charset).
+        Encodes a unicode string into raw bytes.
 
-        :param s: the Python string
-        :return: the IDA string
+        :param s: the unicode string
+        :return: the raw bytes
         """
+        if not isinstance(s, unicode):
+            return s
         return s.encode('raw_unicode_escape')
 
     @staticmethod
     def decode(s):
         """
-        Decodes a string to unicode using the appropriate charset.
+        Decodes UTF-8 bytes into a unicode string.
 
-        :param s: the IDA string
-        :return: the Python string
+        :param s: the utf-8 bytes
+        :return: the unicode string
         """
-        if os.name == 'nt':
-            return s.decode(locale.getpreferredencoding())
+        if not isinstance(s, str):
+            return s
         return s.decode('utf-8')
 
     @staticmethod
     def decode_bytes(s):
         """
-        Decodes a string of bytes to a unicode string (no charset).
+        Decodes raw bytes into a unicode string.
 
-        :param s: the IDA string
-        :return: the Python string
+        :param s: the raw bytes
+        :return: the unicode string
         """
+        if not isinstance(s, str):
+            return s
         return s.decode('raw_unicode_escape')
 
     def __call__(self):
@@ -296,9 +298,9 @@ class LocalTypesChangedEvent(Event):
             for t in local_type:
                 if t is not None:
                     self.local_type.append((
-                        Event.decode_bytes(t[0]) if t[0] is not None else None,
-                        Event.decode_bytes(t[1]) if t[1] is not None else None,
-                        Event.decode_bytes(t[2]) if t[2] is not None else None,
+                        Event.decode_bytes(t[0]),
+                        Event.decode_bytes(t[1]),
+                        Event.decode_bytes(t[2]),
                     ))
                 else:
                     self.local_type.append(None)
@@ -308,9 +310,9 @@ class LocalTypesChangedEvent(Event):
         for t in self.local_type:
             if t is not None:
                 local_type.append((
-                    Event.encode_bytes(t[0]) if t[0] is not None else None,
-                    Event.encode_bytes(t[1]) if t[1] is not None else None,
-                    Event.encode_bytes(t[2]) if t[2] is not None else None,
+                    Event.encode_bytes(t[0]),
+                    Event.encode_bytes(t[1]),
+                    Event.encode_bytes(t[2]),
                 ))
             else:
                 local_type.append(None)
@@ -885,11 +887,15 @@ class UserLvarSettingsEvent(HexRaysEvent):
 
     @staticmethod
     def _get_tinfo(dct):
-        dct = [Event.encode(s) if isinstance(s, unicode) else s for s in dct]
-        type = ida_typeinf.tinfo_t()
-        if dct[0] is not None:
-            type.deserialize(None, *dct)
-        return type
+        type, fields, fldcmts = dct
+        type = Event.encode(type)
+        fields = Event.encode(fields)
+        fldcmts = Event.encode(fldcmts)
+
+        type_ = ida_typeinf.tinfo_t()
+        if type is not None:
+            type_.deserialize(None, type, fields, fldcmts)
+        return type_
 
     @staticmethod
     def _get_lvar_locator(dct):
