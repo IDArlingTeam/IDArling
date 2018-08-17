@@ -135,13 +135,15 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 cur_ti.deserialize(ida_typeinf.cvar.idati, type_str,
                                    fields_str)
                 type_serialized = cur_ti.serialize()
-                local_types.append((type_serialized[0],
+                local_types.append((ordinal, type_serialized[0],
                                     type_serialized[1],
                                     type_name))
             else:
                 local_types.append(None)
+        sent_types = []
         if self.last_local_type is None:
             self.last_local_type = local_types
+            sent_types = local_types
         else:
             def differ_local_types(types1, types2):
                 # [(i, types1, types2), ...]
@@ -161,8 +163,9 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 return 0
             elif len(diff) == 0:
                 return 0
+            sent_types = [t[2] for t in diff]
 
-        self._send_event(LocalTypesChangedEvent(local_types))
+        self._send_event(LocalTypesChangedEvent(sent_types))
         return 0
 
     def op_type_changed(self, ea, n):
