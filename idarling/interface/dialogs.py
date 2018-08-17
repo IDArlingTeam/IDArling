@@ -522,7 +522,8 @@ class NetworkSettingsDialog(QDialog):
         self._plugin.core.servers = servers
         rowCount = self._serversTable.rowCount()
         self._serversTable.insertRow(rowCount)
-        newServer = QTableWidgetItem('%s:%d' % (server["host"], server["port"]))
+        newServer = QTableWidgetItem('%s:%d' %
+                                     (server["host"], server["port"]))
         newServer.setData(Qt.UserRole, server)
         newServer.setFlags(newServer.flags() & ~Qt.ItemIsEditable)
         self._serversTable.setItem(rowCount, 0, newServer)

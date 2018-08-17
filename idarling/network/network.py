@@ -154,7 +154,11 @@ class Network(Module):
         if not server.start('0.0.0.0'):
             return False
         self._integrated = server
-        integrated_arg = {"host": "127.0.0.1", "port": server.port, "no_ssl": True}
+        integrated_arg = {
+            "host": "127.0.0.1",
+            "port": server.port,
+            "no_ssl": True
+        }
         return self.connect(integrated_arg)
 
     def stop_server(self):
