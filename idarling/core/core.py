@@ -49,7 +49,7 @@ class Core(Module):
         self._tick = 0
 
         # Instance members
-        self._servers = []
+        self._config = {"servers": []}
 
     def _install(self):
         logger.debug("Installing hooks")
@@ -218,7 +218,7 @@ class Core(Module):
 
         :return: the servers
         """
-        return self._servers
+        return self._config["servers"]
 
     @servers.setter
     def servers(self, servers):
@@ -227,41 +227,39 @@ class Core(Module):
 
         :param servers: the list of server
         """
-        self._servers = servers
+        self._config["servers"] = servers
         self.save_state()
 
     def load_state(self):
         """
         Load the state file.
+
+        The state file is now a json file in the form like this:
+        { "servers" : [
+            { "host": "127.0.0.1", "port": 3389, "no_ssl": True },
+            { "host": "127.0.0.2", "port": 3389, "no_ssl": True }
+            ]
+        }
         """
-        statePath = local_resource('files', 'state.json')
+        statePath = local_resource('files', 'config.json')
         if not os.path.isfile(statePath):
             return
         with open(statePath, 'rb') as stateFile:
             try:
-                state = json.loads(stateFile.read())
+                self._config = json.loads(stateFile.read())
             except ValueError:
                 logger.warning("Couldn't load state file")
                 return
-            logger.debug("Loaded state: %s" % state)
-
-            # Load the server list from state
-            Server = collections.namedtuple('Server',
-                                            ['host', 'port', 'no_ssl'])
-            if 'servers' in state:
-                self._servers = [Server(*addr) for addr in state['servers']]
+            logger.debug("Loaded state: %s" % self._config)
 
     def save_state(self):
         """
         Save the state file.
         """
-        statePath = local_resource('files', 'state.json')
+        statePath = local_resource('files', 'config.json')
         with open(statePath, 'wb') as stateFile:
-            state = {'servers': [[s.host, s.port, s.no_ssl]
-                                 for s in self._servers]}
-
-            logger.debug("Saved state: %s" % state)
-            stateFile.write(json.dumps(state))
+            logger.debug("Saved state: %s" % self._config)
+            stateFile.write(json.dumps(self._config))
 
     def notify_connected(self):
         if self._repo and self._branch:

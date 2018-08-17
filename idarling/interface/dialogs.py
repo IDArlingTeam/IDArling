@@ -26,7 +26,7 @@ from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout, QGridLayout,
                              QCheckBox)
 
 from ..shared.commands import GetRepositories, GetBranches, \
-                               NewRepository, NewBranch
+    NewRepository, NewBranch
 from ..shared.models import Repository, Branch
 
 logger = logging.getLogger('IDArling.Interface')
@@ -173,6 +173,7 @@ class OpenDialog(QDialog):
         """
         Refreshes the table of branches.
         """
+
         def createItem(text, branch):
             item = QTableWidgetItem(text)
             item.setData(Qt.UserRole, branch)
@@ -180,6 +181,7 @@ class OpenDialog(QDialog):
             if branch.tick == -1:
                 item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
             return item
+
         self._branchesTable.setRowCount(len(self._branches))
         for i, branch in enumerate(self._branches):
             self._branchesTable.setItem(i, 0, createItem(branch.name, branch))
@@ -442,7 +444,7 @@ class NetworkSettingsDialog(QDialog):
         self._serversTable = QTableWidget(len(servers), 1, self)
         self._serversTable.setHorizontalHeaderLabels(("Servers",))
         for i, server in enumerate(servers):
-            item = QTableWidgetItem('%s:%d' % (server.host, server.port))
+            item = QTableWidgetItem('%s:%d' % (server["host"], server["port"]))
             item.setData(Qt.UserRole, server)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             self._serversTable.setItem(i, 0, item)
@@ -514,15 +516,13 @@ class NetworkSettingsDialog(QDialog):
 
         :param dialog: the add server dialog
         """
-        host, port, no_ssl = dialog.get_result()
-        Server = namedtuple('Server', ['host', 'port', 'no_ssl'])
-        server = Server(host, port, no_ssl)
+        server = dialog.get_result()
         servers = self._plugin.core.servers
         servers.append(server)
         self._plugin.core.servers = servers
         rowCount = self._serversTable.rowCount()
         self._serversTable.insertRow(rowCount)
-        newServer = QTableWidgetItem('%s:%d' % (server.host, server.port))
+        newServer = QTableWidgetItem('%s:%d' % (server["host"], server["port"]))
         newServer.setData(Qt.UserRole, server)
         newServer.setFlags(newServer.flags() & ~Qt.ItemIsEditable)
         self._serversTable.setItem(rowCount, 0, newServer)
@@ -534,15 +534,13 @@ class NetworkSettingsDialog(QDialog):
 
         :param dialog: the edit server dialog
         """
-        host, port, no_ssl = dialog.get_result()
-        Server = namedtuple('Server', ['host', 'port', 'no_ssl'])
-        server = Server(host, port, no_ssl)
+        server = dialog.get_result()
         servers = self._plugin.core.servers
         item = self._serversTable.selectedItems()[0]
         servers[item.row()] = server
         self._plugin.core.servers = servers
 
-        item.setText('%s:%d' % (server.host, server.port))
+        item.setText('%s:%d' % (server["host"], server["port"]))
         item.setData(Qt.UserRole, server)
         item.setFlags(item.flags() & ~Qt.ItemIsEditable)
         self.update()
@@ -600,9 +598,9 @@ class ServerInfoDialog(QDialog):
         layout.addWidget(self._noSSLCheckbox)
 
         if server is not None:
-            self._serverName.setText(server.host)
-            self._serverPort.setText(str(server.port))
-            self._noSSLCheckbox.setChecked(server.no_ssl)
+            self._serverName.setText(server["host"])
+            self._serverPort.setText(str(server["port"]))
+            self._noSSLCheckbox.setChecked(server["no_ssl"])
 
         downSide = QWidget(self)
         buttonsLayout = QHBoxLayout(downSide)
@@ -620,6 +618,9 @@ class ServerInfoDialog(QDialog):
 
         :return: the result
         """
-        return (self._serverName.text() or "127.0.0.1",
-                int(self._serverPort.text() or "31013"),
-                self._noSSLCheckbox.isChecked())
+        new_server = {
+            "host": self._serverName.text() or "127.0.0.1",
+            "port": int(self._serverPort.text() or "31013"),
+            "no_ssl": self._noSSLCheckbox.isChecked()
+        }
+        return new_server
