@@ -19,11 +19,11 @@ import ida_loader
 import ida_nalt
 
 from PyQt5.QtCore import Qt, QRegExp
-from PyQt5.QtGui import QIcon, QRegExpValidator
+from PyQt5.QtGui import QIcon, QRegExpValidator, QColor
 from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout, QGridLayout,
                              QWidget, QTableWidget, QTableWidgetItem, QLabel,
                              QPushButton, QLineEdit, QGroupBox, QMessageBox,
-                             QCheckBox)
+                             QCheckBox, QTabWidget, QColorDialog)
 
 from ..shared.commands import GetRepositories, GetBranches, \
     NewRepository, NewBranch
@@ -419,7 +419,7 @@ class NewBranchDialog(NewRepoDialog):
         self._nameLabel.setText("<b>Branch Name</b>")
 
 
-class NetworkSettingsDialog(QDialog):
+class SettingsDialog(QDialog):
     """
     The dialog allowing an user to select a remote server to connect to.
     """
@@ -430,7 +430,7 @@ class NetworkSettingsDialog(QDialog):
 
         :param plugin: the plugin instance
         """
-        super(NetworkSettingsDialog, self).__init__()
+        super(SettingsDialog, self).__init__()
         self._plugin = plugin
 
         # General setup of the dialog
@@ -439,6 +439,9 @@ class NetworkSettingsDialog(QDialog):
         iconPath = self._plugin.resource('settings.png')
         self.setWindowIcon(QIcon(iconPath))
 
+        tabs = QTabWidget(self)
+
+        # Network Settings tab
         layout = QHBoxLayout(self)
         servers = self._plugin.core.servers
         self._serversTable = QTableWidget(len(servers), 1, self)
@@ -484,6 +487,94 @@ class NetworkSettingsDialog(QDialog):
         self._quitButton.clicked.connect(self.reject)
         buttonsLayout.addWidget(self._quitButton)
         layout.addWidget(buttonsWidget)
+
+        tab = QWidget()
+        tab.setLayout(layout)
+        tabs.addTab(tab, "Network Settings")
+
+        self.resize(tab.sizeHint().width() + 5, tab.sizeHint().height() + 30)
+
+        # User Settings tab
+        layout = QVBoxLayout(self)
+        display = "Disable users display in the navigation bar"
+        noNavbarColorizerCheckbox = QCheckBox(display)
+
+        def noNavbarColorizerActionTriggered():
+            self._plugin.interface.painter.noNavbarColorizer = \
+                    noNavbarColorizerCheckbox.isChecked()
+        checkbox = noNavbarColorizerCheckbox
+        checkbox.toggled.connect(noNavbarColorizerActionTriggered)
+        checked = self._plugin.interface.painter.noNavbarColorizer
+        noNavbarColorizerCheckbox.setChecked(checked)
+        layout.addWidget(noNavbarColorizerCheckbox)
+
+        display = "Disable notifications"
+        noNotificationsCheckbox = QCheckBox(display)
+
+        def noNotificationsActionToggled():
+            self._plugin.interface.painter.noNotifications = \
+                    noNotificationsCheckbox.isChecked()
+        noNotificationsCheckbox.toggled.connect(noNotificationsActionToggled)
+        checked = self._plugin.interface.painter.noNotifications
+        noNotificationsCheckbox.setChecked(checked)
+        layout.addWidget(noNotificationsCheckbox)
+
+        # User color
+        colorWidget = QWidget(self)
+        colorLayout = QHBoxLayout(colorWidget)
+        colorButton = QPushButton("")
+        colorButton.setFixedSize(50, 30)
+
+        def setColor(color):
+            """
+            Sets the color (if valid) as user's color
+
+            :param color: the color
+            """
+            if color.isValid():
+                r, g, b, _ = color.getRgb()
+                rgbColor = r << 16 | g << 8 | b
+                # set the color as user's color
+                self._plugin.interface.painter.color = rgbColor
+                # set the background button color
+                palette = colorButton.palette()
+                role = colorButton.backgroundRole()
+                palette.setColor(role, color)
+                colorButton.setPalette(palette)
+                colorButton.setAutoFillBackground(True)
+
+        userColor = self._plugin.interface.painter.color
+        color = QColor(userColor)
+        setColor(color)
+
+        # Add a handler on clicking color button
+        def colorButtonClicked(_):
+            color = QColorDialog.getColor()
+            setColor(color)
+        colorButton.clicked.connect(colorButtonClicked)
+
+        colorLayout.addWidget(colorButton)
+
+        # User name
+        self.colorLabel = QLineEdit()
+        self.colorLabel.setPlaceholderText("Name")
+        name = self._plugin.interface.painter.name
+        self.colorLabel.setText(name)
+        colorLayout.addWidget(self.colorLabel)
+
+        buttonsWidget = QWidget(self)
+        buttonsLayout = QHBoxLayout(buttonsWidget)
+        self._acceptButton = QPushButton("Ok")
+
+        self._acceptButton.clicked.connect(self.accept)
+        buttonsLayout.addWidget(self._acceptButton)
+
+        layout.addWidget(colorWidget)
+        layout.addWidget(buttonsWidget)
+
+        tab = QWidget()
+        tab.setLayout(layout)
+        tabs.addTab(tab, "User Settings")
 
     def _server_clicked(self, _):
         """
@@ -557,6 +648,19 @@ class NetworkSettingsDialog(QDialog):
         self._plugin.core.servers = servers
         self._serversTable.removeRow(item.row())
         self.update()
+
+    def get_result(self):
+        """
+        Get the result (name, color, navbar coloration, notification) from this
+        dialog.
+
+        :return: the result
+        """
+        name = self.colorLabel.text()
+        color = self._plugin.interface.painter.color
+        notifications = self._plugin.interface.painter.noNotifications
+        navbarColorizer = self._plugin.interface.painter.noNavbarColorizer
+        return (name, color, notifications, navbarColorizer)
 
 
 class ServerInfoDialog(QDialog):

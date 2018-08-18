@@ -12,11 +12,12 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import logging
 
+from functools import partial
 from PyQt5.QtCore import Qt, QSize, QPoint, QRect
 from PyQt5.QtGui import QPixmap, QIcon, QPainter, QRegion
 from PyQt5.QtWidgets import QWidget, QLabel, QMenu, QAction, QActionGroup
 
-from .dialogs import NetworkSettingsDialog
+from .dialogs import SettingsDialog
 
 logger = logging.getLogger('IDArling.Interface')
 
@@ -114,14 +115,18 @@ class StatusWidget(QWidget):
         logger.debug("Opening widget context menu")
         menu = QMenu(self)
 
-        # Add the network settings
+        # Add the settings
         settings = QAction('Network Settings', menu)
         iconPath = self._plugin.resource('settings.png')
         settings.setIcon(QIcon(iconPath))
 
+        def dialog_accepted(dialog):
+            name, color, notifications, navbarColorizer = dialog.get_result()
+
         # Add a handler on the action
         def settingsActionTriggered():
-            dialog = NetworkSettingsDialog(self._plugin)
+            dialog = SettingsDialog(self._plugin)
+            dialog.accepted.connect(partial(dialog_accepted, dialog))
             dialog.exec_()
 
         settings.triggered.connect(settingsActionTriggered)

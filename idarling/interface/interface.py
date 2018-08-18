@@ -19,6 +19,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow,\
 
 from ..module import Module
 from .actions import OpenAction, SaveAction
+from .painter import Painter
 from .widgets import StatusWidget
 
 logger = logging.getLogger('IDArling.Interface')
@@ -46,6 +47,7 @@ class Interface(Module):
 
         self._openAction = OpenAction(plugin)
         self._saveAction = SaveAction(plugin)
+        self._painter = Painter()
 
         class EventHandler(QObject):
 
@@ -78,6 +80,7 @@ class Interface(Module):
         self._openAction.install()
         self._saveAction.install()
         self._install_our_icon()
+        self._painter.install()
 
         self._window.statusBar().addPermanentWidget(self._statusWidget)
         logger.debug("Installed widgets in status bar")
@@ -87,6 +90,7 @@ class Interface(Module):
         self._openAction.uninstall()
         self._saveAction.uninstall()
         self._uninstall_our_icon()
+        self._painter.uninstall()
 
         self._window.statusBar().removeWidget(self._statusWidget)
         logger.debug("Uninstalled widgets from status bar")
@@ -124,3 +128,7 @@ class Interface(Module):
     def notify_connected(self):
         self._statusWidget.set_state(StatusWidget.STATE_CONNECTED)
         self._update_actions()
+
+    @property
+    def painter(self):
+        return self._painter

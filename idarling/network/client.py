@@ -12,7 +12,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import logging
 
-from ..shared.packets import Event
+from ..shared.commands import UpdateCursors, Unsubscribe
+from ..shared.packets import Command, Event
 from ..shared.sockets import ClientSocket
 
 logger = logging.getLogger('IDArling.Network')
@@ -31,6 +32,11 @@ class Client(ClientSocket):
         """
         ClientSocket.__init__(self, logger, parent)
         self._plugin = plugin
+        self._users = {}
+        self._handlers = {
+            UpdateCursors: self._handle_update_cursors,
+            Unsubscribe: self._handle_unsubscribe,
+        }
 
     def disconnect(self, err=None):
         ClientSocket.disconnect(self, err)
@@ -40,7 +46,11 @@ class Client(ClientSocket):
         self._plugin.notify_disconnected()
 
     def recv_packet(self, packet):
-        if isinstance(packet, Event):
+        if isinstance(packet, Command):
+            # Call the corresponding handler
+            self._handlers[packet.__class__](packet)
+
+        elif isinstance(packet, Event):
             # Call the event
             self._plugin.core.unhook_all()
             try:
@@ -62,3 +72,13 @@ class Client(ClientSocket):
             self._plugin.core.tick += 1
             packet.tick = self._plugin.core.tick
         return ClientSocket.send_packet(self, packet)
+
+    def _handle_update_cursors(self, packet):
+        self._plugin.interface.painter.paint(packet.color, packet.ea)
+
+    def _handle_unsubscribe(self, packet):
+        self._plugin.interface.painter.unpaint(packet.color)
+
+    @property
+    def users(self):
+        return self._users
