@@ -83,6 +83,7 @@ class StatusWidget(QWidget):
         textFormat = '%s | %s -- <span style="color: %s;">%s</span>'
         self._textWidget.setText(textFormat % (self._plugin.description(),
                                                server, color, text))
+        self._textWidget.adjustSize()
 
         # Update the icon of the widget
         pixmap = QPixmap(self._plugin.resource(icon))
