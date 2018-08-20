@@ -388,6 +388,8 @@ class SaveActionHandler(ActionHandler):
         success.exec_()
 
         # Subscribe to the new events stream
+        color = self._plugin.interface.painter.color
         self._plugin.network.send_packet(Subscribe(repo.name, branch.name,
-                                                   self._plugin.core.tick))
+                                                   self._plugin.core.tick,
+                                                   color))
         self._plugin.core.hook_all()
