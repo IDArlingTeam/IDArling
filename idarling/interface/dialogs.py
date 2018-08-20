@@ -426,7 +426,7 @@ class SettingsDialog(QDialog):
 
     def __init__(self, plugin):
         """
-        Initialize the network settings dialog.
+        Initialize the settings dialog.
 
         :param plugin: the plugin instance
         """
@@ -434,8 +434,8 @@ class SettingsDialog(QDialog):
         self._plugin = plugin
 
         # General setup of the dialog
-        logger.debug("Showing network settings dialog")
-        self.setWindowTitle("Network Settings")
+        logger.debug("Showing settings dialog")
+        self.setWindowTitle("Settings")
         iconPath = self._plugin.resource('settings.png')
         self.setWindowIcon(QIcon(iconPath))
 
@@ -564,7 +564,7 @@ class SettingsDialog(QDialog):
 
         buttonsWidget = QWidget(self)
         buttonsLayout = QHBoxLayout(buttonsWidget)
-        self._acceptButton = QPushButton("Ok")
+        self._acceptButton = QPushButton("OK")
 
         self._acceptButton.clicked.connect(self.accept)
         buttonsLayout.addWidget(self._acceptButton)
