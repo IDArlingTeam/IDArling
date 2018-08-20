@@ -60,11 +60,9 @@ class Network(Module):
 
     def connect(self, server):
         """
-        Connect to the specified host and port.
+        Connect to the specified server.
 
-        :param host: the host
-        :param port: the port
-        :param no_ssl: disable SSL
+        :param server: the server information
         :return: did the operation succeed?
         """
         # Make sure we're not already connected

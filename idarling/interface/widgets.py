@@ -116,7 +116,7 @@ class StatusWidget(QWidget):
         menu = QMenu(self)
 
         # Add the settings
-        settings = QAction('Network Settings', menu)
+        settings = QAction('Settings...', menu)
         iconPath = self._plugin.resource('settings.png')
         settings.setIcon(QIcon(iconPath))
 

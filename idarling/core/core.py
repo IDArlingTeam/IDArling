@@ -10,7 +10,6 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import collections
 import json
 import logging
 import os
@@ -35,6 +34,7 @@ class Core(Module):
 
     def __init__(self, plugin):
         super(Core, self).__init__(plugin)
+        self._hooked = False
 
         self._idbHooks = None
         self._idpHooks = None
@@ -98,7 +98,6 @@ class Core(Module):
             def closebase(self):
                 color = self._plugin.interface.painter.color
                 self._plugin.network.send_packet(Unsubscribe(color))
-                logger.debug("Sending unsubscribe packet")
                 core.unhook_all()
                 core.repo = None
                 core.branch = None
@@ -122,21 +121,27 @@ class Core(Module):
         """
         Add the hooks to be notified of incoming IDA events.
         """
+        if self._hooked:
+            return
         self._idbHooks.hook()
         self._idpHooks.hook()
         self._hxeHooks.hook()
         self._viewHooks.hook()
         self._uiHooks.hook()
+        self._hooked = True
 
     def unhook_all(self):
         """
         Remove the hooks to not be notified of incoming IDA events.
         """
+        if not self._hooked:
+            return
         self._idbHooks.unhook()
         self._idpHooks.unhook()
         self._hxeHooks.unhook()
         self._viewHooks.unhook()
         self._uiHooks.unhook()
+        self._hooked = False
 
     @property
     def repo(self):

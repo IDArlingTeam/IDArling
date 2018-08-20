@@ -261,7 +261,8 @@ class Painter(object):
         Clear paint from the given functions
 
         :param color: the color
-        :new_address: an address within the function where clear the color
+        :param new_address: an address within the function where the color
+                            needs to be cleared
         """
         user_position = self.users_positions.get(color)
         new_func = ida_funcs.get_func(new_address)

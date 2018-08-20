@@ -680,7 +680,7 @@ class UIHooks(Hooks, ida_kernwin.UI_Hooks):
             for infos in painter.users_positions.values():
                 address = infos['address']
                 if address - nbytes * 4 <= ea <= address + nbytes * 4:
-                    return("IDArling team")
+                    return "IDArling team"
 
     def saving(self):
         # clean users cursor

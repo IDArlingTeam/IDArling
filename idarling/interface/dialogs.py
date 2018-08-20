@@ -660,7 +660,7 @@ class SettingsDialog(QDialog):
         color = self._plugin.interface.painter.color
         notifications = self._plugin.interface.painter.noNotifications
         navbarColorizer = self._plugin.interface.painter.noNavbarColorizer
-        return (name, color, notifications, navbarColorizer)
+        return name, color, notifications, navbarColorizer
 
 
 class ServerInfoDialog(QDialog):
