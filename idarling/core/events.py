@@ -888,9 +888,9 @@ class UserLvarSettingsEvent(HexRaysEvent):
     @staticmethod
     def _get_tinfo(dct):
         type, fields, fldcmts = dct
-        type = Event.encode(type)
-        fields = Event.encode(fields)
-        fldcmts = Event.encode(fldcmts)
+        type = Event.encode_bytes(type)
+        fields = Event.encode_bytes(fields)
+        fldcmts = Event.encode_bytes(fldcmts)
 
         type_ = ida_typeinf.tinfo_t()
         if type is not None:
