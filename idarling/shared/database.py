@@ -49,7 +49,7 @@ class Database(object):
             'repo text not null',
             'name text not null',
             'date text not null',
-            'foreign key(repo) references repos(repo)',
+            'foreign key(repo) references repos(name)',
             'primary key(repo, name)',
         ])
         self._create('events', [
@@ -58,7 +58,7 @@ class Database(object):
             'tick integer not null',
             'dict text not null',
             'foreign key(repo) references repos(name)',
-            'foreign key(branch) references branches(name)',
+            'foreign key(repo, branch) references branches(repo, name)',
             'primary key(repo, branch, tick)',
         ])
 

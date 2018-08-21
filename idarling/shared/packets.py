@@ -27,7 +27,7 @@ def with_metaclass(meta, *bases):
             return meta(name, bases, d)
 
         @classmethod
-        def __prepare__(cls, name, this_bases):
+        def __prepare__(cls, name, _):
             return meta.__prepare__(name, bases)
     return type.__new__(metaclass, 'temporary_class', (), {})
 
@@ -127,16 +127,17 @@ class PacketFactory(type):
         return cls
 
     @classmethod
-    def get_class(mcs, dct):
+    def get_class(mcs, dct, server=False):
         """
         Get the class corresponding to the given dictionary.
 
         :param dct: the dictionary
+        :param server: server client?
         :return: the packet class
         """
         cls = PacketFactory._PACKETS[dct['type']]
         if type(cls) != mcs:
-            cls = type(cls).get_class(dct)
+            cls = type(cls).get_class(dct, server)
         return cls
 
 
@@ -155,14 +156,15 @@ class Packet(with_metaclass(PacketFactory, Serializable)):
         assert self.__type__ is not None, "__type__ not implemented"
 
     @staticmethod
-    def parse_packet(dct):
+    def parse_packet(dct, server=False):
         """
         Parse a packet from a dictionary.
 
         :param dct: the dictionary
+        :param server: server client?
         :return: the packet
         """
-        cls = PacketFactory.get_class(dct)
+        cls = PacketFactory.get_class(dct, server)
         packet = cls.new(dct)
         if isinstance(packet, Reply):
             packet.trigger_initback()
@@ -308,10 +310,13 @@ class EventFactory(PacketFactory):
         return cls
 
     @classmethod
-    def get_class(mcs, dct):
+    def get_class(mcs, dct, server=False):
+        if server:  # Server only knows about DefaultEvent
+            return DefaultEvent
+
         cls = EventFactory._EVENTS[dct['event_type']]
         if type(cls) != mcs:
-            cls = type(cls).get_class(dct)
+            cls = type(cls).get_class(dct, server)
         return cls
 
 
@@ -410,10 +415,10 @@ class CommandFactory(PacketFactory):
         return cls
 
     @classmethod
-    def get_class(mcs, dct):
+    def get_class(mcs, dct, server=False):
         cls = CommandFactory._COMMANDS[dct['command_type']]
         if type(cls) != mcs:
-            cls = type(cls).get_class(dct)
+            cls = type(cls).get_class(dct, server)
         return cls
 
 

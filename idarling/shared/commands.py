@@ -125,12 +125,25 @@ class DownloadDatabase(ParentCommand):
 class Subscribe(DefaultCommand):
     __command__ = 'subscribe'
 
-    def __init__(self, repo, branch, tick):
+    def __init__(self, repo, branch, tick, color):
         super(Subscribe, self).__init__()
         self.repo = repo
         self.branch = branch
         self.tick = tick
+        self.color = color
 
 
 class Unsubscribe(DefaultCommand):
     __command__ = 'unsubscribe'
+
+    def __init__(self, color):
+        super(Unsubscribe, self).__init__()
+        self.color = color
+
+
+class UpdateCursors(DefaultCommand):
+    __command__ = 'update_cursors'
+
+    def __init__(self, ea):
+        super(UpdateCursors, self).__init__()
+        self.ea = ea

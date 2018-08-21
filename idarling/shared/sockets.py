@@ -50,6 +50,7 @@ class ClientSocket(QObject):
         QObject.__init__(self, parent)
         self._logger = logger
         self._socket = None
+        self._server = parent and isinstance(parent, ServerSocket)
 
         self._read_buffer = bytearray()
         self._read_notifier = None
@@ -140,7 +141,8 @@ class ClientSocket(QObject):
                     # Try to parse the line as a packet
                     try:
                         dct = json.loads(line.decode('utf-8'))
-                        self._read_packet = Packet.parse_packet(dct)
+                        self._read_packet = Packet.parse_packet(dct,
+                                                                self._server)
                     except Exception as e:
                         msg = "Invalid packet received: %s" % line
                         self._logger.warning(msg)

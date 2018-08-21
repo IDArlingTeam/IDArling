@@ -12,11 +12,12 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import logging
 
+from functools import partial
 from PyQt5.QtCore import Qt, QSize, QPoint, QRect
 from PyQt5.QtGui import QPixmap, QIcon, QPainter, QRegion
 from PyQt5.QtWidgets import QWidget, QLabel, QMenu, QAction, QActionGroup
 
-from .dialogs import NetworkSettingsDialog
+from .dialogs import SettingsDialog
 
 logger = logging.getLogger('IDArling.Interface')
 
@@ -79,10 +80,11 @@ class StatusWidget(QWidget):
         if self._server is None:
             server = '&lt;no server&gt;'
         else:
-            server = '%s:%d' % (self._server.host, self._server.port)
+            server = '%s:%d' % (self._server["host"], self._server["port"])
         textFormat = '%s | %s -- <span style="color: %s;">%s</span>'
         self._textWidget.setText(textFormat % (self._plugin.description(),
                                                server, color, text))
+        self._textWidget.adjustSize()
 
         # Update the icon of the widget
         pixmap = QPixmap(self._plugin.resource(icon))
@@ -113,14 +115,18 @@ class StatusWidget(QWidget):
         logger.debug("Opening widget context menu")
         menu = QMenu(self)
 
-        # Add the network settings
-        settings = QAction('Network Settings', menu)
+        # Add the settings
+        settings = QAction('Settings...', menu)
         iconPath = self._plugin.resource('settings.png')
         settings.setIcon(QIcon(iconPath))
 
+        def dialog_accepted(dialog):
+            name, color, notifications, navbarColorizer = dialog.get_result()
+
         # Add a handler on the action
         def settingsActionTriggered():
-            dialog = NetworkSettingsDialog(self._plugin)
+            dialog = SettingsDialog(self._plugin)
+            dialog.accepted.connect(partial(dialog_accepted, dialog))
             dialog.exec_()
 
         settings.triggered.connect(settingsActionTriggered)
@@ -147,19 +153,17 @@ class StatusWidget(QWidget):
 
             def serverActionTriggered(serverAction):
                 isConnected = self._plugin.network.connected \
-                    and server.host == currentServer.host \
-                    and server.port == currentServer.port
+                    and server["host"] == currentServer["host"] \
+                    and server["port"] == currentServer["port"]
                 self._plugin.network.stop_server()
                 if not isConnected:
-                    self._plugin.network.connect(serverAction._server.host,
-                                                 serverAction._server.port,
-                                                 serverAction._server.no_ssl)
+                    self._plugin.network.connect(serverAction._server)
 
             for server in self._plugin.core.servers:
                 isConnected = self._plugin.network.connected \
-                              and server.host == currentServer.host \
-                              and server.port == currentServer.port
-                serverText = '%s:%d' % (server.host, server.port)
+                              and server["host"] == currentServer["host"] \
+                              and server["port"] == currentServer["port"]
+                serverText = '%s:%d' % (server["host"], server["port"])
                 serverAction = QAction(serverText, menu)
                 serverAction._server = server
                 serverAction.setCheckable(True)

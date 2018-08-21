@@ -13,6 +13,8 @@
 import ida_idaapi
 import ida_kernwin
 
+from PyQt5.QtCore import QCoreApplication
+
 from .core.core import Core
 from .interface.interface import Interface
 from .network.network import Network
@@ -63,6 +65,9 @@ class Plugin(ida_idaapi.plugin_t):
         """
         Instantiate the plugin and all its modules.
         """
+        if QCoreApplication.instance() is None:
+            raise RuntimeError("IDArling cannot be used in terminal mode")
+
         self._core = Core(self)
         self._interface = Interface(self)
         self._network = Network(self)
