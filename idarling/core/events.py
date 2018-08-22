@@ -298,9 +298,10 @@ class LocalTypesChangedEvent(Event):
             for t in local_type:
                 if t is not None:
                     self.local_type.append((
-                        Event.decode_bytes(t[0]),
+                        t[0],
                         Event.decode_bytes(t[1]),
                         Event.decode_bytes(t[2]),
+                        Event.decode_bytes(t[3]),
                     ))
                 else:
                     self.local_type.append(None)
@@ -310,24 +311,34 @@ class LocalTypesChangedEvent(Event):
         for t in self.local_type:
             if t is not None:
                 local_type.append((
-                    Event.encode_bytes(t[0]),
+                    t[0],
                     Event.encode_bytes(t[1]),
                     Event.encode_bytes(t[2]),
+                    Event.encode_bytes(t[3]),
                 ))
             else:
                 local_type.append(None)
 
-        missing_ord = len(local_type) - ida_typeinf.get_ordinal_qty(None) + 1
-        if missing_ord > 0:
-            ida_typeinf.alloc_type_ordinals(None, missing_ord)
+        def alloc_oridinal(target_ordinal):
+            # get_ordinal_qty() will return (current max ordinal + 1)
+            missing_ord = target_ordinal-ida_typeinf.get_ordinal_qty(None) + 1
+            if missing_ord > 0:
+                ida_typeinf.alloc_type_ordinals(None, missing_ord)
 
-        for i, t in enumerate(local_type):
+        for t in local_type:
+            logger.debug("Processing: %s", str(t))
+            alloc_oridinal(t[0])
+
+            # Can't change some local types if not delete them first
+            # Example: struct aaa{int a;}'
+            ida_typeinf.del_numbered_type(None, t[0])
+
             if t is not None:
                 cur_tinfo = ida_typeinf.tinfo_t()
-                cur_tinfo.deserialize(None, t[0], t[1])
-                cur_tinfo.set_numbered_type(None, i + 1, 0, t[2])
-            else:
-                ida_typeinf.del_numbered_type(None, i + 1)
+                cur_tinfo.deserialize(None, t[1], t[2])
+                logger.debug("set_numbered_type ret: %d",
+                             cur_tinfo.set_numbered_type(None, t[0], 0, t[3]))
+
         ida_kernwin.request_refresh(ida_kernwin.IWID_LOCTYPS)
 
 
