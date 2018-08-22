@@ -157,7 +157,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                         if types1[i] != types2[i]:
                             ret_types.append((i, types1[i], types2[i]))
                 return ret_types
-            diff = differ_local_types(self.last_local_type,local_types)
+            diff = differ_local_types(self.last_local_type, local_types)
             self.last_local_type = local_types
             if len(diff) == 1 and diff[0][2] is None:
                 return 0
