@@ -479,7 +479,7 @@ class HexRaysHooks(Hooks):
         if event == ida_hexrays.hxe_func_printed:
             ea = ida_kernwin.get_screen_ea()
             func = ida_funcs.get_func(ea)
-            if self._funcEA != func.startEA:
+            if func is not None and self._funcEA != func.startEA:
                 self._funcEA = func.startEA
                 self._labels = HexRaysHooks._get_user_labels(self._funcEA)
                 self._cmts = HexRaysHooks._get_user_cmts(self._funcEA)
