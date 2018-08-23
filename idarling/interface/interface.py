@@ -43,7 +43,7 @@ class Interface(Module):
 
     def __init__(self, plugin):
         super(Interface, self).__init__(plugin)
-        self._window = self._find_main_window()
+        self._window = None
 
         self._openAction = OpenAction(plugin)
         self._saveAction = SaveAction(plugin)
@@ -82,6 +82,8 @@ class Interface(Module):
         self._install_our_icon()
         self._painter.install()
 
+        if self._window is None:
+            self._window = self._find_main_window()
         self._window.statusBar().addPermanentWidget(self._statusWidget)
         logger.debug("Installed widgets in status bar")
         return True
