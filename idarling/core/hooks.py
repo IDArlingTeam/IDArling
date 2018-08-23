@@ -434,10 +434,10 @@ class IDPHooks(Hooks, ida_idp.IDP_Hooks):
 
     def ev_undefine(self, ea):
         self._send_event(UndefinedEvent(ea))
-        return 0
+        return ida_idp.IDP_Hooks.ev_undefine(self, ea)
 
-    def ev_adjust_argloc(self, *_):
-        return 0
+    def ev_adjust_argloc(self, *args):
+        return ida_idp.IDP_Hooks.ev_adjust_argloc(self, *args)
 
 
 class HexRaysHooks(Hooks):
