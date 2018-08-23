@@ -34,6 +34,7 @@ class ServerClient(ClientSocket):
         ClientSocket.__init__(self, logger, parent)
         self._repo = None
         self._branch = None
+        self._color = None
         self._handlers = {}
 
     def connect(self, sock):
