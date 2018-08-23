@@ -10,6 +10,10 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import json
+import logging
+import os
+
 import ida_idaapi
 import ida_kernwin
 
@@ -19,7 +23,7 @@ from .core.core import Core
 from .interface.interface import Interface
 from .network.network import Network
 from .utilities.log import start_logging
-from .utilities.misc import plugin_resource
+from .utilities.misc import local_resource, plugin_resource
 
 # Start logging
 logger = start_logging()
@@ -72,6 +76,12 @@ class Plugin(ida_idaapi.plugin_t):
         self._interface = Interface(self)
         self._network = Network(self)
 
+        # Configuration
+        self._config = {
+            "level": logging.INFO,
+            "servers": []
+        }
+
     @property
     def core(self):
         """
@@ -122,6 +132,8 @@ class Plugin(ida_idaapi.plugin_t):
         """
         Initialize the plugin and all its modules.
         """
+        self.load_config()
+
         self._interface.install()
         self._network.install()
         self._core.install()
@@ -157,12 +169,55 @@ class Plugin(ida_idaapi.plugin_t):
         self._network.uninstall()
         self._interface.uninstall()
 
+        self.save_config()
+
     def run(self, _):
         """
         This method is called when IDA is running the plugin as a script.
         """
         ida_kernwin.warning("IDArling cannot be run as a script")
         return False
+
+    @property
+    def config(self):
+        """
+        Get the current configuration of the plugin.
+
+        :return: the config
+        """
+        return self._config
+
+    def load_config(self):
+        """
+        Load the config file.
+
+        The config file is a JSON file in the form like this:
+        { "servers" : [
+            { "host": "127.0.0.1", "port": 3389, "no_ssl": True },
+            { "host": "127.0.0.2", "port": 3389, "no_ssl": True }
+            ]
+        }
+        """
+        configPath = local_resource('files', 'config.json')
+        if not os.path.isfile(configPath):
+            return
+        with open(configPath, 'rb') as configFile:
+            try:
+                self._config.update(json.loads(configFile.read()))
+            except ValueError:
+                logger.warning("Couldn't load config file")
+                return
+            logger.setLevel(self._config["level"])
+            logger.debug("Loaded config: %s" % self._config)
+
+    def save_config(self):
+        """
+        Save the config file.
+        """
+        configPath = local_resource('files', 'config.json')
+        with open(configPath, 'wb') as configFile:
+            logger.debug("Saved config: %s" % self._config)
+            configFile.write(json.dumps(self._config))
 
     def notify_disconnected(self):
         """

@@ -12,7 +12,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import datetime
 import logging
-from collections import namedtuple
 from functools import partial
 
 import ida_loader
@@ -23,7 +22,7 @@ from PyQt5.QtGui import QIcon, QRegExpValidator, QColor
 from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout, QGridLayout,
                              QWidget, QTableWidget, QTableWidgetItem, QLabel,
                              QPushButton, QLineEdit, QGroupBox, QMessageBox,
-                             QCheckBox, QTabWidget, QColorDialog)
+                             QCheckBox, QTabWidget, QColorDialog, QComboBox)
 
 from ..shared.commands import GetRepositories, GetBranches, \
     NewRepository, NewBranch
@@ -441,61 +440,42 @@ class SettingsDialog(QDialog):
 
         tabs = QTabWidget(self)
 
-        # Network Settings tab
-        layout = QHBoxLayout(self)
-        servers = self._plugin.core.servers
-        self._serversTable = QTableWidget(len(servers), 1, self)
-        self._serversTable.setHorizontalHeaderLabels(("Servers",))
-        for i, server in enumerate(servers):
-            item = QTableWidgetItem('%s:%d' % (server["host"], server["port"]))
-            item.setData(Qt.UserRole, server)
-            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self._serversTable.setItem(i, 0, item)
-
-        self._serversTable.horizontalHeader().setSectionsClickable(False)
-        self._serversTable.horizontalHeader().setStretchLastSection(True)
-        self._serversTable.verticalHeader().setVisible(False)
-        self._serversTable.setSelectionBehavior(QTableWidget.SelectRows)
-        self._serversTable.setSelectionMode(QTableWidget.SingleSelection)
-        self._serversTable.itemClicked.connect(self._server_clicked)
-        minSZ = self._serversTable.minimumSize()
-        self._serversTable.setMinimumSize(300, minSZ.height())
-        layout.addWidget(self._serversTable)
-
-        buttonsWidget = QWidget(self)
-        buttonsLayout = QVBoxLayout(buttonsWidget)
-
-        # Add server button
-        self._addButton = QPushButton("Add Server")
-        self._addButton.clicked.connect(self._add_button_clicked)
-        buttonsLayout.addWidget(self._addButton)
-
-        # Edit server button
-        self._editButton = QPushButton("Edit Server")
-        self._editButton.setEnabled(False)
-        self._editButton.clicked.connect(self._edit_button_clicked)
-        buttonsLayout.addWidget(self._editButton)
-
-        # Delete server button
-        self._deleteButton = QPushButton("Delete Server")
-        self._deleteButton.setEnabled(False)
-        self._deleteButton.clicked.connect(self._delete_button_clicked)
-        buttonsLayout.addWidget(self._deleteButton)
-
-        # Cancel button
-        self._quitButton = QPushButton("Close")
-        self._quitButton.clicked.connect(self.reject)
-        buttonsLayout.addWidget(self._quitButton)
-        layout.addWidget(buttonsWidget)
-
-        tab = QWidget()
+        # General Settings tab
+        tab = QWidget(tabs)
+        layout = QVBoxLayout(tab)
         tab.setLayout(layout)
-        tabs.addTab(tab, "Network Settings")
+        tabs.addTab(tab, "General Settings")
 
-        self.resize(tab.sizeHint().width() + 5, tab.sizeHint().height() + 30)
+        debugLevelWidget = QWidget(tab)
+        debugLevelLayout = QHBoxLayout(debugLevelWidget)
+        debugLevelLabel = QLabel("Log Level: ")
+        debugLevelLayout.addWidget(debugLevelLabel)
+        debugLevelComboBox = QComboBox()
+        debugLevelComboBox.addItem("CRITICAL", logging.CRITICAL)
+        debugLevelComboBox.addItem("ERROR", logging.ERROR)
+        debugLevelComboBox.addItem("WARNING", logging.WARNING)
+        debugLevelComboBox.addItem("INFO", logging.INFO)
+        debugLevelComboBox.addItem("DEBUG", logging.DEBUG)
 
-        # User Settings tab
-        layout = QVBoxLayout(self)
+        def debugLevelInitialized():
+            from idarling.plugin import logger
+
+            index = debugLevelComboBox.findData(logger.getEffectiveLevel())
+            debugLevelComboBox.setCurrentIndex(index)
+        debugLevelInitialized()
+
+        def debugLevelActivated(index):
+            from idarling.plugin import logger
+
+            level = debugLevelComboBox.itemData(index)
+            logger.setLevel(level)
+            self._plugin.config["level"] = level
+            self._plugin.save_config()
+        debugLevelComboBox.activated.connect(debugLevelActivated)
+        debugLevelLayout.addWidget(debugLevelComboBox)
+        debugLevelWidget.setLayout(layout)
+        layout.addWidget(debugLevelWidget)
+
         display = "Disable users display in the navigation bar"
         noNavbarColorizerCheckbox = QCheckBox(display)
 
@@ -572,9 +552,58 @@ class SettingsDialog(QDialog):
         layout.addWidget(colorWidget)
         layout.addWidget(buttonsWidget)
 
-        tab = QWidget()
+        # Network Settings tab
+        tab = QWidget(tabs)
+        layout = QHBoxLayout(self)
         tab.setLayout(layout)
-        tabs.addTab(tab, "User Settings")
+        tabs.addTab(tab, "Network Settings")
+
+        servers = self._plugin.config["servers"]
+        self._serversTable = QTableWidget(len(servers), 1, self)
+        self._serversTable.setHorizontalHeaderLabels(("Servers",))
+        for i, server in enumerate(servers):
+            item = QTableWidgetItem('%s:%d' % (server["host"], server["port"]))
+            item.setData(Qt.UserRole, server)
+            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+            self._serversTable.setItem(i, 0, item)
+
+        self._serversTable.horizontalHeader().setSectionsClickable(False)
+        self._serversTable.horizontalHeader().setStretchLastSection(True)
+        self._serversTable.verticalHeader().setVisible(False)
+        self._serversTable.setSelectionBehavior(QTableWidget.SelectRows)
+        self._serversTable.setSelectionMode(QTableWidget.SingleSelection)
+        self._serversTable.itemClicked.connect(self._server_clicked)
+        minSZ = self._serversTable.minimumSize()
+        self._serversTable.setMinimumSize(300, minSZ.height())
+        layout.addWidget(self._serversTable)
+
+        buttonsWidget = QWidget(self)
+        buttonsLayout = QVBoxLayout(buttonsWidget)
+
+        # Add server button
+        self._addButton = QPushButton("Add Server")
+        self._addButton.clicked.connect(self._add_button_clicked)
+        buttonsLayout.addWidget(self._addButton)
+
+        # Edit server button
+        self._editButton = QPushButton("Edit Server")
+        self._editButton.setEnabled(False)
+        self._editButton.clicked.connect(self._edit_button_clicked)
+        buttonsLayout.addWidget(self._editButton)
+
+        # Delete server button
+        self._deleteButton = QPushButton("Delete Server")
+        self._deleteButton.setEnabled(False)
+        self._deleteButton.clicked.connect(self._delete_button_clicked)
+        buttonsLayout.addWidget(self._deleteButton)
+
+        # Cancel button
+        self._quitButton = QPushButton("Close")
+        self._quitButton.clicked.connect(self.reject)
+        buttonsLayout.addWidget(self._quitButton)
+        layout.addWidget(buttonsWidget)
+
+        self.resize(tab.sizeHint().width() + 5, tab.sizeHint().height() + 30)
 
     def _server_clicked(self, _):
         """
@@ -608,9 +637,9 @@ class SettingsDialog(QDialog):
         :param dialog: the add server dialog
         """
         server = dialog.get_result()
-        servers = self._plugin.core.servers
+        servers = self._plugin.config["servers"]
         servers.append(server)
-        self._plugin.core.servers = servers
+        self._plugin.save_config()
         rowCount = self._serversTable.rowCount()
         self._serversTable.insertRow(rowCount)
         newServer = QTableWidgetItem('%s:%d' %
@@ -627,10 +656,10 @@ class SettingsDialog(QDialog):
         :param dialog: the edit server dialog
         """
         server = dialog.get_result()
-        servers = self._plugin.core.servers
+        servers = self._plugin.config["servers"]
         item = self._serversTable.selectedItems()[0]
         servers[item.row()] = server
-        self._plugin.core.servers = servers
+        self._plugin.save_config()
 
         item.setText('%s:%d' % (server["host"], server["port"]))
         item.setData(Qt.UserRole, server)
@@ -643,9 +672,9 @@ class SettingsDialog(QDialog):
         """
         item = self._serversTable.selectedItems()[0]
         server = item.data(Qt.UserRole)
-        servers = self._plugin.core.servers
+        servers = self._plugin.config["servers"]
         servers.remove(server)
-        self._plugin.core.servers = servers
+        self._plugin.save_config()
         self._serversTable.removeRow(item.row())
         self.update()
 

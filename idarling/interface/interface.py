@@ -14,7 +14,7 @@ import logging
 
 from PyQt5.QtCore import QObject, Qt
 from PyQt5.QtGui import QShowEvent, QPixmap
-from PyQt5.QtWidgets import QApplication, QMainWindow,\
+from PyQt5.QtWidgets import qApp, QMainWindow,\
                             QDialog, QGroupBox, QLabel
 
 from ..module import Module
@@ -37,13 +37,13 @@ class Interface(Module):
 
         :return: the main window
         """
-        for widget in QApplication.topLevelWidgets():
+        for widget in qApp.topLevelWidgets():
             if isinstance(widget, QMainWindow):
                 return widget
 
     def __init__(self, plugin):
         super(Interface, self).__init__(plugin)
-        self._window = None
+        self._window = self._find_main_window()
 
         self._openAction = OpenAction(plugin)
         self._saveAction = SaveAction(plugin)
@@ -82,8 +82,6 @@ class Interface(Module):
         self._install_our_icon()
         self._painter.install()
 
-        if self._window is None:
-            self._window = self._find_main_window()
         self._window.statusBar().addPermanentWidget(self._statusWidget)
         logger.debug("Installed widgets in status bar")
         return True

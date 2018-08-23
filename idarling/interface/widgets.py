@@ -146,7 +146,7 @@ class StatusWidget(QWidget):
         menu.addAction(integrated)
 
         # Add each of the servers
-        if self._plugin.core.servers:
+        if self._plugin.config["servers"]:
             menu.addSeparator()
             serverGroup = QActionGroup(self)
             currentServer = self._plugin.network.server
@@ -159,7 +159,7 @@ class StatusWidget(QWidget):
                 if not isConnected:
                     self._plugin.network.connect(serverAction._server)
 
-            for server in self._plugin.core.servers:
+            for server in self._plugin.config["servers"]:
                 isConnected = self._plugin.network.connected \
                               and server["host"] == currentServer["host"] \
                               and server["port"] == currentServer["port"]

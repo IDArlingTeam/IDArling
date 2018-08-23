@@ -10,9 +10,7 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import json
 import logging
-import os
 
 import ida_idp
 import ida_kernwin
@@ -20,7 +18,7 @@ import ida_netnode
 
 from ..module import Module
 from ..shared.commands import Subscribe, Unsubscribe
-from ..utilities.misc import local_resource
+
 from .hooks import Hooks, IDBHooks, IDPHooks, HexRaysHooks, ViewHooks, UIHooks
 
 logger = logging.getLogger('IDArling.Core')
@@ -50,13 +48,9 @@ class Core(Module):
         self._branch = None
         self._tick = 0
 
-        # Instance members
-        self._config = {"servers": []}
-
     def _install(self):
         logger.debug("Installing hooks")
         core = self
-        self.load_state()
 
         self._idbHooks = IDBHooks(self._plugin)
         self._idpHooks = IDPHooks(self._plugin)
@@ -112,9 +106,7 @@ class Core(Module):
         logger.debug("Uninstalling hooks")
         self._idbHooksCore.unhook()
         self._uiHooksCore.unhook()
-
         self.unhook_all()
-        self.save_state()
         return True
 
     def hook_all(self):
@@ -226,56 +218,6 @@ class Core(Module):
 
         logger.debug("Saved netnode: repo=%s, branch=%s, tick=%d"
                      % (self._repo, self._branch, self._tick))
-
-    @property
-    def servers(self):
-        """
-        Get the list of servers.
-
-        :return: the servers
-        """
-        return self._config["servers"]
-
-    @servers.setter
-    def servers(self, servers):
-        """
-        Set the list of servers.
-
-        :param servers: the list of server
-        """
-        self._config["servers"] = servers
-        self.save_state()
-
-    def load_state(self):
-        """
-        Load the state file.
-
-        The state file is now a json file in the form like this:
-        { "servers" : [
-            { "host": "127.0.0.1", "port": 3389, "no_ssl": True },
-            { "host": "127.0.0.2", "port": 3389, "no_ssl": True }
-            ]
-        }
-        """
-        statePath = local_resource('files', 'config.json')
-        if not os.path.isfile(statePath):
-            return
-        with open(statePath, 'rb') as stateFile:
-            try:
-                self._config = json.loads(stateFile.read())
-            except ValueError:
-                logger.warning("Couldn't load state file")
-                return
-            logger.debug("Loaded state: %s" % self._config)
-
-    def save_state(self):
-        """
-        Save the state file.
-        """
-        statePath = local_resource('files', 'config.json')
-        with open(statePath, 'wb') as stateFile:
-            logger.debug("Saved state: %s" % self._config)
-            stateFile.write(json.dumps(self._config))
 
     def notify_connected(self):
         if self._repo and self._branch:

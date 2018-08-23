@@ -24,22 +24,22 @@ def start_logging():
     :return: the main logger
     """
     logger = logging.getLogger('IDArling')
+    logger.setLevel(logging.INFO)
 
     # Get the absolute path to the log file
     logPath = local_resource('logs', 'idarling.%s.log' % os.getpid())
 
-    # Configure the logger
-    logger.setLevel(logging.DEBUG)
-    logFormat = '[%(asctime)s][%(levelname)s] %(message)s'
-    formatter = logging.Formatter(fmt=logFormat, datefmt='%H:%M:%S')
-
     # Log to the console
     streamHandler = logging.StreamHandler()
+    logFormat = '[%(levelname)s] %(message)s'
+    formatter = logging.Formatter(fmt=logFormat)
     streamHandler.setFormatter(formatter)
     logger.addHandler(streamHandler)
 
     # Log to the log file
     fileHandler = logging.FileHandler(logPath)
+    logFormat = '[%(asctime)s][%(levelname)s] %(message)s'
+    formatter = logging.Formatter(fmt=logFormat, datefmt='%H:%M:%S')
     fileHandler.setFormatter(formatter)
     logger.addHandler(fileHandler)
 
