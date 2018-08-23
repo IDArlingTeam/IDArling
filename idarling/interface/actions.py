@@ -347,7 +347,7 @@ class SaveActionHandler(ActionHandler):
         # Save the current database
         self._plugin.core.save_netnode()
         inputPath = ida_loader.get_path(ida_loader.PATH_TYPE_IDB)
-        ida_loader.save_database(inputPath, ida_loader.DBFL_KILL)
+        ida_loader.save_database(inputPath, 0)
 
         # Create the packet that will hold the database
         packet = UploadDatabase.Query(repo.name, branch.name)
