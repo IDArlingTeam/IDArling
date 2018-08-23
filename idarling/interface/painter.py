@@ -83,10 +83,22 @@ class Painter(object):
         """
         class UIHooks(ida_kernwin.UI_Hooks):
             def __init__(self, painter):
-                self._painter = painter
                 ida_kernwin.UI_Hooks.__init__(self)
+                self._painter = painter
+                self._initialized = False
+
+            def database_inited(self, is_new_database, idc_script):
+                self._install_nvar_colorizer()
+                self._initialized = True
+                return 0
 
             def ready_to_run(self, *_):
+                if not self._initialized:
+                    self._install_nvar_colorizer()
+                self._initialized = False
+                return 0
+
+            def _install_nvar_colorizer(self):
                 """
                 We must get the original ida colorizer only one time to avoid
                 segfault.
@@ -100,6 +112,7 @@ class Painter(object):
                 colorizer = self._painter.custom_nav_colorizer
                 ida_nav_colorizer = ida_kernwin.set_nav_colorizer(colorizer)
                 self._painter.ida_nav_colorizer = ida_nav_colorizer
+                self._uiHooks.unhook()
 
         self._uiHooks = UIHooks(self)
         result = self._uiHooks.hook()
