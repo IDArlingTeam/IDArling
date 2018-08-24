@@ -45,7 +45,7 @@ class Painter(object):
         # ---------------------------------------------------------------------
 
         # User name
-        self.name = None
+        self._name = "Unnamed"
         # Choose a random color for the current user
         r, g, b = colorsys.hls_to_rgb(random.random(), 0.5, 1.0)
         self._color = int(r * 255) << 16 | int(g * 255) << 8 | int(b * 255)
@@ -124,14 +124,14 @@ class Painter(object):
         logger.debug("Uninstalled the painter")
         return True
 
-    def paint(self, color, address):
+    def paint(self, color, name, address):
         """
         Request database painting
 
         :param color: the color to paint
         :param address: the address where apply the color
         """
-        self.paint_database(color, address)
+        self.paint_database(color, name, address)
 
     def unpaint(self, color):
         """
@@ -163,7 +163,7 @@ class Painter(object):
                     return long(0)
         orig = ida_kernwin.call_nav_colorizer(self.ida_nav_colorizer, ea,
                                               nbytes)
-
+        self.nbytes = nbytes
         return long(orig)
 
     def paint_navbar(self):
@@ -173,19 +173,21 @@ class Painter(object):
     # Painter - Instructions / Items
     # -------------------------------------------------------------------------
 
-    def paint_instruction(self, color, address):
+    def paint_instruction(self, color, name, address):
         """
         Paint instructions with the given color
 
         :param color: the color
+        :param name: the user name
         :param address: the address where apply the color
         """
         # get current color
         current_color = self.get_paint_instruction(address)
         # store current color to color stack
         self._painted_instructions[address].append(current_color)
-        # update current user position
+        # update current user position and name
         self.users_positions[color]['address'] = address
+        self.users_positions[color]['name'] = name
         # apply the user color
         self.set_paint_instruction(address, color)
 
@@ -270,7 +272,6 @@ class Painter(object):
         #
         # if the deqeue is empty, this is the first time we meet this function
         # we must save the original color to restore it
-        # TODO: broadcast the original color to others users
         #
         if new_func and not self._painted_functions[new_func.startEA]:
             self._painted_functions[new_func.startEA].append(new_func.color)
@@ -303,12 +304,6 @@ class Painter(object):
                 # user-defined color
                 if color == self.DEFCOLOR:
                     self.set_paint_instruction(ea, self.bg_color)
-                else:
-                    #
-                    # TODO: IDA doesn't provide a way to hook painting, with
-                    # this we can propagate user-defined colors between users.
-                    #
-                    pass
 
     def clear_function_instructions(self, address):
         """
@@ -337,7 +332,7 @@ class Painter(object):
     # Painter
     # -------------------------------------------------------------------------
 
-    def paint_database(self, color, address):
+    def paint_database(self, color, name, address):
         """
         Update database's paint state with the given color and address
 
@@ -351,7 +346,7 @@ class Painter(object):
         # paint functions
         self.paint_function(color, address)
         # paint instructions
-        self.paint_instruction(color, address)
+        self.paint_instruction(color, name, address)
         # paint navbar
         self.paint_navbar()
 
@@ -419,6 +414,24 @@ class Painter(object):
         self._color = color
 
     @property
+    def name(self):
+        """
+        Get the user name.
+
+        :return: the name
+        """
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        """
+        Set the user name.
+
+        :param name: the name
+        """
+        self._name = name
+
+    @property
     def nbytes(self):
         """
         Get nbytes.
@@ -426,6 +439,15 @@ class Painter(object):
         :return: nbytes
         """
         return self._nbytes
+
+    @nbytes.setter
+    def nbytes(self, nbytes):
+        """
+        Set nbytes.
+
+        :param nbytes: nbytes
+        """
+        self._nbytes = nbytes
 
     @property
     def users_positions(self):

@@ -687,7 +687,9 @@ class ViewHooks(Hooks, ida_kernwin.View_Hooks):
 
     def view_loc_changed(self, view, now, was):
         if now.plce.toea() != was.plce.toea():
-            self._plugin.network.send_packet(UpdateCursors(now.plce.toea()))
+            name = self._plugin.interface.painter.name
+            self._plugin.network.send_packet(UpdateCursors(now.plce.toea(),
+                                                           name))
 
 
 class UIHooks(Hooks, ida_kernwin.UI_Hooks):
@@ -702,22 +704,15 @@ class UIHooks(Hooks, ida_kernwin.UI_Hooks):
         self._lock = False
 
     def get_ea_hint(self, ea):
-        # TODO change IDArling team by username in the next commit
         if self._plugin.network.connected:
-            nbytes = self._plugin.interface.painter.nbytes
             painter = self._plugin.interface.painter
+            nbytes = painter.nbytes
             for infos in painter.users_positions.values():
                 address = infos['address']
                 if address - nbytes * 4 <= ea <= address + nbytes * 4:
-                    return "IDArling team"
+                    return str(infos['name'])
 
     def saving(self):
-        # clean users cursor
-        # saving and saved hook are triggered two times...
-        # This problem seems to be more general than that, we can see that the
-        # init of the plugin is called twice ... Maybe it's a problem coming
-        # from me. We need to figured it out. This bug was reproduced on IDA
-        # 7.0 on windows and IDA 7.1 on Linux
         if not self._lock:
             painter = self._plugin.interface.painter
             users_positions = painter.users_positions

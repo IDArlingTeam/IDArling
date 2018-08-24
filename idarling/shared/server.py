@@ -35,6 +35,7 @@ class ServerClient(ClientSocket):
         self._repo = None
         self._branch = None
         self._color = None
+        self._name = None
         self._handlers = {}
 
     def connect(self, sock):
@@ -162,6 +163,7 @@ class ServerClient(ClientSocket):
         self._repo = packet.repo
         self._branch = packet.branch
         self._color = packet.color
+        self._name = packet.name
         self.parent().register_client(self)
 
         # Send all missed events
@@ -183,6 +185,10 @@ class ServerClient(ClientSocket):
     def _handle_update_cursors(self, packet):
         self._ea = packet.ea
         packet.color = self._color
+        # TODO:
+        # To be changed when Authentication System will be there
+        # Need an UpdateNameUser packet and UpdateColorUser packet
+        self._name = packet.name
 
         # Forward the event to the other clients
         for client in self.parent().find_clients(self._should_forward):

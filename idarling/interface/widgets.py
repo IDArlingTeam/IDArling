@@ -122,6 +122,7 @@ class StatusWidget(QWidget):
 
         def dialog_accepted(dialog):
             name, color, notifications, navbarColorizer = dialog.get_result()
+            self._plugin.interface.painter.name = name
 
         # Add a handler on the action
         def settingsActionTriggered():

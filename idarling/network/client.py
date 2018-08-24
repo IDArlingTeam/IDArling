@@ -74,7 +74,9 @@ class Client(ClientSocket):
         return ClientSocket.send_packet(self, packet)
 
     def _handle_update_cursors(self, packet):
-        self._plugin.interface.painter.paint(packet.color, packet.ea)
+        self._plugin.interface.painter.paint(packet.color,
+                                             packet.name,
+                                             packet.ea)
 
     def _handle_unsubscribe(self, packet):
         self._plugin.interface.painter.unpaint(packet.color)
