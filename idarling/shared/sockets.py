@@ -15,6 +15,7 @@ import errno
 import json
 import socket
 import ssl
+import sys
 
 from PyQt5.QtCore import QCoreApplication, QEvent, QObject, QSocketNotifier
 
@@ -111,6 +112,37 @@ class ClientSocket(QObject):
             pass
         self._socket = None
         self._connected = False
+
+    def set_keep_alive(self, cnt, intvl, idle):
+        """
+        Set the TCP keep-alive of the underlying socket.
+
+         It activates after `idle` seconds of idleness, then sends a
+         keep-alive ping once every `intvl` seconds, and closes the connection
+         after `cnt` failed ping.
+        """
+        # Taken from https://github.com/markokr/skytools/
+        TCP_KEEPCNT = getattr(socket, 'TCP_KEEPCNT', None)
+        TCP_KEEPINTVL = getattr(socket, 'TCP_KEEPINTVL', None)
+        TCP_KEEPIDLE = getattr(socket, 'TCP_KEEPIDLE', None)
+        TCP_KEEPALIVE = getattr(socket, 'TCP_KEEPALIVE', None)
+        SIO_KEEPALIVE_VALS = getattr(socket, 'SIO_KEEPALIVE_VALS', None)
+        if TCP_KEEPIDLE is None and TCP_KEEPALIVE is None \
+                and sys.platform == 'darwin':
+            TCP_KEEPALIVE = 0x10
+
+        self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        if TCP_KEEPCNT is not None:
+            self._socket.setsockopt(socket.IPPROTO_TCP, TCP_KEEPCNT, cnt)
+        if TCP_KEEPINTVL is not None:
+            self._socket.setsockopt(socket.IPPROTO_TCP, TCP_KEEPINTVL, intvl)
+        if TCP_KEEPIDLE is not None:
+            self._socket.setsockopt(socket.IPPROTO_TCP, TCP_KEEPIDLE, idle)
+        elif TCP_KEEPALIVE is not None:
+            self._socket.setsockopt(socket.IPPROTO_TCP, TCP_KEEPALIVE, idle)
+        elif SIO_KEEPALIVE_VALS is not None:
+            self._socket.ioctl(SIO_KEEPALIVE_VALS,
+                               (1, idle * 1000, intvl * 1000))
 
     def _notify_read(self):
         """

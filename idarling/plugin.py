@@ -79,7 +79,12 @@ class Plugin(ida_idaapi.plugin_t):
         # Configuration
         self._config = {
             "level": logging.INFO,
-            "servers": []
+            "servers": [],
+            "keep": {
+                "cnt": 4,
+                "intvl": 15,
+                "idle": 240,
+            }
         }
 
     @property

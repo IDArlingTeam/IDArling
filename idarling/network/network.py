@@ -34,6 +34,10 @@ class Network(Module):
         self._integrated = None
 
     @property
+    def client(self):
+        return self._client
+
+    @property
     def server(self):
         """
         Return information about the current server.
@@ -98,6 +102,12 @@ class Network(Module):
         sock.settimeout(0)
         sock.setblocking(0)
         self._client.connect(sock)
+
+        # TCP Keep-Alive options
+        cnt = self._plugin.config["keep"]["cnt"]
+        intvl = self._plugin.config["keep"]["intvl"]
+        idle = self._plugin.config["keep"]["idle"]
+        self._client.set_keep_alive(cnt, intvl, idle)
 
         # We're connected now
         logger.info("Connected")

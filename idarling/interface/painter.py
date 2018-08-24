@@ -75,8 +75,6 @@ class Painter(object):
 
         self._nbytes = 0
 
-        self.ida_nav_colorizer = None
-
     def install(self):
         """
         Install the painter into the IDA UI.
@@ -88,7 +86,7 @@ class Painter(object):
                 ida_kernwin.UI_Hooks.__init__(self)
                 self._painter = painter
 
-            def database_inited(self, is_new_database, idc_script):
+            def ready_to_run(self, *_):
                 """
                 We must get the original ida colorizer only one time to avoid
                 segfault.
@@ -97,11 +95,11 @@ class Painter(object):
                 #
                 # get default background and original navbar colorizer
                 #
+
                 colorizer = self._painter.custom_nav_colorizer
                 ida_nav_colorizer = ida_kernwin.set_nav_colorizer(colorizer)
-                self._painter.ida_nav_colorizer = ida_nav_colorizer
-
-            def ready_to_run(self, *_):
+                if ida_nav_colorizer is not None:
+                    self._painter.ida_nav_colorizer = ida_nav_colorizer
                 self._painter.bg_color = get_ida_bg_color()
 
         self._uiHooks = UIHooks(self)
