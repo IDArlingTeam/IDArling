@@ -91,8 +91,8 @@ class Core(Module):
                 Hooks.__init__(self, plugin)
 
             def closebase(self):
-                color = self._plugin.interface.painter.color
-                self._plugin.network.send_packet(Unsubscribe(color))
+                name = self._plugin.interface.painter.name
+                self._plugin.network.send_packet(Unsubscribe(name))
                 core.unhook_all()
                 core.repo = None
                 core.branch = None

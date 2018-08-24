@@ -137,9 +137,9 @@ class Subscribe(DefaultCommand):
 class Unsubscribe(DefaultCommand):
     __command__ = 'unsubscribe'
 
-    def __init__(self, color):
+    def __init__(self, name):
         super(Unsubscribe, self).__init__()
-        self.color = color
+        self.name = name
 
 
 class UpdateCursors(DefaultCommand):
@@ -149,3 +149,12 @@ class UpdateCursors(DefaultCommand):
         super(UpdateCursors, self).__init__()
         self.ea = ea
         self.name = name
+
+
+class RenamedUser(DefaultCommand):
+    __command__ = 'renamed_user'
+
+    def __init__(self, old_name, new_name):
+        super(RenamedUser, self).__init__()
+        self.old_name = old_name
+        self.new_name = new_name

@@ -20,7 +20,7 @@ from .commands import (GetRepositories, GetBranches,
                        NewRepository, NewBranch,
                        UploadDatabase, DownloadDatabase,
                        Subscribe, Unsubscribe,
-                       UpdateCursors)
+                       UpdateCursors, RenamedUser)
 from .packets import Command, Event
 from .sockets import ClientSocket, ServerSocket
 
@@ -61,6 +61,7 @@ class ServerClient(ClientSocket):
             Subscribe: self._handle_subscribe,
             Unsubscribe: self._handle_unsubscribe,
             UpdateCursors: self._handle_update_cursors,
+            RenamedUser: self._handle_renamed_user,
         }
 
     @property
@@ -180,6 +181,7 @@ class ServerClient(ClientSocket):
             client.send_packet(packet)
         self._repo = None
         self._branch = None
+        self._name = None
         self._color = None
 
     def _handle_update_cursors(self, packet):
@@ -191,6 +193,10 @@ class ServerClient(ClientSocket):
         self._name = packet.name
 
         # Forward the event to the other clients
+        for client in self.parent().find_clients(self._should_forward):
+            client.send_packet(packet)
+
+    def _handle_renamed_user(self, packet):
         for client in self.parent().find_clients(self._should_forward):
             client.send_packet(packet)
 

@@ -18,6 +18,7 @@ from PyQt5.QtGui import QPixmap, QIcon, QPainter, QRegion
 from PyQt5.QtWidgets import QWidget, QLabel, QMenu, QAction, QActionGroup
 
 from .dialogs import SettingsDialog
+from ..shared.commands import RenamedUser
 
 logger = logging.getLogger('IDArling.Interface')
 
@@ -120,14 +121,19 @@ class StatusWidget(QWidget):
         iconPath = self._plugin.resource('settings.png')
         settings.setIcon(QIcon(iconPath))
 
-        def dialog_accepted(dialog):
+        def _settings_accepted(dialog):
             name, color, notifications, navbarColorizer = dialog.get_result()
+            painter = self._plugin.interface.painter
+            if painter.name != name:
+                self._plugin.network.send_packet(RenamedUser(painter.name,
+                                                             name))
+                painter.name = name
             self._plugin.interface.painter.name = name
 
         # Add a handler on the action
         def settingsActionTriggered():
             dialog = SettingsDialog(self._plugin)
-            dialog.accepted.connect(partial(dialog_accepted, dialog))
+            dialog.accepted.connect(partial(_settings_accepted, dialog))
             dialog.exec_()
 
         settings.triggered.connect(settingsActionTriggered)

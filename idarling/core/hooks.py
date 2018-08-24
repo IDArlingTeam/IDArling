@@ -707,10 +707,10 @@ class UIHooks(Hooks, ida_kernwin.UI_Hooks):
         if self._plugin.network.connected:
             painter = self._plugin.interface.painter
             nbytes = painter.nbytes
-            for infos in painter.users_positions.values():
+            for name, infos in painter.users_positions.items():
                 address = infos['address']
                 if address - nbytes * 4 <= ea <= address + nbytes * 4:
-                    return str(infos['name'])
+                    return str(name)
 
     def saving(self):
         if not self._lock:
