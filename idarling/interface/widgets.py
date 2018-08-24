@@ -152,11 +152,9 @@ class StatusWidget(QWidget):
             currentServer = self._plugin.network.server
 
             def serverActionTriggered(serverAction):
-                isConnected = self._plugin.network.connected \
-                    and server["host"] == currentServer["host"] \
-                    and server["port"] == currentServer["port"]
-                self._plugin.network.stop_server()
-                if not isConnected:
+                if not self._plugin.network.connected \
+                        or self._plugin.network.server != server:
+                    self._plugin.network.stop_server()
                     self._plugin.network.connect(serverAction._server)
 
             for server in self._plugin.config["servers"]:

@@ -23,7 +23,7 @@ from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout, QGridLayout,
                              QWidget, QTableWidget, QTableWidgetItem, QLabel,
                              QPushButton, QLineEdit, QGroupBox, QMessageBox,
                              QCheckBox, QTabWidget, QColorDialog, QComboBox,
-                             QFormLayout, QSpinBox, QSpacerItem)
+                             QFormLayout, QSpinBox, QSpacerItem, QHeaderView)
 
 from ..shared.commands import GetRepositories, GetBranches, \
     NewRepository, NewBranch
@@ -556,20 +556,35 @@ class SettingsDialog(QDialog):
         topWidget.setLayout(topLayout)
 
         servers = self._plugin.config["servers"]
-        self._serversTable = QTableWidget(len(servers), 1, self)
-        self._serversTable.setHorizontalHeaderLabels(("Servers",))
+        self._serversTable = QTableWidget(len(servers), 2, self)
+        self._serversTable.setHorizontalHeaderLabels(("Servers", ""))
         for i, server in enumerate(servers):
             item = QTableWidgetItem('%s:%d' % (server["host"], server["port"]))
             item.setData(Qt.UserRole, server)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+            if self._plugin.network.server == server:
+                item.setFlags((item.flags() & ~Qt.ItemIsSelectable))
             self._serversTable.setItem(i, 0, item)
 
-        self._serversTable.horizontalHeader().setSectionsClickable(False)
-        self._serversTable.horizontalHeader().setStretchLastSection(True)
+            checkbox = QTableWidgetItem()
+            state = Qt.Unchecked if server["no_ssl"] else Qt.Checked
+            checkbox.setCheckState(state)
+            checkbox.setFlags((checkbox.flags() & ~Qt.ItemIsEditable))
+            checkbox.setFlags((checkbox.flags() & ~Qt.ItemIsUserCheckable))
+            if self._plugin.network.server == server:
+                checkbox.setFlags((checkbox.flags() & ~Qt.ItemIsSelectable))
+            self._serversTable.setItem(i, 1, checkbox)
+
+        horizontalHeader = self._serversTable.horizontalHeader()
+        horizontalHeader.setSectionsClickable(False)
+        horizontalHeader.setSectionResizeMode(0, QHeaderView.Stretch)
+        horizontalHeader.setSectionResizeMode(1, QHeaderView.ResizeToContents)
         self._serversTable.verticalHeader().setVisible(False)
         self._serversTable.setSelectionBehavior(QTableWidget.SelectRows)
         self._serversTable.setSelectionMode(QTableWidget.SingleSelection)
         self._serversTable.itemClicked.connect(self._server_clicked)
+        self._serversTable.itemDoubleClicked.connect(
+            self._server_double_clicked)
         minSZ = self._serversTable.minimumSize()
         self._serversTable.setMinimumSize(300, minSZ.height())
         topLayout.addWidget(self._serversTable)
@@ -662,6 +677,15 @@ class SettingsDialog(QDialog):
         self._editButton.setEnabled(True)
         self._deleteButton.setEnabled(True)
 
+    def _server_double_clicked(self, _):
+        item = self._serversTable.selectedItems()[0]
+        server = item.data(Qt.UserRole)
+        if not self._plugin.network.connected \
+                or self._plugin.network.server != server:
+            self._plugin.network.stop_server()
+            self._plugin.network.connect(server)
+        self.accept()
+
     def _add_button_clicked(self, _):
         """
         Called when the add button is clicked.
@@ -697,6 +721,12 @@ class SettingsDialog(QDialog):
         newServer.setData(Qt.UserRole, server)
         newServer.setFlags(newServer.flags() & ~Qt.ItemIsEditable)
         self._serversTable.setItem(rowCount, 0, newServer)
+        newCheckbox = QTableWidgetItem()
+        state = Qt.Unchecked if server["no_ssl"] else Qt.Checked
+        newCheckbox.setCheckState(state)
+        newCheckbox.setFlags((newCheckbox.flags() & ~Qt.ItemIsEditable))
+        newCheckbox.setFlags(newCheckbox.flags() & ~Qt.ItemIsUserCheckable)
+        self._serversTable.setItem(rowCount, 1, newCheckbox)
         self.update()
 
     def _edit_dialog_accepted(self, dialog):
@@ -709,11 +739,13 @@ class SettingsDialog(QDialog):
         servers = self._plugin.config["servers"]
         item = self._serversTable.selectedItems()[0]
         servers[item.row()] = server
-        self._plugin.save_config()
-
         item.setText('%s:%d' % (server["host"], server["port"]))
         item.setData(Qt.UserRole, server)
         item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+        checkbox = self._serversTable.item(item.row(), 1)
+        state = Qt.Unchecked if server["no_ssl"] else Qt.Checked
+        checkbox.setCheckState(state)
+        self._plugin.save_config()
         self.update()
 
     def _delete_button_clicked(self, _):
