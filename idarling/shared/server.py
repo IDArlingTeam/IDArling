@@ -16,6 +16,7 @@ import socket
 import ssl
 
 from .database import Database
+from .discovery import ClientsDiscovery
 from .commands import (GetRepositories, GetBranches,
                        NewRepository, NewBranch,
                        UploadDatabase, DownloadDatabase,
@@ -216,6 +217,7 @@ class Server(ServerSocket):
         self._database = Database(self.local_file('database.db'))
         self._database.initialize()
         self._ssl = ssl
+        self._discovery = ClientsDiscovery(logger)
 
     def start(self, host, port=0):
         """
@@ -242,6 +244,8 @@ class Server(ServerSocket):
         sock.setblocking(0)
         sock.listen(5)
         self.connect(sock)
+        host, port = sock.getsockname()
+        self._discovery.start(host, port, self._ssl)
         return True
 
     def stop(self):
@@ -254,6 +258,7 @@ class Server(ServerSocket):
         for client in self._clients:
             client.disconnect()
         self.disconnect()
+        self._discovery.stop()
         return True
 
     @property

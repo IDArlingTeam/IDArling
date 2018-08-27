@@ -10,12 +10,12 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import collections
 import logging
 import socket
 import ssl
 
 from ..module import Module
+from ..shared.discovery import ServersDiscovery
 from .client import Client
 from .server import IntegratedServer
 
@@ -33,6 +33,8 @@ class Network(Module):
         self._server = None
         self._integrated = None
 
+        self._discovery = ServersDiscovery(logger.getChild(".Discovery"))
+
     @property
     def client(self):
         return self._client
@@ -47,6 +49,10 @@ class Network(Module):
         return self._server
 
     @property
+    def discovery(self):
+        return self._discovery
+
+    @property
     def connected(self):
         """
         Return if we are connected to any server.
@@ -56,9 +62,11 @@ class Network(Module):
         return self._client.connected if self._client else False
 
     def _install(self):
+        self._discovery.start()
         return True
 
     def _uninstall(self):
+        self._discovery.stop()
         self.disconnect()
         return True
 

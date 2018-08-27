@@ -152,19 +152,11 @@ class StatusWidget(QWidget):
         integrated.triggered.connect(integratedActionTriggered)
         menu.addAction(integrated)
 
-        # Add each of the servers
-        if self._plugin.config["servers"]:
-            menu.addSeparator()
-            serverGroup = QActionGroup(self)
+        def create_servers_group(servers):
+            serversGroup = QActionGroup(self)
             currentServer = self._plugin.network.server
 
-            def serverActionTriggered(serverAction):
-                if not self._plugin.network.connected \
-                        or self._plugin.network.server != server:
-                    self._plugin.network.stop_server()
-                    self._plugin.network.connect(serverAction._server)
-
-            for server in self._plugin.config["servers"]:
+            for server in servers:
                 isConnected = self._plugin.network.connected \
                               and server["host"] == currentServer["host"] \
                               and server["port"] == currentServer["port"]
@@ -173,10 +165,31 @@ class StatusWidget(QWidget):
                 serverAction._server = server
                 serverAction.setCheckable(True)
                 serverAction.setChecked(isConnected)
-                serverGroup.addAction(serverAction)
+                serversGroup.addAction(serverAction)
 
-            menu.addActions(serverGroup.actions())
-            serverGroup.triggered.connect(serverActionTriggered)
+            def serverActionTriggered(serverAction):
+                wasConnected = self._plugin.network.connected \
+                    and self._plugin.network.server == server
+                self._plugin.network.stop_server()
+                self._plugin.network.disconnect()
+                if not wasConnected:
+                    self._plugin.network.connect(serverAction._server)
+            serversGroup.triggered.connect(serverActionTriggered)
+            return serversGroup
+
+        # Add the discovered servers
+        servers = self._plugin.network.discovery.servers
+        if servers:
+            menu.addSeparator()
+            serversGroup = create_servers_group(servers)
+            menu.addActions(serversGroup.actions())
+
+        # Add the configured servers
+        servers = self._plugin.config["servers"]
+        if self._plugin.config["servers"]:
+            menu.addSeparator()
+            serversGroup = create_servers_group(servers)
+            menu.addActions(serversGroup.actions())
 
         # Show the context menu
         menu.exec_(self.mapToGlobal(point))
