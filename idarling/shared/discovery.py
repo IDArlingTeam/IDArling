@@ -54,6 +54,7 @@ class ClientsDiscovery(QObject):
         self._read_notifier.setEnabled(True)
         self._started = True
         self._timer.start()
+        self._send_request()
 
     def stop(self):
         self._logger.debug("Stopping clients discovery...")

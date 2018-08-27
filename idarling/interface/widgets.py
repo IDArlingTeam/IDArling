@@ -179,6 +179,9 @@ class StatusWidget(QWidget):
 
         # Add the discovered servers
         servers = self._plugin.network.discovery.servers
+        if self._plugin.network.server_running() \
+                and self._plugin.network.server in servers:
+            servers.remove(self._plugin.network.server)
         if servers:
             menu.addSeparator()
             serversGroup = create_servers_group(servers)

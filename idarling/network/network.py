@@ -171,7 +171,7 @@ class Network(Module):
             return False
         self._integrated = server
         integrated_arg = {
-            "host": "127.0.0.1",
+            "host": "0.0.0.0",
             "port": server.port,
             "no_ssl": True
         }
