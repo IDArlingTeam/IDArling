@@ -339,6 +339,7 @@ class LocalTypesChangedEvent(Event):
                 logger.debug("set_numbered_type ret: %d",
                              cur_tinfo.set_numbered_type(None, t[0], 0, t[3]))
 
+        ida_typeinf.import_type(None, -1, t[-1])
         ida_kernwin.request_refresh(ida_kernwin.IWID_LOCTYPS)
 
 
