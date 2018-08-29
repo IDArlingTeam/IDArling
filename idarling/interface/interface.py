@@ -109,8 +109,10 @@ class Interface(Module):
                             loc = ida_kernwin.get_screen_ea()
                             packet = InviteTo(name, loc)
                             self._plugin.network.send_packet(packet)
-                        callback = lambda: inviteTo("everyone")
-                        everyone.triggered.connect(callback)
+
+                        def inviteToEveryone():
+                            inviteTo("everyone")
+                        everyone.triggered.connect(inviteToEveryone)
                         menu.addAction(everyone)
 
                         menu.addSeparator()
@@ -147,8 +149,10 @@ class Interface(Module):
 
                             action = QAction(name, menu)
                             action.setIcon(QIcon(QPixmap(image)))
-                            callback = lambda: inviteTo(name)
-                            action.triggered.connect(callback)
+
+                            def inviteToUser():
+                                inviteTo(name)
+                            action.triggered.connect(inviteToUser)
                             return action
 
                         painter = self._plugin.interface.painter
