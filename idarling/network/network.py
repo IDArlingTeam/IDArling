@@ -82,6 +82,8 @@ class Network(Module):
             return False
         self._server = server.copy()  # Copy in case of source being changed
         host = self._server["host"]
+        if host == '0.0.0.0':
+            host = '127.0.0.1'
         port = self._server["port"]
         no_ssl = self._server["port"]
 

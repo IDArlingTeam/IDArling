@@ -20,7 +20,7 @@ from .discovery import ClientsDiscovery
 from .commands import (GetRepositories, GetBranches,
                        NewRepository, NewBranch,
                        UploadDatabase, DownloadDatabase,
-                       Subscribe, Unsubscribe,
+                       Subscribe, Unsubscribe, InviteTo,
                        UpdateCursors, UserRenamed, UserColorChanged)
 from .packets import Command, Event
 from .sockets import ClientSocket, ServerSocket
@@ -61,6 +61,7 @@ class ServerClient(ClientSocket):
             DownloadDatabase.Query: self._handle_download_database,
             Subscribe: self._handle_subscribe,
             Unsubscribe: self._handle_unsubscribe,
+            InviteTo: self._handle_invite_to,
             UpdateCursors: self._handle_update_cursors,
             UserRenamed: self._handle_user_renamed,
             UserColorChanged: self._handle_user_color_changed,
@@ -189,6 +190,12 @@ class ServerClient(ClientSocket):
         self._branch = None
         self._name = None
         self._color = None
+
+    def _handle_invite_to(self, packet):
+        for client in self.parent().find_clients(self._should_forward):
+            if client._name == packet.name or packet.name == "everyone":
+                packet.name = self._name
+                client.send_packet(packet)
 
     def _handle_update_cursors(self, packet):
         for client in self.parent().find_clients(self._should_forward):

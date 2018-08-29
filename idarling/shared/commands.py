@@ -157,7 +157,7 @@ class UserRenamed(DefaultCommand):
     __command__ = 'user_renamed'
 
     def __init__(self, old_name, new_name):
-        super(RenamedUser, self).__init__()
+        super(UserRenamed, self).__init__()
         self.old_name = old_name
         self.new_name = new_name
 
@@ -170,3 +170,12 @@ class UserColorChanged(DefaultCommand):
         self.name = name
         self.old_color = old_color
         self.new_color = new_color
+
+
+class InviteTo(DefaultCommand):
+    __command__ = 'invite_to'
+
+    def __init__(self, name, loc):
+        super(InviteTo, self).__init__()
+        self.name = name
+        self.loc = loc

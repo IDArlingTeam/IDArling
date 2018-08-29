@@ -390,7 +390,8 @@ class SaveActionHandler(ActionHandler):
         # Subscribe to the new events stream
         color = self._plugin.config["user"]["color"]
         name = self._plugin.config["user"]["name"]
+        ea = ea = ida_kernwin.get_screen_ea()
         self._plugin.network.send_packet(Subscribe(repo.name, branch.name,
                                                    self._plugin.core.tick,
-                                                   color, name))
+                                                   color, name, ea))
         self._plugin.core.hook_all()
