@@ -74,8 +74,8 @@ class Core(Module):
                 if core.repo and core.branch:
                     self._plugin.network.send_packet(Subscribe(
                         core.repo, core.branch, core.tick,
-                        self._plugin.interface.painter.color,
-                        self._plugin.interface.painter.name))
+                        self._plugin.config["user"]["color"],
+                        self._plugin.config["user"]["name"]))
                     core.hook_all()
 
         self._uiHooksCore = UIHooksCore(self._plugin)
@@ -91,7 +91,7 @@ class Core(Module):
                 Hooks.__init__(self, plugin)
 
             def closebase(self):
-                name = self._plugin.interface.painter.name
+                name = self._plugin.config["user"]["name"]
                 self._plugin.network.send_packet(Unsubscribe(name))
                 core.unhook_all()
                 core.repo = None
@@ -222,8 +222,8 @@ class Core(Module):
 
     def notify_connected(self):
         if self._repo and self._branch:
-            color = self._plugin.interface.painter.color
-            name = self._plugin.interface.painter.name
+            color = self._plugin.config["user"]["color"]
+            name = self._plugin.config["user"]["name"]
             self._plugin.network.send_packet(
                 Subscribe(self._repo, self._branch, self._tick, color, name))
             self.hook_all()

@@ -47,7 +47,7 @@ class Interface(Module):
 
         self._openAction = OpenAction(plugin)
         self._saveAction = SaveAction(plugin)
-        self._painter = Painter()
+        self._painter = Painter(plugin)
 
         class EventHandler(QObject):
 

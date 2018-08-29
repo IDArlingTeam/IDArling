@@ -687,9 +687,11 @@ class ViewHooks(Hooks, ida_kernwin.View_Hooks):
 
     def view_loc_changed(self, view, now, was):
         if now.plce.toea() != was.plce.toea():
-            name = self._plugin.interface.painter.name
-            self._plugin.network.send_packet(UpdateCursors(now.plce.toea(),
-                                                           name))
+            name = self._plugin.config["user"]["name"]
+            color = self._plugin.config["user"]["color"]
+            self._plugin.network.send_packet(UpdateCursors(name,
+                                                           now.plce.toea(),
+                                                           color))
 
 
 class UIHooks(Hooks, ida_kernwin.UI_Hooks):

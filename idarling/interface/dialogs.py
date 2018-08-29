@@ -447,28 +447,30 @@ class SettingsDialog(QDialog):
         layout.setFormAlignment(Qt.AlignVCenter)
         tabs.addTab(tab, "General Settings")
 
-        display = "Disable users display in the navigation bar"
-        noNavbarColorizerCheckbox = QCheckBox(display)
-        layout.addRow(noNavbarColorizerCheckbox)
+        display = "Enable users display in the navigation bar"
+        navbarColorizerCheckbox = QCheckBox(display)
+        layout.addRow(navbarColorizerCheckbox)
 
-        def noNavbarColorizerActionTriggered():
-            self._plugin.interface.painter.noNavbarColorizer = \
-                    noNavbarColorizerCheckbox.isChecked()
-        checkbox = noNavbarColorizerCheckbox
-        checkbox.toggled.connect(noNavbarColorizerActionTriggered)
-        checked = self._plugin.interface.painter.noNavbarColorizer
-        noNavbarColorizerCheckbox.setChecked(checked)
+        def navbarColorizerActionToggled():
+            self._plugin.config["user"]["navbar_colorizer"] = \
+                    navbarColorizerCheckbox.isChecked()
+            self._plugin.save_config()
+        checkbox = navbarColorizerCheckbox
+        checkbox.toggled.connect(navbarColorizerActionToggled)
+        checked = self._plugin.config["user"]["navbar_colorizer"]
+        navbarColorizerCheckbox.setChecked(checked)
 
-        display = "Disable notifications"
-        noNotificationsCheckbox = QCheckBox(display)
-        layout.addRow(noNotificationsCheckbox)
+        display = "Enable notifications"
+        notificationsCheckbox = QCheckBox(display)
+        layout.addRow(notificationsCheckbox)
 
-        def noNotificationsActionToggled():
-            self._plugin.interface.painter.noNotifications = \
-                    noNotificationsCheckbox.isChecked()
-        noNotificationsCheckbox.toggled.connect(noNotificationsActionToggled)
-        checked = self._plugin.interface.painter.noNotifications
-        noNotificationsCheckbox.setChecked(checked)
+        def notificationsActionToggled():
+            self._plugin.config["user"]["notifications"] = \
+                    notificationsCheckbox.isChecked()
+            self._plugin.save_config()
+        notificationsCheckbox.toggled.connect(notificationsActionToggled)
+        checked = self._plugin.config["user"]["notifications"]
+        notificationsCheckbox.setChecked(checked)
 
         # User color
         colorWidget = QWidget(tab)
@@ -485,35 +487,32 @@ class SettingsDialog(QDialog):
             """
             if color.isValid():
                 r, g, b, _ = color.getRgb()
-                rgbColor = r << 16 | g << 8 | b
-                # set the color as user's color
-                self._plugin.interface.painter.color = rgbColor
-                # set the background button color
-                palette = colorButton.palette()
-                role = colorButton.backgroundRole()
-                palette.setColor(role, color)
-                colorButton.setPalette(palette)
-                colorButton.setAutoFillBackground(True)
-
-        userColor = self._plugin.interface.painter.color
-        color = QColor(userColor)
-        setColor(color)
+                # IDA represents color as 0xBBGGRR
+                rgb_color_ida = b << 16 | g << 8 | r
+                # Qt represents color as 0xRRGGBB
+                rgb_color_qt = r << 16 | g << 8 | b
+                css = 'QPushButton {background-color: #%06x; color: #%06x;}' \
+                    % (rgb_color_qt, rgb_color_qt)
+                colorButton.setStyleSheet(css)
+                self.color = rgb_color_ida
 
         # Add a handler on clicking color button
-        def colorButtonClicked(_):
+        def colorButtonActivated(_):
             color = QColorDialog.getColor()
             setColor(color)
-        colorButton.clicked.connect(colorButtonClicked)
+
+        color = QColor(self._plugin.config["user"]["color"])
+        setColor(color)
+        colorButton.clicked.connect(colorButtonActivated)
         colorLayout.addWidget(colorButton)
 
         # User name
-        self.colorLabel = QLineEdit()
-        self.colorLabel.setPlaceholderText("Name")
-        name = self._plugin.interface.painter.name
-        self.colorLabel.setText(name)
-        colorLayout.addWidget(self.colorLabel)
+        self.usernameLine = QLineEdit()
+        self.usernameLine.setText(self._plugin.config["user"]["name"])
+        colorLayout.addWidget(self.usernameLine)
         layout.addRow(colorWidget)
 
+        # Log level
         debugLevelLabel = QLabel("Log Level: ")
         debugLevelComboBox = QComboBox()
         debugLevelComboBox.addItem("CRITICAL", logging.CRITICAL)
@@ -767,11 +766,9 @@ class SettingsDialog(QDialog):
 
         :return: the result
         """
-        name = self.colorLabel.text()
-        color = self._plugin.interface.painter.color
-        notifications = self._plugin.interface.painter.noNotifications
-        navbarColorizer = self._plugin.interface.painter.noNavbarColorizer
-        return name, color, notifications, navbarColorizer
+        name = self.usernameLine.text()
+        color = self.color
+        return name, color
 
 
 class ServerInfoDialog(QDialog):

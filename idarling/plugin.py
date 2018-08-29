@@ -84,7 +84,13 @@ class Plugin(ida_idaapi.plugin_t):
                 "cnt": 4,
                 "intvl": 15,
                 "idle": 240,
-            }
+            },
+            "user": {
+                "color": -1,
+                "name": "Undefined",
+                "navbar_colorizer": True,
+                "notifications": True,
+            },
         }
 
     @property

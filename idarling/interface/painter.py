@@ -34,24 +34,12 @@ class Painter(object):
     https://github.com/gaasedelen/lighthouse/blob/master/plugin/lighthouse/painting.py
     """
 
-    def __init__(self):
+    def __init__(self, plugin):
         """
         Initialize the painter module.
         """
         super(Painter, self).__init__()
-
-        # ---------------------------------------------------------------------
-        # Current user parameters
-        # ---------------------------------------------------------------------
-
-        # User name
-        self._name = "Unnamed"
-        # Choose a random color for the current user
-        r, g, b = colorsys.hls_to_rgb(random.random(), 0.5, 1.0)
-        self._color = int(r * 255) << 16 | int(g * 255) << 8 | int(b * 255)
-        # User's parameters for navbar and notifications
-        self.noNavbarColorizer = False
-        self.noNotifications = False
+        self._plugin = plugin
 
         # ---------------------------------------------------------------------
         # Painted State
@@ -69,6 +57,10 @@ class Painter(object):
         #
         self._painted_functions = collections.defaultdict(collections.deque)
 
+        #
+        # self._users_positions:
+        #   collections.defaultdict({name: {color: int, address: int}}
+        #
         self._users_positions = collections.defaultdict(dict)
 
         self.DEFCOLOR = 0xFFFFFFFF
@@ -104,6 +96,19 @@ class Painter(object):
 
         self._uiHooks = UIHooks(self)
         result = self._uiHooks.hook()
+
+        # ---------------------------------------------------------------------
+        # Current user parameters
+        # ---------------------------------------------------------------------
+
+        # Choose a random color for the current user if it's not user-defined
+
+        if self._plugin.config["user"]["color"] == -1:
+            r, g, b = colorsys.hls_to_rgb(random.random(), 0.5, 1.0)
+            color = int(b * 255) << 16 | int(g * 255) << 8 | int(r * 255)
+            self._plugin.config["user"]["color"] = color
+            self._plugin.save_config()
+
         if not result:
             raise RuntimeError("Failed to install painter")
 
@@ -156,8 +161,8 @@ class Painter(object):
         # there is a bug in IDA, with huge segment number, all the navbar takes
         # the color provided by the user, this will be resolved in IDA 7.2
         #
-        if not self.noNavbarColorizer:
-            for infos in self.users_positions.values():
+        if self._plugin.config["user"]["navbar_colorizer"]:
+            for infos in self._users_positions.values():
                 if ea - nbytes * 2 <= infos['address'] <= ea + nbytes * 2:
                     return long(infos['color'])
                 if ea - nbytes * 4 <= infos['address'] <= ea + nbytes * 4:
@@ -168,6 +173,9 @@ class Painter(object):
         return long(orig)
 
     def paint_navbar(self):
+        """
+        Request a repainting for the navbar
+        """
         ida_kernwin.refresh_navband(True)
 
     # -------------------------------------------------------------------------
@@ -187,8 +195,8 @@ class Painter(object):
         # store current color to color stack
         self._painted_instructions[address].append(current_color)
         # update current user position and name
-        self.users_positions[name]['address'] = address
-        self.users_positions[name]['color'] = color
+        self.users_positions[name]["address"] = address
+        self.users_positions[name]["color"] = color
         # apply the user color
         self.set_paint_instruction(address, color)
 
@@ -333,7 +341,7 @@ class Painter(object):
     # Painter
     # -------------------------------------------------------------------------
 
-    def paint_database(self, color, name, address):
+    def paint_database(self, name, color, address):
         """
         Update database's paint state with the given color and address
 
@@ -392,6 +400,50 @@ class Painter(object):
         if func:
             self.set_paint_function(func, color)
 
+    #
+    # methods used by user_color_changed user_renamed events handlers
+    #
+    def rename_user(self, old_name, new_name):
+        """
+        Rename an user.
+
+        :param old_name: the previous name
+        :param new_name: the new name
+        """
+        self._users_positions[new_name] = self._users_positions.pop(old_name)
+
+    def change_user_color(self, name, old_color, new_color):
+        """
+        Change the color for the given user
+
+        :param name: the user name
+        :param old_color: the previous color
+        :param new_color: the new color
+        """
+        # Replace the color for the given user
+        self._users_positions[name]["color"] = new_color
+
+        # Replace the color in painted instructions for the given user
+        user_address = self._users_positions[name]["address"]
+        for n, e in enumerate(self._painted_instructions[user_address]):
+            if e == old_color:
+                self._painted_instructions[user_address][n] = new_color
+        # If the color is the current color instruction (not in the deque yet)
+        # repaint the given instrution with the new color
+        if new_color not in self._painted_instructions[user_address]:
+            self.set_paint_instruction(user_address, new_color)
+
+        # Replace the color in painted functions for the given user
+        func = ida_funcs.get_func(user_address)
+        if func:
+            for n, e in enumerate(self._painted_functions[func.start_ea]):
+                if e == old_color:
+                    self._painted_functions[func.start_ea][n] = new_color
+        # If the color is the current color function (not in the deque yet)
+        # repaint the given function with the new color
+        if new_color not in self._painted_functions[user_address]:
+            self.set_paint_function(func, new_color)
+
     # -------------------------------------------------------------------------
     # Misc
     # -------------------------------------------------------------------------
@@ -415,24 +467,6 @@ class Painter(object):
         self._color = color
 
     @property
-    def name(self):
-        """
-        Get the user name.
-
-        :return: the name
-        """
-        return self._name
-
-    @name.setter
-    def name(self, name):
-        """
-        Set the user name.
-
-        :param name: the name
-        """
-        self._name = name
-
-    @property
     def nbytes(self):
         """
         Get nbytes.
@@ -454,7 +488,6 @@ class Painter(object):
     def users_positions(self):
         """
         Return the current users positions
-
         :return: the current users positions
         """
         return self._users_positions

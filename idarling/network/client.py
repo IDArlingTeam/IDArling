@@ -12,7 +12,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import logging
 
-from ..shared.commands import UpdateCursors, Unsubscribe, RenamedUser
+from ..shared.commands import (UpdateCursors, Unsubscribe, UserRenamed,
+                               UserColorChanged)
 from ..shared.packets import Command, Event
 from ..shared.sockets import ClientSocket
 
@@ -36,7 +37,8 @@ class Client(ClientSocket):
         self._handlers = {
             UpdateCursors: self._handle_update_cursors,
             Unsubscribe: self._handle_unsubscribe,
-            RenamedUser: self._handle_renamed_user,
+            UserRenamed: self._handle_user_renamed,
+            UserColorChanged: self._handle_user_color_changed
         }
 
     def disconnect(self, err=None):
@@ -75,16 +77,21 @@ class Client(ClientSocket):
         return ClientSocket.send_packet(self, packet)
 
     def _handle_update_cursors(self, packet):
-        self._plugin.interface.painter.paint(packet.color,
-                                             packet.name,
+        self._plugin.interface.painter.paint(packet.name,
+                                             packet.color,
                                              packet.ea)
 
     def _handle_unsubscribe(self, packet):
         self._plugin.interface.painter.unpaint(packet.name)
 
-    def _handle_renamed_user(self, packet):
-        users_positions = self._plugin.interface.painter.users_positions
-        users_positions[packet.new_name] = users_positions.pop(packet.old_name)
+    def _handle_user_renamed(self, packet):
+        self._plugin.interface.painter.rename_user(packet.old_name,
+                                                   packet.new_name)
+
+    def _handle_user_color_changed(self, packet):
+        self._plugin.interface.painter.change_user_color(packet.name,
+                                                         packet.old_color,
+                                                         packet.new_color)
 
     @property
     def users(self):

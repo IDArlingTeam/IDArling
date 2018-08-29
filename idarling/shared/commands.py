@@ -145,16 +145,27 @@ class Unsubscribe(DefaultCommand):
 class UpdateCursors(DefaultCommand):
     __command__ = 'update_cursors'
 
-    def __init__(self, ea, name):
+    def __init__(self, name, ea, color):
         super(UpdateCursors, self).__init__()
-        self.ea = ea
         self.name = name
+        self.ea = ea
+        self.color = color
 
 
-class RenamedUser(DefaultCommand):
-    __command__ = 'renamed_user'
+class UserRenamed(DefaultCommand):
+    __command__ = 'user_renamed'
 
     def __init__(self, old_name, new_name):
         super(RenamedUser, self).__init__()
         self.old_name = old_name
         self.new_name = new_name
+
+
+class UserColorChanged(DefaultCommand):
+    __command__ = 'user_color_changed'
+
+    def __init__(self, name, old_color, new_color):
+        super(UserColorChanged, self).__init__()
+        self.name = name
+        self.old_color = old_color
+        self.new_color = new_color
