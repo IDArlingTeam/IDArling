@@ -125,13 +125,14 @@ class DownloadDatabase(ParentCommand):
 class Subscribe(DefaultCommand):
     __command__ = 'subscribe'
 
-    def __init__(self, repo, branch, tick, color, name):
+    def __init__(self, repo, branch, tick, name, color, ea):
         super(Subscribe, self).__init__()
         self.repo = repo
         self.branch = branch
         self.tick = tick
-        self.color = color
         self.name = name
+        self.color = color
+        self.ea = ea
 
 
 class Unsubscribe(DefaultCommand):

@@ -12,8 +12,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import logging
 
-from ..shared.commands import (UpdateCursors, Unsubscribe, UserRenamed,
-                               UserColorChanged)
+from ..shared.commands import (Subscribe, UpdateCursors, Unsubscribe,
+                               UserRenamed, UserColorChanged)
 from ..shared.packets import Command, Event
 from ..shared.sockets import ClientSocket
 
@@ -36,6 +36,7 @@ class Client(ClientSocket):
         self._users = {}
         self._handlers = {
             UpdateCursors: self._handle_update_cursors,
+            Subscribe: self._handle_subscribe,
             Unsubscribe: self._handle_unsubscribe,
             UserRenamed: self._handle_user_renamed,
             UserColorChanged: self._handle_user_color_changed
@@ -76,13 +77,18 @@ class Client(ClientSocket):
             packet.tick = self._plugin.core.tick
         return ClientSocket.send_packet(self, packet)
 
-    def _handle_update_cursors(self, packet):
+    def _handle_subscribe(self, packet):
         self._plugin.interface.painter.paint(packet.name,
                                              packet.color,
                                              packet.ea)
 
     def _handle_unsubscribe(self, packet):
         self._plugin.interface.painter.unpaint(packet.name)
+
+    def _handle_update_cursors(self, packet):
+        self._plugin.interface.painter.paint(packet.name,
+                                             packet.color,
+                                             packet.ea)
 
     def _handle_user_renamed(self, packet):
         self._plugin.interface.painter.rename_user(packet.old_name,

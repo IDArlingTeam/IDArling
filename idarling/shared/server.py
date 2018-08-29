@@ -165,10 +165,14 @@ class ServerClient(ClientSocket):
     def _handle_subscribe(self, packet):
         self._repo = packet.repo
         self._branch = packet.branch
-        self._color = packet.color
         self._name = packet.name
+        self._color = packet.color
+        self._ea = packet.ea
         self.parent().register_client(self)
 
+        # Inform others people that we are subscribing
+        for client in self.parent().find_clients(self._should_forward):
+            client.send_packet(packet)
         # Send all missed events
         events = self.parent().database.select_events(self._repo, self._branch,
                                                       packet.tick)

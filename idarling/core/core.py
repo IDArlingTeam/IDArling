@@ -74,8 +74,9 @@ class Core(Module):
                 if core.repo and core.branch:
                     self._plugin.network.send_packet(Subscribe(
                         core.repo, core.branch, core.tick,
+                        self._plugin.config["user"]["name"],
                         self._plugin.config["user"]["color"],
-                        self._plugin.config["user"]["name"]))
+                        ida_kernwin.get_screen_ea()))
                     core.hook_all()
 
         self._uiHooksCore = UIHooksCore(self._plugin)
@@ -222,8 +223,14 @@ class Core(Module):
 
     def notify_connected(self):
         if self._repo and self._branch:
-            color = self._plugin.config["user"]["color"]
             name = self._plugin.config["user"]["name"]
+            color = self._plugin.config["user"]["color"]
+            ea = ida_kernwin.get_screen_ea()
             self._plugin.network.send_packet(
-                Subscribe(self._repo, self._branch, self._tick, color, name))
+                Subscribe(self._repo,
+                          self._branch,
+                          self._tick,
+                          name,
+                          color,
+                          ea))
             self.hook_all()
