@@ -19,17 +19,39 @@ import ida_nalt
 
 from PyQt5.QtCore import Qt, QRegExp
 from PyQt5.QtGui import QIcon, QRegExpValidator, QColor
-from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout, QGridLayout,
-                             QWidget, QTableWidget, QTableWidgetItem, QLabel,
-                             QPushButton, QLineEdit, QGroupBox, QMessageBox,
-                             QCheckBox, QTabWidget, QColorDialog, QComboBox,
-                             QFormLayout, QSpinBox, QHeaderView)
+from PyQt5.QtWidgets import (
+    QDialog,
+    QHBoxLayout,
+    QVBoxLayout,
+    QGridLayout,
+    QWidget,
+    QTableWidget,
+    QTableWidgetItem,
+    QLabel,
+    QPushButton,
+    QLineEdit,
+    QGroupBox,
+    QMessageBox,
+    QCheckBox,
+    QTabWidget,
+    QColorDialog,
+    QComboBox,
+    QFormLayout,
+    QSpinBox,
+    QHeaderView,
+)
 
-from ..shared.commands import GetRepositories, GetBranches, \
-    NewRepository, NewBranch, UserRenamed, UserColorChanged
+from ..shared.commands import (
+    GetRepositories,
+    GetBranches,
+    NewRepository,
+    NewBranch,
+    UserRenamed,
+    UserColorChanged,
+)
 from ..shared.models import Repository, Branch
 
-logger = logging.getLogger('IDArling.Interface')
+logger = logging.getLogger("IDArling.Interface")
 
 
 class OpenDialog(QDialog):
@@ -51,7 +73,7 @@ class OpenDialog(QDialog):
         # General setup of the dialog
         logger.debug("Showing the database selection dialog")
         self.setWindowTitle("Open from Remote Server")
-        iconPath = self._plugin.resource('download.png')
+        iconPath = self._plugin.resource("download.png")
         self.setWindowIcon(QIcon(iconPath))
         self.resize(900, 450)
 
@@ -64,7 +86,7 @@ class OpenDialog(QDialog):
         self._leftSide = QWidget(main)
         self._leftLayout = QVBoxLayout(self._leftSide)
         self._reposTable = QTableWidget(0, 1, self._leftSide)
-        self._reposTable.setHorizontalHeaderLabels(('Repositories',))
+        self._reposTable.setHorizontalHeaderLabels(("Repositories",))
         self._reposTable.horizontalHeader().setSectionsClickable(False)
         self._reposTable.horizontalHeader().setStretchLastSection(True)
         self._reposTable.verticalHeader().setVisible(False)
@@ -78,14 +100,14 @@ class OpenDialog(QDialog):
         rightLayout = QVBoxLayout(rightSide)
         detailsGroup = QGroupBox("Details", rightSide)
         detailsLayout = QGridLayout(detailsGroup)
-        self._fileLabel = QLabel('<b>File:</b>')
+        self._fileLabel = QLabel("<b>File:</b>")
         detailsLayout.addWidget(self._fileLabel, 0, 0)
-        self._hashLabel = QLabel('<b>Hash:</b>')
+        self._hashLabel = QLabel("<b>Hash:</b>")
         detailsLayout.addWidget(self._hashLabel, 1, 0)
         detailsLayout.setColumnStretch(0, 1)
-        self._typeLabel = QLabel('<b>Type:</b>')
+        self._typeLabel = QLabel("<b>Type:</b>")
         detailsLayout.addWidget(self._typeLabel, 0, 1)
-        self._dateLabel = QLabel('<b>Date:</b>')
+        self._dateLabel = QLabel("<b>Date:</b>")
         detailsLayout.addWidget(self._dateLabel, 1, 1)
         detailsLayout.setColumnStretch(1, 1)
         rightLayout.addWidget(detailsGroup)
@@ -94,7 +116,7 @@ class OpenDialog(QDialog):
         self._branchesGroup = QGroupBox("Branches", rightSide)
         self._branchesLayout = QVBoxLayout(self._branchesGroup)
         self._branchesTable = QTableWidget(0, 3, self._branchesGroup)
-        labels = ('Name', 'Date', 'Ticks')
+        labels = ("Name", "Date", "Ticks")
         self._branchesTable.setHorizontalHeaderLabels(labels)
         horizontalHeader = self._branchesTable.horizontalHeader()
         horizontalHeader.setSectionsClickable(False)
@@ -150,10 +172,10 @@ class OpenDialog(QDialog):
         Called when a repository item is clicked, will update the display.
         """
         repo = self._reposTable.selectedItems()[0].data(Qt.UserRole)
-        self._fileLabel.setText('<b>File:</b> %s' % str(repo.file))
-        self._hashLabel.setText('<b>Hash:</b> %s' % str(repo.hash))
-        self._typeLabel.setText('<b>Type:</b> %s' % str(repo.type))
-        self._dateLabel.setText('<b>Date:</b> %s' % str(repo.date))
+        self._fileLabel.setText("<b>File:</b> %s" % str(repo.file))
+        self._hashLabel.setText("<b>Hash:</b> %s" % str(repo.hash))
+        self._typeLabel.setText("<b>Type:</b> %s" % str(repo.type))
+        self._dateLabel.setText("<b>Date:</b> %s" % str(repo.date))
 
         # Ask the server for the list of branches
         d = self._plugin.network.send_packet(GetBranches.Query(repo.name))
@@ -186,7 +208,7 @@ class OpenDialog(QDialog):
         for i, branch in enumerate(self._branches):
             self._branchesTable.setItem(i, 0, createItem(branch.name, branch))
             self._branchesTable.setItem(i, 1, createItem(branch.date, branch))
-            tick = str(branch.tick) if branch.tick != -1 else '<none>'
+            tick = str(branch.tick) if branch.tick != -1 else "<none>"
             self._branchesTable.setItem(i, 2, createItem(tick, branch))
 
     def _branch_clicked(self):
@@ -227,7 +249,7 @@ class SaveDialog(OpenDialog):
 
         # General setup of the dialog
         self.setWindowTitle("Save to Remote Server")
-        iconPath = self._plugin.resource('upload.png')
+        iconPath = self._plugin.resource("upload.png")
         self.setWindowIcon(QIcon(iconPath))
 
         # Setup the layout and widgets
@@ -268,7 +290,7 @@ class SaveDialog(OpenDialog):
             failure.setStandardButtons(QMessageBox.Ok)
             failure.setText("A repository with that name already exists!")
             failure.setWindowTitle("New Repository")
-            iconPath = self._plugin.resource('upload.png')
+            iconPath = self._plugin.resource("upload.png")
             failure.setWindowIcon(QIcon(iconPath))
             failure.exec_()
             return
@@ -325,7 +347,7 @@ class SaveDialog(OpenDialog):
             failure.setStandardButtons(QMessageBox.Ok)
             failure.setText("A branch with that name already exists!")
             failure.setWindowTitle("New Branch")
-            iconPath = self._plugin.resource('upload.png')
+            iconPath = self._plugin.resource("upload.png")
             failure.setWindowIcon(QIcon(iconPath))
             failure.exec_()
             return
@@ -372,7 +394,7 @@ class NewRepoDialog(QDialog):
         # General setup of the dialog
         logger.debug("New repo dialog")
         self.setWindowTitle("New Repository")
-        iconPath = plugin.resource('upload.png')
+        iconPath = plugin.resource("upload.png")
         self.setWindowIcon(QIcon(iconPath))
         self.resize(100, 100)
 
@@ -436,7 +458,7 @@ class SettingsDialog(QDialog):
         # General setup of the dialog
         logger.debug("Showing settings dialog")
         self.setWindowTitle("Settings")
-        iconPath = self._plugin.resource('settings.png')
+        iconPath = self._plugin.resource("settings.png")
         self.setWindowIcon(QIcon(iconPath))
         self.finished.connect(self._commit)
 
@@ -468,8 +490,10 @@ class SettingsDialog(QDialog):
                 rgb_color_ida = b << 16 | g << 8 | r
                 # Qt represents color as 0xRRGGBB
                 rgb_color_qt = r << 16 | g << 8 | b
-                css = 'QPushButton {background-color: #%06x; color: #%06x;}' \
+                css = (
+                    "QPushButton {background-color: #%06x; color: #%06x;}"
                     % (rgb_color_qt, rgb_color_qt)
+                )
                 colorButton.setStyleSheet(css)
                 self._color = rgb_color_ida
 
@@ -528,7 +552,7 @@ class SettingsDialog(QDialog):
         self._serversTable = QTableWidget(len(self._servers), 2, self)
         topLayout.addWidget(self._serversTable)
         for i, server in enumerate(self._servers):
-            item = QTableWidgetItem('%s:%d' % (server["host"], server["port"]))
+            item = QTableWidgetItem("%s:%d" % (server["host"], server["port"]))
             item.setData(Qt.UserRole, server)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             if self._plugin.network.server == server:
@@ -614,8 +638,10 @@ class SettingsDialog(QDialog):
     def _double_click(self, _):
         item = self._serversTable.selectedItems()[0]
         server = item.data(Qt.UserRole)
-        if not self._plugin.network.connected \
-                or self._plugin.network.server != server:
+        if (
+            not self._plugin.network.connected
+            or self._plugin.network.server != server
+        ):
             self._plugin.network.stop_server()
             self._plugin.network.connect(server)
         self.accept()
@@ -649,8 +675,9 @@ class SettingsDialog(QDialog):
         rowCount = self._serversTable.rowCount()
         self._serversTable.insertRow(rowCount)
 
-        newServer = QTableWidgetItem('%s:%d' %
-                                     (server["host"], server["port"]))
+        newServer = QTableWidgetItem(
+            "%s:%d" % (server["host"], server["port"])
+        )
         newServer.setData(Qt.UserRole, server)
         newServer.setFlags(newServer.flags() & ~Qt.ItemIsEditable)
         self._serversTable.setItem(rowCount, 0, newServer)
@@ -673,7 +700,7 @@ class SettingsDialog(QDialog):
         item = self._serversTable.selectedItems()[0]
         self._servers[item.row()] = server
 
-        item.setText('%s:%d' % (server["host"], server["port"]))
+        item.setText("%s:%d" % (server["host"], server["port"]))
         item.setData(Qt.UserRole, server)
         item.setFlags(item.flags() & ~Qt.ItemIsEditable)
 
@@ -714,6 +741,7 @@ class SettingsDialog(QDialog):
             self._plugin.config["user"]["color"] = self._color
 
         from idarling.plugin import logger
+
         index = self._debugLevelComboBox.currentIndex()
         level = self._debugLevelComboBox.itemData(index)
         logger.setLevel(level)
@@ -750,7 +778,7 @@ class ServerInfoDialog(QDialog):
         # General setup of the dialog
         logger.debug("Showing server info dialog")
         self.setWindowTitle(title)
-        iconPath = plugin.resource('settings.png')
+        iconPath = plugin.resource("settings.png")
         self.setWindowIcon(QIcon(iconPath))
         self.resize(100, 100)
 
@@ -795,6 +823,6 @@ class ServerInfoDialog(QDialog):
         new_server = {
             "host": self._serverName.text() or "127.0.0.1",
             "port": int(self._serverPort.text() or "31013"),
-            "no_ssl": self._noSSLCheckbox.isChecked()
+            "no_ssl": self._noSSLCheckbox.isChecked(),
         }
         return new_server

@@ -17,11 +17,20 @@ import ssl
 
 from .database import Database
 from .discovery import ClientsDiscovery
-from .commands import (GetRepositories, GetBranches,
-                       NewRepository, NewBranch,
-                       UploadDatabase, DownloadDatabase,
-                       Subscribe, Unsubscribe, InviteTo,
-                       UpdateCursors, UserRenamed, UserColorChanged)
+from .commands import (
+    GetRepositories,
+    GetBranches,
+    NewRepository,
+    NewBranch,
+    UploadDatabase,
+    DownloadDatabase,
+    Subscribe,
+    Unsubscribe,
+    InviteTo,
+    UpdateCursors,
+    UserRenamed,
+    UserColorChanged,
+)
 from .packets import Command, Event
 from .sockets import ClientSocket, ServerSocket
 
@@ -43,11 +52,12 @@ class ServerClient(ClientSocket):
         ClientSocket.connect(self, sock)
 
         # Add host and port as a prefix to our logger
-        prefix = '%s:%d' % sock.getpeername()
+        prefix = "%s:%d" % sock.getpeername()
 
         class CustomAdapter(logging.LoggerAdapter):
             def process(self, msg, kwargs):
-                return '(%s) %s' % (prefix, msg), kwargs
+                return "(%s) %s" % (prefix, msg), kwargs
+
         self._logger = CustomAdapter(self._logger, {})
         self._logger.info("Connected")
 
@@ -98,7 +108,8 @@ class ServerClient(ClientSocket):
         elif isinstance(packet, Event):
             if not self._repo or not self._branch:
                 self._logger.warning(
-                    "Received a packet from an unsubscribed client")
+                    "Received a packet from an unsubscribed client"
+                )
                 return True
 
             # Check for de-synchronization
@@ -125,7 +136,7 @@ class ServerClient(ClientSocket):
         branches = self.parent().database.select_branches(query.repo)
         for branch in branches:
             branchInfo = branch.repo, branch.name
-            fileName = '%s_%s.idb' % branchInfo
+            fileName = "%s_%s.idb" % branchInfo
             filePath = self.parent().local_file(fileName)
             if os.path.isfile(filePath):
                 branch.tick = self.parent().database.last_tick(*branchInfo)
@@ -143,23 +154,23 @@ class ServerClient(ClientSocket):
 
     def _handle_upload_database(self, query):
         branch = self.parent().database.select_branch(query.repo, query.branch)
-        fileName = '%s_%s.idb' % (branch.repo, branch.name)
+        fileName = "%s_%s.idb" % (branch.repo, branch.name)
         filePath = self.parent().local_file(fileName)
 
         # Write the file received to disk
-        with open(filePath, 'wb') as outputFile:
+        with open(filePath, "wb") as outputFile:
             outputFile.write(query.content)
         self._logger.info("Saved file %s" % fileName)
         self.send_packet(UploadDatabase.Reply(query))
 
     def _handle_download_database(self, query):
         branch = self.parent().database.select_branch(query.repo, query.branch)
-        fileName = '%s_%s.idb' % (branch.repo, branch.name)
+        fileName = "%s_%s.idb" % (branch.repo, branch.name)
         filePath = self.parent().local_file(fileName)
 
         # Read file from disk and sent it
         reply = DownloadDatabase.Reply(query)
-        with open(filePath, 'rb') as inputFile:
+        with open(filePath, "rb") as inputFile:
             reply.content = inputFile.read()
         self.send_packet(reply)
 
@@ -175,9 +186,10 @@ class ServerClient(ClientSocket):
         for client in self.parent().find_clients(self._should_forward):
             client.send_packet(packet)
         # Send all missed events
-        events = self.parent().database.select_events(self._repo, self._branch,
-                                                      packet.tick)
-        self._logger.debug('Sending %d missed events' % len(events))
+        events = self.parent().database.select_events(
+            self._repo, self._branch, packet.tick
+        )
+        self._logger.debug("Sending %d missed events" % len(events))
         for event in events:
             self.send_packet(event)
 
@@ -213,8 +225,11 @@ class ServerClient(ClientSocket):
             client.send_packet(packet)
 
     def _should_forward(self, client):
-        return client.repo == self._repo \
-                and client.branch == self._branch and client != self
+        return (
+            client.repo == self._repo
+            and client.branch == self._branch
+            and client != self
+        )
 
 
 class Server(ServerSocket):
@@ -236,7 +251,7 @@ class Server(ServerSocket):
     def __init__(self, logger, ssl, parent=None):
         ServerSocket.__init__(self, logger, parent)
         self._clients = []
-        self._database = Database(self.local_file('database.db'))
+        self._database = Database(self.local_file("database.db"))
         self._database.initialize()
         self._ssl = ssl
         self._discovery = ClientsDiscovery(logger)

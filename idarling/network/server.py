@@ -15,15 +15,16 @@ import logging
 from ..shared.server import Server
 from ..utilities.misc import local_resource
 
-logger = logging.getLogger('IDArling.Network')
+logger = logging.getLogger("IDArling.Network")
 
 
 class IntegratedServer(Server):
     """
     The integrated server implementation.
     """
+
     def __init__(self, parent=None):
         Server.__init__(self, logger, None, parent)
 
     def local_file(self, filename):
-        return local_resource('files', filename)
+        return local_resource("files", filename)

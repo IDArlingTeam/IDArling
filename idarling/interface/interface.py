@@ -17,8 +17,16 @@ import ida_kernwin
 
 from PyQt5.QtCore import Qt, QObject
 from PyQt5.QtGui import QContextMenuEvent, QIcon, QImage, QShowEvent, QPixmap
-from PyQt5.QtWidgets import qApp, QAction, QDialog, QGroupBox, QLabel, \
-    QMainWindow, QMenu, QWidget
+from PyQt5.QtWidgets import (
+    qApp,
+    QAction,
+    QDialog,
+    QGroupBox,
+    QLabel,
+    QMainWindow,
+    QMenu,
+    QWidget,
+)
 
 from ..module import Module
 from ..shared.commands import InviteTo
@@ -27,7 +35,7 @@ from .painter import Painter
 from .toasts import Toast
 from .widgets import StatusWidget
 
-logger = logging.getLogger('IDArling.Interface')
+logger = logging.getLogger("IDArling.Interface")
 
 
 class Interface(Module):
@@ -55,7 +63,6 @@ class Interface(Module):
         self._painter = Painter(plugin)
 
         class EventHandler(QObject):
-
             def __init__(self, plugin, parent=None):
                 super(EventHandler, self).__init__(parent)
                 self._plugin = plugin
@@ -63,24 +70,30 @@ class Interface(Module):
 
             @staticmethod
             def replace_icon(label):
-                pixmap = QPixmap(self._plugin.resource('idarling.png'))
+                pixmap = QPixmap(self._plugin.resource("idarling.png"))
                 pixmap = pixmap.scaled(
-                    label.sizeHint().width(), label.sizeHint().height(),
-                    Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    label.sizeHint().width(),
+                    label.sizeHint().height(),
+                    Qt.KeepAspectRatio,
+                    Qt.SmoothTransformation,
+                )
                 label.setPixmap(pixmap)
 
             def eventFilter(self, obj, ev):
                 if isinstance(obj, QDialog) and isinstance(ev, QShowEvent):
-                    if obj.windowTitle() == 'About':
+                    if obj.windowTitle() == "About":
                         for child in obj.children():
                             if isinstance(child, QGroupBox):
                                 for subchild in child.children():
-                                    if isinstance(subchild, QLabel) \
-                                            and subchild.pixmap():
+                                    if (
+                                        isinstance(subchild, QLabel)
+                                        and subchild.pixmap()
+                                    ):
                                         EventHandler.replace_icon(subchild)
 
-                if isinstance(obj, QWidget) \
-                        and isinstance(ev, QContextMenuEvent):
+                if isinstance(obj, QWidget) and isinstance(
+                    ev, QContextMenuEvent
+                ):
                     parent = obj
                     while parent:
                         if parent.windowTitle().startswith("IDA View"):
@@ -98,11 +111,11 @@ class Interface(Module):
 
                         obj.insertSeparator(sep)
                         menu = QMenu("Invite to location", obj)
-                        pixmap = QPixmap(self._plugin.resource('invite.png'))
+                        pixmap = QPixmap(self._plugin.resource("invite.png"))
                         menu.setIcon(QIcon(pixmap))
 
                         everyone = QAction("Everyone", menu)
-                        pixmap = QPixmap(self._plugin.resource('users.png'))
+                        pixmap = QPixmap(self._plugin.resource("users.png"))
                         everyone.setIcon(QIcon(pixmap))
 
                         def inviteTo(name):
@@ -112,11 +125,12 @@ class Interface(Module):
 
                         def inviteToEveryone():
                             inviteTo("everyone")
+
                         everyone.triggered.connect(inviteToEveryone)
                         menu.addAction(everyone)
 
                         menu.addSeparator()
-                        template = QImage(self._plugin.resource('user.png'))
+                        template = QImage(self._plugin.resource("user.png"))
 
                         def ida_to_python(c):
                             r = (c & 255) / 255.
@@ -152,6 +166,7 @@ class Interface(Module):
 
                             def inviteToUser():
                                 inviteTo(name)
+
                             action.triggered.connect(inviteToUser)
                             return action
 
@@ -161,6 +176,7 @@ class Interface(Module):
                         obj.insertMenu(sep, menu)
                         self._augment = False
                 return False
+
         self._eventFilter = EventHandler(self._plugin)
         self._statusWidget = StatusWidget(self._plugin)
 

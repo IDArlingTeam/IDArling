@@ -33,6 +33,7 @@ class Plugin(ida_idaapi.plugin_t):
     """
     The IDArling plugin.
     """
+
     # Internal definitions
     PLUGIN_NAME = "IDArling"
     PLUGIN_VERSION = "0.0.1"
@@ -52,8 +53,7 @@ class Plugin(ida_idaapi.plugin_t):
 
         :return: the description
         """
-        return "{} v{}".format(Plugin.PLUGIN_NAME,
-                               Plugin.PLUGIN_VERSION)
+        return "{} v{}".format(Plugin.PLUGIN_NAME, Plugin.PLUGIN_VERSION)
 
     @staticmethod
     def resource(filename):
@@ -80,11 +80,7 @@ class Plugin(ida_idaapi.plugin_t):
         self._config = {
             "level": logging.INFO,
             "servers": [],
-            "keep": {
-                "cnt": 4,
-                "intvl": 15,
-                "idle": 240,
-            },
+            "keep": {"cnt": 4, "intvl": 15, "idle": 240},
             "user": {
                 "color": -1,
                 "name": "Undefined",
@@ -209,10 +205,10 @@ class Plugin(ida_idaapi.plugin_t):
             ]
         }
         """
-        configPath = local_resource('files', 'config.json')
+        configPath = local_resource("files", "config.json")
         if not os.path.isfile(configPath):
             return
-        with open(configPath, 'rb') as configFile:
+        with open(configPath, "rb") as configFile:
             try:
                 self._config.update(json.loads(configFile.read()))
             except ValueError:
@@ -225,8 +221,8 @@ class Plugin(ida_idaapi.plugin_t):
         """
         Save the config file.
         """
-        configPath = local_resource('files', 'config.json')
-        with open(configPath, 'wb') as configFile:
+        configPath = local_resource("files", "config.json")
+        with open(configPath, "wb") as configFile:
             logger.debug("Saved config: %s" % self._config)
             configFile.write(json.dumps(self._config))
 

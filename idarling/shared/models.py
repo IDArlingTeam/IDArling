@@ -34,9 +34,13 @@ class Model(Default):
 
         :return: the representation
         """
-        attrs = u', '.join([u'{}={}'.format(key, val) for key, val in
-                            Default.attrs(self.__dict__).items()])
-        return u'{}({})'.format(self.__class__.__name__, attrs)
+        attrs = u", ".join(
+            [
+                u"{}={}".format(key, val)
+                for key, val in Default.attrs(self.__dict__).items()
+            ]
+        )
+        return u"{}({})".format(self.__class__.__name__, attrs)
 
 
 class Repository(Model):

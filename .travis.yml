@@ -1,8 +1,7 @@
 language: python
 python:
-  - "2.7"
   - "3.6"
 install:
-  - pip install pycodestyle
+  - pip install black
 script:
-  - pycodestyle $PWD
+  - black -l 79 --check idarling_plugin.py idarling_server.py idarling/**/*.py

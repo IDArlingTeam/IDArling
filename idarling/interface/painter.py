@@ -23,7 +23,7 @@ import ida_nalt
 import ida_registry
 import idautils
 
-logger = logging.getLogger('IDArling.Painter')
+logger = logging.getLogger("IDArling.Painter")
 
 
 class Painter(object):
@@ -40,7 +40,7 @@ class Painter(object):
             return 0xffffff
         selected = struct.unpack("<I", palette[8:12])[0]
         index = 176 + selected * 208
-        return struct.unpack("<I", palette[index:index + 4])[0]
+        return struct.unpack("<I", palette[index : index + 4])[0]
 
     def __init__(self, plugin):
         """
@@ -81,6 +81,7 @@ class Painter(object):
 
         :return: did the install succeed
         """
+
         class UIHooks(ida_kernwin.UI_Hooks):
             def __init__(self, painter):
                 ida_kernwin.UI_Hooks.__init__(self)
@@ -171,12 +172,13 @@ class Painter(object):
         #
         if self._plugin.config["user"]["navbar_colorizer"]:
             for infos in self._users_positions.values():
-                if ea - nbytes * 2 <= infos['address'] <= ea + nbytes * 2:
-                    return long(infos['color'])
-                if ea - nbytes * 4 <= infos['address'] <= ea + nbytes * 4:
+                if ea - nbytes * 2 <= infos["address"] <= ea + nbytes * 2:
+                    return long(infos["color"])
+                if ea - nbytes * 4 <= infos["address"] <= ea + nbytes * 4:
                     return long(0)
-        orig = ida_kernwin.call_nav_colorizer(self.ida_nav_colorizer, ea,
-                                              nbytes)
+        orig = ida_kernwin.call_nav_colorizer(
+            self.ida_nav_colorizer, ea, nbytes
+        )
         self.nbytes = nbytes
         return long(orig)
 
@@ -217,7 +219,7 @@ class Painter(object):
         # get user position
         users_positions = self.users_positions.get(name)
         if users_positions:
-            address = users_positions['address']
+            address = users_positions["address"]
             # if a color has been applied, restore it
             try:
                 color = self._painted_instructions[address].pop()
@@ -265,7 +267,7 @@ class Painter(object):
         # get the previous user position
         user_position = self.users_positions.get(name)
         if user_position:
-            address = user_position['address']
+            address = user_position["address"]
             func = ida_funcs.get_func(address)
             # paint it only if previous function and new function are different
             if not new_func or (func and new_func and func == new_func):
@@ -295,13 +297,14 @@ class Painter(object):
             self._painted_functions[new_func.startEA].append(new_func.color)
 
         if user_position:
-            address = user_position['address']
+            address = user_position["address"]
             self.clear_function_instructions(address)
             func = ida_funcs.get_func(address)
 
             # clear it only if previous func and new func are different
-            if (func and not new_func) or \
-                    (func and new_func and func != new_func):
+            if (func and not new_func) or (
+                func and new_func and func != new_func
+            ):
                 color = self._painted_functions[func.startEA].pop()
                 # if the queue is not empty, repaint all the instructions with
                 # the background color

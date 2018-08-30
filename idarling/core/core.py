@@ -21,14 +21,15 @@ from ..shared.commands import Subscribe, Unsubscribe
 
 from .hooks import Hooks, IDBHooks, IDPHooks, HexRaysHooks, ViewHooks, UIHooks
 
-logger = logging.getLogger('IDArling.Core')
+logger = logging.getLogger("IDArling.Core")
 
 
 class Core(Module):
     """
     The core module, responsible for all interactions with the IDA kernel.
     """
-    NETNODE_NAME = '$ idarling'
+
+    NETNODE_NAME = "$ idarling"
 
     def __init__(self, plugin):
         super(Core, self).__init__(plugin)
@@ -72,11 +73,16 @@ class Core(Module):
 
                 # Subscribe to the events stream if needed
                 if core.repo and core.branch:
-                    self._plugin.network.send_packet(Subscribe(
-                        core.repo, core.branch, core.tick,
-                        self._plugin.config["user"]["name"],
-                        self._plugin.config["user"]["color"],
-                        ida_kernwin.get_screen_ea()))
+                    self._plugin.network.send_packet(
+                        Subscribe(
+                            core.repo,
+                            core.branch,
+                            core.tick,
+                            self._plugin.config["user"]["name"],
+                            self._plugin.config["user"]["color"],
+                            ida_kernwin.get_screen_ea(),
+                        )
+                    )
                     core.hook_all()
 
         self._uiHooksCore = UIHooksCore(self._plugin)
@@ -199,12 +205,14 @@ class Core(Module):
         Load members from the custom netnode.
         """
         node = ida_netnode.netnode(Core.NETNODE_NAME, 0, True)
-        self._repo = node.hashval('repo') or None
-        self._branch = node.hashval('branch') or None
-        self._tick = int(node.hashval('tick') or '0')
+        self._repo = node.hashval("repo") or None
+        self._branch = node.hashval("branch") or None
+        self._tick = int(node.hashval("tick") or "0")
 
-        logger.debug("Loaded netnode: repo=%s, branch=%s, tick=%d"
-                     % (self._repo, self._branch, self._tick))
+        logger.debug(
+            "Loaded netnode: repo=%s, branch=%s, tick=%d"
+            % (self._repo, self._branch, self._tick)
+        )
 
     def save_netnode(self):
         """
@@ -212,14 +220,16 @@ class Core(Module):
         """
         node = ida_netnode.netnode(Core.NETNODE_NAME, 0, True)
         if self._repo:
-            node.hashset('repo', str(self._repo))
+            node.hashset("repo", str(self._repo))
         if self._branch:
-            node.hashset('branch', str(self._branch))
+            node.hashset("branch", str(self._branch))
         if self._tick:
-            node.hashset('tick', str(self._tick))
+            node.hashset("tick", str(self._tick))
 
-        logger.debug("Saved netnode: repo=%s, branch=%s, tick=%d"
-                     % (self._repo, self._branch, self._tick))
+        logger.debug(
+            "Saved netnode: repo=%s, branch=%s, tick=%d"
+            % (self._repo, self._branch, self._tick)
+        )
 
     def notify_connected(self):
         if self._repo and self._branch:
@@ -227,10 +237,8 @@ class Core(Module):
             color = self._plugin.config["user"]["color"]
             ea = ida_kernwin.get_screen_ea()
             self._plugin.network.send_packet(
-                Subscribe(self._repo,
-                          self._branch,
-                          self._tick,
-                          name,
-                          color,
-                          ea))
+                Subscribe(
+                    self._repo, self._branch, self._tick, name, color, ea
+                )
+            )
             self.hook_all()

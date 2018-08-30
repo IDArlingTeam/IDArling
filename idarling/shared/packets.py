@@ -22,6 +22,7 @@ def with_metaclass(meta, *bases):
     :param bases: the base classes
     :return: the new type
     """
+
     class metaclass(type):
         def __new__(cls, name, this_bases, d):
             return meta(name, bases, d)
@@ -29,7 +30,8 @@ def with_metaclass(meta, *bases):
         @classmethod
         def __prepare__(cls, name, _):
             return meta.__prepare__(name, bases)
-    return type.__new__(metaclass, 'temporary_class', (), {})
+
+    return type.__new__(metaclass, "temporary_class", (), {})
 
 
 class Serializable(object):
@@ -84,8 +86,9 @@ class Default(Serializable):
         :param dct: the dictionary
         :return: the filtered dictionary
         """
-        return {key: val for key, val in dct.items()
-                if not key.startswith('_')}
+        return {
+            key: val for key, val in dct.items() if not key.startswith("_")
+        }
 
     def build_default(self, dct):
         """
@@ -108,6 +111,7 @@ class PacketFactory(type):
     """
     A factory class used to instantiate packets as they come from the network.
     """
+
     _PACKETS = {}
 
     @staticmethod
@@ -121,8 +125,10 @@ class PacketFactory(type):
         :return: the newly created class
         """
         cls = super(PacketFactory, mcs).__new__(mcs, name, bases, attrs)
-        if cls.__type__ is not None \
-                and cls.__type__ not in PacketFactory._PACKETS:
+        if (
+            cls.__type__ is not None
+            and cls.__type__ not in PacketFactory._PACKETS
+        ):
             PacketFactory._PACKETS[cls.__type__] = cls
         return cls
 
@@ -135,7 +141,7 @@ class PacketFactory(type):
         :param server: server client?
         :return: the packet class
         """
-        cls = PacketFactory._PACKETS[dct['type']]
+        cls = PacketFactory._PACKETS[dct["type"]]
         if type(cls) != mcs:
             cls = type(cls).get_class(dct, server)
         return cls
@@ -146,6 +152,7 @@ class Packet(with_metaclass(PacketFactory, Serializable)):
     The base class for every packet received. Currently, the packet can
     only be of two kinds: either it is an event or a command.
     """
+
     __type__ = None
 
     def __init__(self):
@@ -189,10 +196,12 @@ class Packet(with_metaclass(PacketFactory, Serializable)):
         """
         name = self.__class__.__name__
         if isinstance(self, Query) or isinstance(self, Reply):
-            name = self.__parent__.__name__ + '.' + name
-        attrs = [u'{}={}'.format(k, v) for k, v
-                 in Default.attrs(self.__dict__).items()]
-        return u'{}({})'.format(name, u', '.join(attrs))
+            name = self.__parent__.__name__ + "." + name
+        attrs = [
+            u"{}={}".format(k, v)
+            for k, v in Default.attrs(self.__dict__).items()
+        ]
+        return u"{}({})".format(name, u", ".join(attrs))
 
 
 class PacketDeferred(object):
@@ -299,13 +308,16 @@ class EventFactory(PacketFactory):
     """
     A factory class used to instantiate the packets of type event.
     """
+
     _EVENTS = {}
 
     @staticmethod
     def __new__(mcs, name, bases, attrs):
         cls = super(EventFactory, mcs).__new__(mcs, name, bases, attrs)
-        if cls.__event__ is not None \
-                and cls.__event__ not in EventFactory._EVENTS:
+        if (
+            cls.__event__ is not None
+            and cls.__event__ not in EventFactory._EVENTS
+        ):
             EventFactory._EVENTS[cls.__event__] = cls
         return cls
 
@@ -314,7 +326,7 @@ class EventFactory(PacketFactory):
         if server:  # Server only knows about DefaultEvent
             return DefaultEvent
 
-        cls = EventFactory._EVENTS[dct['event_type']]
+        cls = EventFactory._EVENTS[dct["event_type"]]
         if type(cls) != mcs:
             cls = type(cls).get_class(dct, server)
         return cls
@@ -324,7 +336,8 @@ class Event(with_metaclass(EventFactory, Packet)):
     """
     The base class of every packet of type event received.
     """
-    __type__ = 'event'
+
+    __type__ = "event"
     __event__ = None
 
     def __init__(self):
@@ -333,14 +346,14 @@ class Event(with_metaclass(EventFactory, Packet)):
         self._tick = 0
 
     def build(self, dct):
-        dct['type'] = self.__type__
-        dct['event_type'] = self.__event__
-        dct['tick'] = self._tick
+        dct["type"] = self.__type__
+        dct["event_type"] = self.__event__
+        dct["tick"] = self._tick
         self.build_event(dct)
         return dct
 
     def parse(self, dct):
-        self._tick = dct.pop('tick')
+        self._tick = dct.pop("tick")
         self.parse_event(dct)
         return self
 
@@ -395,20 +408,23 @@ class CommandFactory(PacketFactory):
     """
     A factory class used to instantiate the packets of type command.
     """
+
     _COMMANDS = {}
 
     @staticmethod
     def __new__(mcs, name, bases, attrs):
         cls = super(CommandFactory, mcs).__new__(mcs, name, bases, attrs)
-        if cls.__command__ is not None \
-                and cls.__command__ not in CommandFactory._COMMANDS:
+        if (
+            cls.__command__ is not None
+            and cls.__command__ not in CommandFactory._COMMANDS
+        ):
             if issubclass(cls, ParentCommand):
                 cls.Query.__parent__ = cls
-                cls.Query.__command__ = cls.__command__ + '_query'
+                cls.Query.__command__ = cls.__command__ + "_query"
                 CommandFactory._COMMANDS[cls.Query.__command__] = cls.Query
 
                 cls.Reply.__parent__ = cls
-                cls.Reply.__command__ = cls.__command__ + '_reply'
+                cls.Reply.__command__ = cls.__command__ + "_reply"
                 CommandFactory._COMMANDS[cls.Reply.__command__] = cls.Reply
             else:
                 CommandFactory._COMMANDS[cls.__command__] = cls
@@ -416,7 +432,7 @@ class CommandFactory(PacketFactory):
 
     @classmethod
     def get_class(mcs, dct, server=False):
-        cls = CommandFactory._COMMANDS[dct['command_type']]
+        cls = CommandFactory._COMMANDS[dct["command_type"]]
         if type(cls) != mcs:
             cls = type(cls).get_class(dct, server)
         return cls
@@ -426,7 +442,8 @@ class Command(with_metaclass(CommandFactory, Packet)):
     """
     The base class of every packet of type command received.
     """
-    __type__ = 'command'
+
+    __type__ = "command"
     __command__ = None
 
     def __init__(self):
@@ -434,8 +451,8 @@ class Command(with_metaclass(CommandFactory, Packet)):
         assert self.__command__ is not None, "__command__ not implemented"
 
     def build(self, dct):
-        dct['type'] = self.__type__
-        dct['command_type'] = self.__command__
+        dct["type"] = self.__type__
+        dct["command_type"] = self.__command__
         self.build_command(dct)
         return dct
 
@@ -476,6 +493,7 @@ class ParentCommand(Command):
     """
     An inner class that must used in order to link queries with replies.
     """
+
     __callbacks__ = {}
     Query, Reply = None, None
 
@@ -484,6 +502,7 @@ class Query(Packet):
     """
     A class that must be inherited by commands expecting a reply.
     """
+
     __parent__ = None
 
     _NEXT_ID = itertools.count()
@@ -497,12 +516,12 @@ class Query(Packet):
 
     def build(self, dct):
         super(Query, self).build(dct)
-        dct['__id__'] = self._id
+        dct["__id__"] = self._id
         return dct
 
     def parse(self, dct):
         super(Query, self).parse(dct)
-        self._id = dct['__id__']
+        self._id = dct["__id__"]
         return self
 
     @property
@@ -527,6 +546,7 @@ class Reply(Packet):
     """
     A class that must be inherited by commands sent in response to a query.
     """
+
     __parent__ = None
 
     def __init__(self, query):
@@ -540,12 +560,12 @@ class Reply(Packet):
 
     def build(self, dct):
         super(Reply, self).build(dct)
-        dct['__id__'] = self._id
+        dct["__id__"] = self._id
         return dct
 
     def parse(self, dct):
         super(Reply, self).parse(dct)
-        self._id = dct['__id__']
+        self._id = dct["__id__"]
         return self
 
     @property
@@ -603,11 +623,11 @@ class Container(Command):
 
     def build(self, dct):
         super(Container, self).build(dct)
-        dct['__size__'] = len(self._content)
+        dct["__size__"] = len(self._content)
         return dct
 
     def parse(self, dct):
-        self._size = dct['__size__']
+        self._size = dct["__size__"]
         super(Container, self).parse(dct)
         return self
 

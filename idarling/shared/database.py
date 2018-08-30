@@ -37,30 +37,39 @@ class Database(object):
         """
         Creates all the tables used by the wrapper.
         """
-        self._create('repos', [
-            'name text not null',
-            'hash text not null',
-            'file text not null',
-            'type text not null',
-            'date text not null',
-            'primary key (name)',
-        ])
-        self._create('branches', [
-            'repo text not null',
-            'name text not null',
-            'date text not null',
-            'foreign key(repo) references repos(name)',
-            'primary key(repo, name)',
-        ])
-        self._create('events', [
-            'repo text not null',
-            'branch text not null',
-            'tick integer not null',
-            'dict text not null',
-            'foreign key(repo) references repos(name)',
-            'foreign key(repo, branch) references branches(repo, name)',
-            'primary key(repo, branch, tick)',
-        ])
+        self._create(
+            "repos",
+            [
+                "name text not null",
+                "hash text not null",
+                "file text not null",
+                "type text not null",
+                "date text not null",
+                "primary key (name)",
+            ],
+        )
+        self._create(
+            "branches",
+            [
+                "repo text not null",
+                "name text not null",
+                "date text not null",
+                "foreign key(repo) references repos(name)",
+                "primary key(repo, name)",
+            ],
+        )
+        self._create(
+            "events",
+            [
+                "repo text not null",
+                "branch text not null",
+                "tick integer not null",
+                "dict text not null",
+                "foreign key(repo) references repos(name)",
+                "foreign key(repo, branch) references branches(repo, name)",
+                "primary key(repo, branch, tick)",
+            ],
+        )
 
     def insert_repo(self, repo):
         """
@@ -68,7 +77,7 @@ class Database(object):
 
         :param repo: the repository
         """
-        self._insert('repos', Default.attrs(repo.__dict__))
+        self._insert("repos", Default.attrs(repo.__dict__))
 
     def select_repo(self, name):
         """
@@ -88,7 +97,7 @@ class Database(object):
         :param limit: the number of results
         :return: a list of the repositories
         """
-        results = self._select('repos', {'name': name}, limit)
+        results = self._select("repos", {"name": name}, limit)
         return [Repository(**result) for result in results]
 
     def insert_branch(self, branch):
@@ -98,8 +107,8 @@ class Database(object):
         :param branch: the branch
         """
         attrs = Default.attrs(branch.__dict__)
-        attrs.pop('tick')
-        self._insert('branches', attrs)
+        attrs.pop("tick")
+        self._insert("branches", attrs)
 
     def select_branch(self, repo, name):
         """
@@ -121,7 +130,7 @@ class Database(object):
         :param limit: the number of results to return
         :return: a list of branches
         """
-        results = self._select('branches', {'repo': repo, 'name': name}, limit)
+        results = self._select("branches", {"repo": repo, "name": name}, limit)
         return [Branch(**result) for result in results]
 
     def insert_event(self, client, event):
@@ -132,12 +141,15 @@ class Database(object):
         :param event: the event
         """
         dct = DefaultEvent.attrs(event.__dict__)
-        self._insert('events', {
-            'repo': client.repo,
-            'branch': client.branch,
-            'tick': event.tick,
-            'dict': json.dumps(dct)
-        })
+        self._insert(
+            "events",
+            {
+                "repo": client.repo,
+                "branch": client.branch,
+                "tick": event.tick,
+                "dict": json.dumps(dct),
+            },
+        )
 
     def select_events(self, repo, branch, tick):
         """
@@ -149,13 +161,13 @@ class Database(object):
         :return: a list of events
         """
         c = self._conn.cursor()
-        sql = 'select * from events where repo = ? and branch = ? ' \
-              'and tick > ? order by tick asc;'
+        sql = "select * from events where repo = ? and branch = ?"
+        sql += "and tick > ? order by tick asc;"
         c.execute(sql, [repo, branch, tick])
         events = []
         for result in c.fetchall():
-            dct = json.loads(result['dict'])
-            dct['tick'] = result['tick']
+            dct = json.loads(result["dict"])
+            dct["tick"] = result["tick"]
             events.append(DefaultEvent.new(dct))
         return events
 
@@ -168,11 +180,11 @@ class Database(object):
         :return: the last tick
         """
         c = self._conn.cursor()
-        sql = 'select tick from events where repo = ? and branch = ? ' \
-              'order by tick desc limit 1;'
+        sql = "select tick from events where repo = ? and branch = ? "
+        sql += "order by tick desc limit 1;"
         c.execute(sql, [repo, branch])
         result = c.fetchone()
-        return result['tick'] if result else 0
+        return result["tick"] if result else 0
 
     def _create(self, table, cols):
         """
@@ -182,8 +194,8 @@ class Database(object):
         :param cols: the columns
         """
         c = self._conn.cursor()
-        sql = 'create table if not exists {} ({});'
-        c.execute(sql.format(table, ', '.join(cols)))
+        sql = "create table if not exists {} ({});"
+        c.execute(sql.format(table, ", ".join(cols)))
 
     def _select(self, table, fields, limit=None):
         """
@@ -195,12 +207,12 @@ class Database(object):
         :return: the selected rows
         """
         c = self._conn.cursor()
-        sql = 'select * from {}'.format(table)
+        sql = "select * from {}".format(table)
         fields = {key: val for key, val in fields.items() if val}
         if len(fields):
-            cols = ['{} = ?'.format(col) for col in fields.keys()]
-            sql = (sql + ' where {}').format(' and '.join(cols))
-        sql += ' limit {};'.format(limit) if limit else ';'
+            cols = ["{} = ?".format(col) for col in fields.keys()]
+            sql = (sql + " where {}").format(" and ".join(cols))
+        sql += " limit {};".format(limit) if limit else ";"
         c.execute(sql, list(fields.values()))
         return c.fetchall()
 
@@ -212,7 +224,7 @@ class Database(object):
         :param fields: the field and values
         """
         c = self._conn.cursor()
-        sql = 'insert into {} ({}) values ({});'
-        keys = ', '.join(fields.keys())
-        vals = ', '.join(['?'] * len(fields))
+        sql = "insert into {} ({}) values ({});"
+        keys = ", ".join(fields.keys())
+        vals = ", ".join(["?"] * len(fields))
         c.execute(sql.format(table, keys, vals), list(fields.values()))

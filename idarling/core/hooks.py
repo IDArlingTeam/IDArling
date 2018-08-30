@@ -28,7 +28,7 @@ import ida_typeinf
 from .events import *
 from ..shared.commands import UpdateCursors
 
-logger = logging.getLogger('IDArling.Core')
+logger = logging.getLogger("IDArling.Core")
 
 
 class Hooks(object):
@@ -92,8 +92,9 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         return 0
 
     def func_tail_appended(self, func, tail):
-        self._send_event(FuncTailAppendedEvent(func.startEA, tail.startEA,
-                                               tail.endEA))
+        self._send_event(
+            FuncTailAppendedEvent(func.startEA, tail.startEA, tail.endEA)
+        )
         return 0
 
     def func_tail_deleted(self, func, tail_ea):
@@ -106,7 +107,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
 
     def cmt_changed(self, ea, repeatable_cmt):
         cmt = ida_bytes.get_cmt(ea, repeatable_cmt)
-        cmt = '' if not cmt else cmt
+        cmt = "" if not cmt else cmt
         self._send_event(CmtChangedEvent(ea, cmt, repeatable_cmt))
         return 0
 
@@ -130,14 +131,21 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
             if ret is not None:
                 type_str, fields_str = ret
                 type_name = ida_typeinf.get_numbered_type_name(
-                                ida_typeinf.cvar.idati, ordinal)
+                    ida_typeinf.cvar.idati, ordinal
+                )
                 cur_ti = ida_typeinf.tinfo_t()
-                cur_ti.deserialize(ida_typeinf.cvar.idati, type_str,
-                                   fields_str)
+                cur_ti.deserialize(
+                    ida_typeinf.cvar.idati, type_str, fields_str
+                )
                 type_serialized = cur_ti.serialize()
-                local_types.append((ordinal, type_serialized[0],
-                                    type_serialized[1],
-                                    type_name))
+                local_types.append(
+                    (
+                        ordinal,
+                        type_serialized[0],
+                        type_serialized[1],
+                        type_name,
+                    )
+                )
             else:
                 local_types.append(None)
 
@@ -145,6 +153,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
             self.last_local_type = local_types
             sent_types = local_types
         else:
+
             def differ_local_types(types1, types2):
                 # [(i, types1, types2), ...]
                 ret_types = []
@@ -157,6 +166,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                         if types1[i] != types2[i]:
                             ret_types.append((i, types1[i], types2[i]))
                 return ret_types
+
             diff = differ_local_types(self.last_local_type, local_types)
             self.last_local_type = local_types
             if len(diff) == 1 and diff[0][2] is None:
@@ -182,35 +192,36 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
             return flags == mask & type
 
         if is_flag(ida_bytes.hex_flag()):
-            op = 'hex'
+            op = "hex"
         elif is_flag(ida_bytes.dec_flag()):
-            op = 'dec'
+            op = "dec"
         elif is_flag(ida_bytes.char_flag()):
-            op = 'chr'
+            op = "chr"
         elif is_flag(ida_bytes.bin_flag()):
-            op = 'bin'
+            op = "bin"
         elif is_flag(ida_bytes.oct_flag()):
-            op = 'oct'
+            op = "oct"
         elif is_flag(ida_bytes.enum_flag()):
-            op = 'enum'
+            op = "enum"
             id, serial = gather_enum_info(ea, n)
             ename = ida_enum.get_enum_name(id)
-            extra['ename'] = Event.decode(ename)
-            extra['serial'] = serial
+            extra["ename"] = Event.decode(ename)
+            extra["serial"] = serial
         elif is_flag(flags & ida_bytes.stroff_flag()):
-            op = 'struct'
+            op = "struct"
             path = ida_pro.tid_array(1)
             delta = ida_pro.sval_pointer()
-            path_len = ida_bytes.get_stroff_path(path.cast(), delta.cast(),
-                                                 ea, n)
+            path_len = ida_bytes.get_stroff_path(
+                path.cast(), delta.cast(), ea, n
+            )
             spath = []
             for i in range(path_len):
                 sname = ida_struct.get_struc_name(path[i])
                 spath.append(Event.decode(sname))
-            extra['delta'] = delta.value()
-            extra['spath'] = spath
+            extra["delta"] = delta.value()
+            extra["spath"] = spath
         elif is_flag(ida_bytes.stkvar_flag()):
-            op = 'stkvar'
+            op = "stkvar"
         # IDA hooks for is_invsign seems broken
         # Inverting sign don't trigger the hook
         # elif ida_bytes.is_invsign(ea, flags, n):
@@ -292,30 +303,38 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         is_not_data = ida_struct.retrieve_member_info(mt, mptr)
         if is_not_data:
             if flag & ida_bytes.off_flag():
-                extra['target'] = mt.ri.target
-                extra['base'] = mt.ri.base
-                extra['tdelta'] = mt.ri.tdelta
-                extra['flags'] = mt.ri.flags
-                self._send_event(StrucMemberCreatedEvent(sname, fieldname,
-                                                         offset, flag, nbytes,
-                                                         extra))
+                extra["target"] = mt.ri.target
+                extra["base"] = mt.ri.base
+                extra["tdelta"] = mt.ri.tdelta
+                extra["flags"] = mt.ri.flags
+                self._send_event(
+                    StrucMemberCreatedEvent(
+                        sname, fieldname, offset, flag, nbytes, extra
+                    )
+                )
             # Is it really possible to create an enum?
             elif flag & ida_bytes.enum_flag():
-                extra['serial'] = mt.ec.serial
-                self._send_event(StrucMemberCreatedEvent(sname, fieldname,
-                                                         offset, flag, nbytes,
-                                                         extra))
+                extra["serial"] = mt.ec.serial
+                self._send_event(
+                    StrucMemberCreatedEvent(
+                        sname, fieldname, offset, flag, nbytes, extra
+                    )
+                )
             elif flag & ida_bytes.stru_flag():
-                extra['id'] = mt.tid
+                extra["id"] = mt.tid
                 if flag & ida_bytes.strlit_flag():
-                    extra['strtype'] = mt.strtype
-                self._send_event(StrucMemberCreatedEvent(sname, fieldname,
-                                                         offset, flag, nbytes,
-                                                         extra))
+                    extra["strtype"] = mt.strtype
+                self._send_event(
+                    StrucMemberCreatedEvent(
+                        sname, fieldname, offset, flag, nbytes, extra
+                    )
+                )
         else:
-            self._send_event(StrucMemberCreatedEvent(sname, fieldname,
-                                                     offset, flag, nbytes,
-                                                     extra))
+            self._send_event(
+                StrucMemberCreatedEvent(
+                    sname, fieldname, offset, flag, nbytes, extra
+                )
+            )
         return 0
 
     def struc_member_deleted(self, sptr, off1, off2):
@@ -335,10 +354,11 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
             sname, smname = fullname.split(".", 1)
         else:
             sname = fullname
-            smname = ''
+            smname = ""
         cmt = ida_struct.get_struc_cmt(id, repeatable_cmt)
-        self._send_event(StrucCmtChangedEvent(sname, smname, cmt,
-                                              repeatable_cmt))
+        self._send_event(
+            StrucCmtChangedEvent(sname, smname, cmt, repeatable_cmt)
+        )
         return 0
 
     def struc_member_changed(self, sptr, mptr):
@@ -351,30 +371,36 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         is_not_data = ida_struct.retrieve_member_info(mt, mptr)
         if is_not_data:
             if flag & ida_bytes.off_flag():
-                extra['target'] = mt.ri.target
-                extra['base'] = mt.ri.base
-                extra['tdelta'] = mt.ri.tdelta
-                extra['flags'] = mt.ri.flags
-                self._send_event(StrucMemberChangedEvent(sname, soff,
-                                                         mptr.eoff, flag,
-                                                         extra))
+                extra["target"] = mt.ri.target
+                extra["base"] = mt.ri.base
+                extra["tdelta"] = mt.ri.tdelta
+                extra["flags"] = mt.ri.flags
+                self._send_event(
+                    StrucMemberChangedEvent(
+                        sname, soff, mptr.eoff, flag, extra
+                    )
+                )
             # Is it really possible to create an enum?
             elif flag & ida_bytes.enum_flag():
-                extra['serial'] = mt.ec.serial
-                self._send_event(StrucMemberChangedEvent(sname, soff,
-                                                         mptr.eoff, flag,
-                                                         extra))
+                extra["serial"] = mt.ec.serial
+                self._send_event(
+                    StrucMemberChangedEvent(
+                        sname, soff, mptr.eoff, flag, extra
+                    )
+                )
             elif flag & ida_bytes.stru_flag():
-                extra['id'] = mt.tid
+                extra["id"] = mt.tid
                 if flag & ida_bytes.strlit_flag():
-                    extra['strtype'] = mt.strtype
-                self._send_event(StrucMemberChangedEvent(sname, soff,
-                                                         mptr.eoff, flag,
-                                                         extra))
+                    extra["strtype"] = mt.strtype
+                self._send_event(
+                    StrucMemberChangedEvent(
+                        sname, soff, mptr.eoff, flag, extra
+                    )
+                )
         else:
-            self._send_event(StrucMemberChangedEvent(sname, soff,
-                                                     mptr.eoff, flag,
-                                                     extra))
+            self._send_event(
+                StrucMemberChangedEvent(sname, soff, mptr.eoff, flag, extra)
+            )
         return 0
 
     def expanding_struc(self, sptr, offset, delta):
@@ -383,11 +409,20 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         return 0
 
     def segm_added(self, s):
-        self._send_event(SegmAddedEvent(ida_segment.get_segm_name(s),
-                                        ida_segment.get_segm_class(s),
-                                        s.start_ea, s.end_ea,
-                                        s.orgbase, s.align, s.comb,
-                                        s.perm, s.bitness, s.flags))
+        self._send_event(
+            SegmAddedEvent(
+                ida_segment.get_segm_name(s),
+                ida_segment.get_segm_class(s),
+                s.start_ea,
+                s.end_ea,
+                s.orgbase,
+                s.align,
+                s.comb,
+                s.perm,
+                s.bitness,
+                s.flags,
+            )
+        )
         return 0
 
     # This hook lack of disable addresses option
@@ -487,8 +522,9 @@ class HexRaysHooks(Hooks):
                 self._labels = HexRaysHooks._get_user_labels(self._funcEA)
                 self._cmts = HexRaysHooks._get_user_cmts(self._funcEA)
                 self._iflags = HexRaysHooks._get_user_iflags(self._funcEA)
-                self._lvar_settings = \
-                    HexRaysHooks._get_user_lvar_settings(self._funcEA)
+                self._lvar_settings = HexRaysHooks._get_user_lvar_settings(
+                    self._funcEA
+                )
                 self._numforms = HexRaysHooks._get_user_numforms(self._funcEA)
             self._send_user_labels(func.startEA)
             self._send_user_cmts(func.startEA)
@@ -554,8 +590,10 @@ class HexRaysHooks(Hooks):
             def read_type_sign(obj):
                 import ctypes
                 import struct
+
                 buf = ctypes.string_at(id(obj), 4)
-                return struct.unpack('I', buf)[0]
+                return struct.unpack("I", buf)[0]
+
             f = read_type_sign(f)
             iflags.append(((cl.ea, cl.op), f))
             it = ida_hexrays.user_iflags_next(it)
@@ -573,32 +611,32 @@ class HexRaysHooks(Hooks):
         dct = {}
         lvinf = ida_hexrays.lvar_uservec_t()
         if ida_hexrays.restore_user_lvar_settings(lvinf, ea):
-            dct['lvvec'] = []
+            dct["lvvec"] = []
             for lv in lvinf.lvvec:
-                dct['lvvec'].append(HexRaysHooks._get_lvar_saved_info(lv))
-            if hasattr(lvinf, 'sizes'):
-                dct['sizes'] = list(lvinf.sizes)
-            dct['lmaps'] = []
+                dct["lvvec"].append(HexRaysHooks._get_lvar_saved_info(lv))
+            if hasattr(lvinf, "sizes"):
+                dct["sizes"] = list(lvinf.sizes)
+            dct["lmaps"] = []
             it = ida_hexrays.lvar_mapping_begin(lvinf.lmaps)
             while it != ida_hexrays.lvar_mapping_end(lvinf.lmaps):
                 key = ida_hexrays.lvar_mapping_first(it)
                 key = HexRaysHooks._get_lvar_locator(key)
                 val = ida_hexrays.lvar_mapping_second(it)
                 val = HexRaysHooks._get_lvar_locator(val)
-                dct['lmaps'].append((key, val))
+                dct["lmaps"].append((key, val))
                 it = ida_hexrays.lvar_mapping_next(it)
-            dct['stkoff_delta'] = lvinf.stkoff_delta
-            dct['ulv_flags'] = lvinf.ulv_flags
+            dct["stkoff_delta"] = lvinf.stkoff_delta
+            dct["ulv_flags"] = lvinf.ulv_flags
         return dct
 
     @staticmethod
     def _get_lvar_saved_info(lv):
         return {
-            'll': HexRaysHooks._get_lvar_locator(lv.ll),
-            'name': Event.decode(lv.name),
-            'type': HexRaysHooks._get_tinfo(lv.type),
-            'cmt': Event.decode(lv.cmt),
-            'flags': lv.flags,
+            "ll": HexRaysHooks._get_lvar_locator(lv.ll),
+            "name": Event.decode(lv.name),
+            "type": HexRaysHooks._get_tinfo(lv.type),
+            "cmt": Event.decode(lv.cmt),
+            "flags": lv.flags,
         }
 
     @staticmethod
@@ -615,18 +653,18 @@ class HexRaysHooks(Hooks):
     @staticmethod
     def _get_lvar_locator(ll):
         return {
-            'location': HexRaysHooks._get_vdloc(ll.location),
-            'defea': ll.defea,
+            "location": HexRaysHooks._get_vdloc(ll.location),
+            "defea": ll.defea,
         }
 
     @staticmethod
     def _get_vdloc(location):
         return {
-            'atype': location.atype(),
-            'reg1': location.reg1(),
-            'reg2': location.reg2(),
-            'stkoff': location.stkoff(),
-            'ea': location.get_ea()
+            "atype": location.atype(),
+            "reg1": location.reg1(),
+            "reg2": location.reg2(),
+            "stkoff": location.stkoff(),
+            "ea": location.get_ea(),
         }
 
     def _send_user_lvar_settings(self, ea):
@@ -645,28 +683,29 @@ class HexRaysHooks(Hooks):
         while it != ida_hexrays.user_numforms_end(user_numforms):
             ol = ida_hexrays.user_numforms_first(it)
             nf = ida_hexrays.user_numforms_second(it)
-            numforms.append((HexRaysHooks._get_operand_locator(ol),
-                            HexRaysHooks._get_number_format(nf)))
+            numforms.append(
+                (
+                    HexRaysHooks._get_operand_locator(ol),
+                    HexRaysHooks._get_number_format(nf),
+                )
+            )
             it = ida_hexrays.user_numforms_next(it)
         ida_hexrays.user_numforms_free(user_numforms)
         return numforms
 
     @staticmethod
     def _get_operand_locator(ol):
-        return {
-            'ea': ol.ea,
-            'opnum': ol.opnum,
-        }
+        return {"ea": ol.ea, "opnum": ol.opnum}
 
     @staticmethod
     def _get_number_format(nf):
         return {
-            'flags': nf.flags,
-            'opnum': nf.opnum,
-            'props': nf.props,
-            'serial': nf.serial,
-            'org_nbytes': nf.org_nbytes,
-            'type_name': nf.type_name,
+            "flags": nf.flags,
+            "opnum": nf.opnum,
+            "props": nf.props,
+            "serial": nf.serial,
+            "org_nbytes": nf.org_nbytes,
+            "type_name": nf.type_name,
         }
 
     def _send_user_numforms(self, ea):
@@ -689,9 +728,9 @@ class ViewHooks(Hooks, ida_kernwin.View_Hooks):
         if now.plce.toea() != was.plce.toea():
             name = self._plugin.config["user"]["name"]
             color = self._plugin.config["user"]["color"]
-            self._plugin.network.send_packet(UpdateCursors(name,
-                                                           now.plce.toea(),
-                                                           color))
+            self._plugin.network.send_packet(
+                UpdateCursors(name, now.plce.toea(), color)
+            )
 
 
 class UIHooks(Hooks, ida_kernwin.UI_Hooks):
@@ -710,7 +749,7 @@ class UIHooks(Hooks, ida_kernwin.UI_Hooks):
             painter = self._plugin.interface.painter
             nbytes = painter.nbytes
             for name, infos in painter.users_positions.items():
-                address = infos['address']
+                address = infos["address"]
                 if address - nbytes * 4 <= ea <= address + nbytes * 4:
                     return str(name)
 
@@ -719,7 +758,7 @@ class UIHooks(Hooks, ida_kernwin.UI_Hooks):
             painter = self._plugin.interface.painter
             users_positions = painter.users_positions
             for user_position in users_positions.values():
-                address = user_position['address']
+                address = user_position["address"]
                 color = painter.clear_database(address)
                 self._state[color] = address
         self._lock = not self._lock

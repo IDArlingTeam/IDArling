@@ -31,13 +31,14 @@ from ..utilities.misc import local_resource
 from ..shared.commands import DownloadDatabase, UploadDatabase, Subscribe
 from .dialogs import OpenDialog, SaveDialog
 
-logger = logging.getLogger('IDArling.Interface')
+logger = logging.getLogger("IDArling.Interface")
 
 
 class Action(object):
     """
     This is a base class for all the actions of the interface module.
     """
+
     _ACTION_ID = None
 
     def __init__(self, menu, text, tooltip, icon, handler):
@@ -66,13 +67,18 @@ class Action(object):
         :return: did the install succeed
         """
         # Read and load the icon file
-        iconData = str(open(self._icon, 'rb').read())
+        iconData = str(open(self._icon, "rb").read())
         self._iconId = ida_kernwin.load_custom_icon(data=iconData)
 
         # Create the action description
-        actionDesc = ida_kernwin.action_desc_t(self._ACTION_ID, self._text,
-                                               self._handler, None,
-                                               self._tooltip, self._iconId)
+        actionDesc = ida_kernwin.action_desc_t(
+            self._ACTION_ID,
+            self._text,
+            self._handler,
+            None,
+            self._tooltip,
+            self._iconId,
+        )
 
         # Register the action using its description
         result = ida_kernwin.register_action(actionDesc)
@@ -80,8 +86,9 @@ class Action(object):
             raise RuntimeError("Failed to register action")
 
         # Attach the action to the chosen menu
-        result = ida_kernwin.attach_action_to_menu(self._menu, self._ACTION_ID,
-                                                   ida_kernwin.SETMENU_APP)
+        result = ida_kernwin.attach_action_to_menu(
+            self._menu, self._ACTION_ID, ida_kernwin.SETMENU_APP
+        )
         if not result:
             raise RuntimeError("Failed to attach action")
 
@@ -95,8 +102,9 @@ class Action(object):
         :return: did the uninstall succeed
         """
         # Detach the action from the chosen menu
-        result = ida_kernwin.detach_action_from_menu(self._menu,
-                                                     self._ACTION_ID)
+        result = ida_kernwin.detach_action_from_menu(
+            self._menu, self._ACTION_ID
+        )
         if not result:
             return False
 
@@ -116,14 +124,16 @@ class Action(object):
         """
         Force to update the action's state (enabled/disabled).
         """
-        ida_kernwin.update_action_state(self._ACTION_ID,
-                                        self._handler.update(None))
+        ida_kernwin.update_action_state(
+            self._ACTION_ID, self._handler.update(None)
+        )
 
 
 class ActionHandler(ida_kernwin.action_handler_t):
     """
     This is the base class for all action handlers of the interface module.
     """
+
     _DIALOG = None
 
     @staticmethod
@@ -184,21 +194,24 @@ class OpenAction(Action):
     """
     The "Open from server..." action installed in the "File" menu.
     """
-    _ACTION_ID = 'idarling:open'
+
+    _ACTION_ID = "idarling:open"
 
     def __init__(self, plugin):
         super(OpenAction, self).__init__(
-            'File/Open',
-            'Open from server...',
-            'Load a database from server',
-            plugin.resource('download.png'),
-            OpenActionHandler(plugin))
+            "File/Open",
+            "Open from server...",
+            "Load a database from server",
+            plugin.resource("download.png"),
+            OpenActionHandler(plugin),
+        )
 
 
 class OpenActionHandler(ActionHandler):
     """
     The action handler for the open action.
     """
+
     _DIALOG = OpenDialog
 
     def _dialog_accepted(self, dialog):
@@ -212,7 +225,7 @@ class OpenActionHandler(ActionHandler):
         windowFlags = progress.windowFlags()  # Disable close button
         progress.setWindowFlags(windowFlags & ~Qt.WindowCloseButtonHint)
         progress.setWindowTitle("Open from server")
-        iconPath = self._plugin.resource('download.png')
+        iconPath = self._plugin.resource("download.png")
         progress.setWindowIcon(QIcon(iconPath))
 
         # Send a packet to download the database
@@ -242,12 +255,12 @@ class OpenActionHandler(ActionHandler):
         # Get the absolute path of the file
         appPath = QCoreApplication.applicationFilePath()
         appName = QFileInfo(appPath).fileName()
-        fileExt = 'i64' if '64' in appName else 'idb'
-        fileName = '%s_%s.%s' % (branch.repo, branch.name, fileExt)
-        filePath = local_resource('files', fileName)
+        fileExt = "i64" if "64" in appName else "idb"
+        fileName = "%s_%s.%s" % (branch.repo, branch.name, fileExt)
+        filePath = local_resource("files", fileName)
 
         # Write the packet content to disk
-        with open(filePath, 'wb') as outputFile:
+        with open(filePath, "wb") as outputFile:
             outputFile.write(reply.content)
         logger.info("Saved file %s" % fileName)
 
@@ -257,16 +270,16 @@ class OpenActionHandler(ActionHandler):
             ida_loader.save_database(database, ida_loader.DBFL_TEMP)
 
         # Get the dynamic library
-        idaname = 'ida64' if '64' in appName else 'ida'
-        if sys.platform == 'win32':
-            dllname, dlltype = idaname + '.dll', ctypes.windll
-        elif sys.platform == 'linux2':
-            dllname, dlltype = 'lib' + idaname + '.so', ctypes.cdll
-        elif sys.platform == 'darwin':
-            dllname, dlltype = 'lib' + idaname + '.dylib', ctypes.cdll
+        idaname = "ida64" if "64" in appName else "ida"
+        if sys.platform == "win32":
+            dllname, dlltype = idaname + ".dll", ctypes.windll
+        elif sys.platform == "linux2":
+            dllname, dlltype = "lib" + idaname + ".so", ctypes.cdll
+        elif sys.platform == "darwin":
+            dllname, dlltype = "lib" + idaname + ".dylib", ctypes.cdll
         dllpath = ida_diskio.idadir(None)
         if not os.path.exists(os.path.join(dllpath, dllname)):
-            dllpath = dllpath.replace('ida64', 'ida')
+            dllpath = dllpath.replace("ida64", "ida")
         dll = dlltype[os.path.join(dllpath, dllname)]
 
         # Close the old database
@@ -281,7 +294,7 @@ class OpenActionHandler(ActionHandler):
         argc = len(args)
         argv = (LP_c_char * (argc + 1))()
         for i, arg in enumerate(args):
-            arg = arg.encode('utf-8')
+            arg = arg.encode("utf-8")
             argv[i] = ctypes.create_string_buffer(arg)
 
         LP_c_int = ctypes.POINTER(ctypes.c_int)
@@ -291,7 +304,7 @@ class OpenActionHandler(ActionHandler):
         dll.init_database(argc, argv, pv)
 
         # Create a copy of the new database
-        fileExt = '.i64' if '64' in appName else '.idb'
+        fileExt = ".i64" if "64" in appName else ".idb"
         tmpFile, tmpPath = tempfile.mkstemp(suffix=fileExt)
         shutil.copyfile(filePath, tmpPath)
 
@@ -317,21 +330,24 @@ class SaveAction(Action):
     """
     The "Save to server..." action installed in the "File" menu.
     """
-    _ACTION_ID = 'idarling:save'
+
+    _ACTION_ID = "idarling:save"
 
     def __init__(self, plugin):
         super(SaveAction, self).__init__(
-            'File/Save',
-            'Save to server...',
-            'Save a database to server',
-            plugin.resource('upload.png'),
-            SaveActionHandler(plugin))
+            "File/Save",
+            "Save to server...",
+            "Save a database to server",
+            plugin.resource("upload.png"),
+            SaveActionHandler(plugin),
+        )
 
 
 class SaveActionHandler(ActionHandler):
     """
     The action handler for the save action.
     """
+
     _DIALOG = SaveDialog
 
     def update(self, ctx):
@@ -351,7 +367,7 @@ class SaveActionHandler(ActionHandler):
 
         # Create the packet that will hold the database
         packet = UploadDatabase.Query(repo.name, branch.name)
-        with open(inputPath, 'rb') as inputFile:
+        with open(inputPath, "rb") as inputFile:
             packet.content = inputFile.read()
 
         # Create the progress dialog
@@ -362,14 +378,15 @@ class SaveActionHandler(ActionHandler):
         windowFlags = progress.windowFlags()  # Disable close button
         progress.setWindowFlags(windowFlags & ~Qt.WindowCloseButtonHint)
         progress.setWindowTitle("Save to server")
-        iconPath = self._plugin.resource('upload.png')
+        iconPath = self._plugin.resource("upload.png")
         progress.setWindowIcon(QIcon(iconPath))
 
         # Send the packet to upload the file
         packet.upback = partial(self._on_progress, progress)
         d = self._plugin.network.send_packet(packet)
-        d.add_callback(partial(self._database_uploaded,
-                               repo, branch, progress))
+        d.add_callback(
+            partial(self._database_uploaded, repo, branch, progress)
+        )
         d.add_errback(logger.exception)
         progress.show()
 
@@ -383,7 +400,7 @@ class SaveActionHandler(ActionHandler):
         success.setStandardButtons(QMessageBox.Ok)
         success.setText("Database successfully uploaded!")
         success.setWindowTitle("Save to server")
-        iconPath = self._plugin.resource('upload.png')
+        iconPath = self._plugin.resource("upload.png")
         success.setWindowIcon(QIcon(iconPath))
         success.exec_()
 
@@ -391,7 +408,9 @@ class SaveActionHandler(ActionHandler):
         color = self._plugin.config["user"]["color"]
         name = self._plugin.config["user"]["name"]
         ea = ida_kernwin.get_screen_ea()
-        self._plugin.network.send_packet(Subscribe(repo.name, branch.name,
-                                                   self._plugin.core.tick,
-                                                   color, name, ea))
+        self._plugin.network.send_packet(
+            Subscribe(
+                repo.name, branch.name, self._plugin.core.tick, color, name, ea
+            )
+        )
         self._plugin.core.hook_all()

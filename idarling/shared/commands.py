@@ -11,94 +11,94 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from .models import Repository, Branch
-from .packets import (Command, DefaultCommand, ParentCommand,
-                      Query as IQuery, Reply as IReply, Container)
+from .packets import (
+    Command,
+    DefaultCommand,
+    ParentCommand,
+    Query as IQuery,
+    Reply as IReply,
+    Container,
+)
 
 
 class GetRepositories(ParentCommand):
-    __command__ = 'get_repos'
+    __command__ = "get_repos"
 
     class Query(IQuery, DefaultCommand):
         pass
 
     class Reply(IReply, Command):
-
         def __init__(self, query, repos):
             super(GetRepositories.Reply, self).__init__(query)
             self.repos = repos
 
         def build_command(self, dct):
-            dct['repos'] = [repo.build(dict()) for repo in self.repos]
+            dct["repos"] = [repo.build(dict()) for repo in self.repos]
 
         def parse_command(self, dct):
-            self.repos = [Repository.new(repo) for repo in dct['repos']]
+            self.repos = [Repository.new(repo) for repo in dct["repos"]]
 
 
 class GetBranches(ParentCommand):
-    __command__ = 'get_branches'
+    __command__ = "get_branches"
 
     class Query(IQuery, DefaultCommand):
-
         def __init__(self, repo):
             super(GetBranches.Query, self).__init__()
             self.repo = repo
 
     class Reply(IReply, Command):
-
         def __init__(self, query, branches):
             super(GetBranches.Reply, self).__init__(query)
             self.branches = branches
 
         def build_command(self, dct):
-            dct['branches'] = [br.build(dict()) for br in self.branches]
+            dct["branches"] = [br.build(dict()) for br in self.branches]
 
         def parse_command(self, dct):
-            self.branches = [Branch.new(br) for br in dct['branches']]
+            self.branches = [Branch.new(br) for br in dct["branches"]]
 
 
 class NewRepository(ParentCommand):
-    __command__ = 'new_repo'
+    __command__ = "new_repo"
 
     class Query(IQuery, Command):
-
         def __init__(self, repo):
             super(NewRepository.Query, self).__init__()
             self.repo = repo
 
         def build_command(self, dct):
-            self.repo.build(dct['repo'])
+            self.repo.build(dct["repo"])
 
         def parse_command(self, dct):
-            self.repo = Repository.new(dct['repo'])
+            self.repo = Repository.new(dct["repo"])
 
     class Reply(IReply, Command):
         pass
 
 
 class NewBranch(ParentCommand):
-    __command__ = 'new_branch'
+    __command__ = "new_branch"
 
     class Query(IQuery, Command):
-
         def __init__(self, branch):
             super(NewBranch.Query, self).__init__()
             self.branch = branch
 
         def build_command(self, dct):
-            self.branch.build(dct['branch'])
+            self.branch.build(dct["branch"])
 
         def parse_command(self, dct):
-            self.branch = Branch.new(dct['branch'])
+            self.branch = Branch.new(dct["branch"])
 
     class Reply(IReply, Command):
         pass
 
 
 class UploadDatabase(ParentCommand):
-    __command__ = 'upload_db'
+    __command__ = "upload_db"
 
     class Query(IQuery, Container, DefaultCommand):
-
         def __init__(self, repo, branch):
             super(UploadDatabase.Query, self).__init__()
             self.repo = repo
@@ -109,10 +109,9 @@ class UploadDatabase(ParentCommand):
 
 
 class DownloadDatabase(ParentCommand):
-    __command__ = 'download_db'
+    __command__ = "download_db"
 
     class Query(IQuery, DefaultCommand):
-
         def __init__(self, repo, branch):
             super(DownloadDatabase.Query, self).__init__()
             self.repo = repo
@@ -123,7 +122,7 @@ class DownloadDatabase(ParentCommand):
 
 
 class Subscribe(DefaultCommand):
-    __command__ = 'subscribe'
+    __command__ = "subscribe"
 
     def __init__(self, repo, branch, tick, name, color, ea):
         super(Subscribe, self).__init__()
@@ -136,7 +135,7 @@ class Subscribe(DefaultCommand):
 
 
 class Unsubscribe(DefaultCommand):
-    __command__ = 'unsubscribe'
+    __command__ = "unsubscribe"
 
     def __init__(self, name):
         super(Unsubscribe, self).__init__()
@@ -144,7 +143,7 @@ class Unsubscribe(DefaultCommand):
 
 
 class UpdateCursors(DefaultCommand):
-    __command__ = 'update_cursors'
+    __command__ = "update_cursors"
 
     def __init__(self, name, ea, color):
         super(UpdateCursors, self).__init__()
@@ -154,7 +153,7 @@ class UpdateCursors(DefaultCommand):
 
 
 class UserRenamed(DefaultCommand):
-    __command__ = 'user_renamed'
+    __command__ = "user_renamed"
 
     def __init__(self, old_name, new_name):
         super(UserRenamed, self).__init__()
@@ -163,7 +162,7 @@ class UserRenamed(DefaultCommand):
 
 
 class UserColorChanged(DefaultCommand):
-    __command__ = 'user_color_changed'
+    __command__ = "user_color_changed"
 
     def __init__(self, name, old_color, new_color):
         super(UserColorChanged, self).__init__()
@@ -173,7 +172,7 @@ class UserColorChanged(DefaultCommand):
 
 
 class InviteTo(DefaultCommand):
-    __command__ = 'invite_to'
+    __command__ = "invite_to"
 
     def __init__(self, name, loc):
         super(InviteTo, self).__init__()

@@ -19,7 +19,7 @@ from ..shared.discovery import ServersDiscovery
 from .client import Client
 from .server import IntegratedServer
 
-logger = logging.getLogger('IDArling.Network')
+logger = logging.getLogger("IDArling.Network")
 
 
 class Network(Module):
@@ -82,8 +82,8 @@ class Network(Module):
             return False
         self._server = server.copy()  # Copy in case of source being changed
         host = self._server["host"]
-        if host == '0.0.0.0':
-            host = '127.0.0.1'
+        if host == "0.0.0.0":
+            host = "127.0.0.1"
         port = self._server["port"]
         no_ssl = self._server["port"]
 
@@ -169,13 +169,13 @@ class Network(Module):
 
         logger.info("Starting integrated server...")
         server = IntegratedServer()
-        if not server.start('0.0.0.0'):
+        if not server.start("0.0.0.0"):
             return False
         self._integrated = server
         integrated_arg = {
             "host": "0.0.0.0",
             "port": server.port,
-            "no_ssl": True
+            "no_ssl": True,
         }
         return self.connect(integrated_arg)
 
