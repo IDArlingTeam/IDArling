@@ -36,6 +36,8 @@ class Painter(object):
     @staticmethod
     def get_ida_bg_color():
         palette = ida_registry.reg_read_binary("Palette")
+        if palette is None:
+            return 0xffffff
         selected = struct.unpack("<I", palette[8:12])[0]
         index = 176 + selected * 208
         return struct.unpack("<I", palette[index:index + 4])[0]
