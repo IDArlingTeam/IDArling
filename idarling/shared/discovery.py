@@ -112,6 +112,7 @@ class ServersDiscovery(QObject):
         self._logger.debug("Starting servers discovery....")
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         self._socket.bind(("", 31013))
         self._socket.settimeout(0)
         self._socket.setblocking(0)
@@ -144,9 +145,9 @@ class ServersDiscovery(QObject):
             )
             _, host, port, ssl = request.split()
             server = {"host": host, "port": int(port), "no_ssl": ssl != "True"}
-            if server in self._servers:
+            if server not in self._servers:
                 self._servers.append(server)
-            if server in self._new_servers:
+            if server not in self._new_servers:
                 self._new_servers.append(server)
             self._logger.trace("Server discovered: %s" % server)
             self._logger.trace("Sending discovery reply to %s:%d..." % address)
