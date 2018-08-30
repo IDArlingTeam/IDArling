@@ -12,17 +12,16 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import collections
 import colorsys
-import functools
 import logging
 import random
+import struct
 
 import ida_funcs
 import ida_idaapi
 import ida_kernwin
 import ida_nalt
+import ida_registry
 import idautils
-
-from ..utilities.ida import get_ida_bg_color
 
 logger = logging.getLogger('IDArling.Painter')
 
@@ -33,6 +32,13 @@ class Painter(object):
     This module is highly inspired by the painting module from Makus Gaasedelen
     https://github.com/gaasedelen/lighthouse/blob/master/plugin/lighthouse/painting.py
     """
+
+    @staticmethod
+    def get_ida_bg_color():
+        palette = ida_registry.reg_read_binary("Palette")
+        selected = struct.unpack("<I", palette[8:12])[0]
+        index = 176 + selected * 208
+        return struct.unpack("<I", palette[index:index + 4])[0]
 
     def __init__(self, plugin):
         """
@@ -92,7 +98,7 @@ class Painter(object):
                 ida_nav_colorizer = ida_kernwin.set_nav_colorizer(colorizer)
                 if ida_nav_colorizer is not None:
                     self._painter.ida_nav_colorizer = ida_nav_colorizer
-                self._painter.bg_color = get_ida_bg_color()
+                self._painter.bg_color = Painter.get_ida_bg_color()
 
         self._uiHooks = UIHooks(self)
         result = self._uiHooks.hook()
