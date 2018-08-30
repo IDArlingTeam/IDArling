@@ -204,6 +204,8 @@ class Interface(Module):
         qApp.instance().removeEventFilter(self._eventFilter)
 
     def show_notification(self, text, icon, callback):
+        if not self._plugin.config["user"]["notifications"]:
+            return
         toast = Toast(self._window)
         toast.setText(text)
         toast.setIcon(icon)
