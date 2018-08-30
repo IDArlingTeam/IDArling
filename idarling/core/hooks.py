@@ -140,7 +140,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                                     type_name))
             else:
                 local_types.append(None)
-        sent_types = []
+
         if self.last_local_type is None:
             self.last_local_type = local_types
             sent_types = local_types

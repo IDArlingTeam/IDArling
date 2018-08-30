@@ -23,10 +23,10 @@ from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout, QGridLayout,
                              QWidget, QTableWidget, QTableWidgetItem, QLabel,
                              QPushButton, QLineEdit, QGroupBox, QMessageBox,
                              QCheckBox, QTabWidget, QColorDialog, QComboBox,
-                             QFormLayout, QSpinBox, QSpacerItem, QHeaderView)
+                             QFormLayout, QSpinBox, QHeaderView)
 
 from ..shared.commands import GetRepositories, GetBranches, \
-    NewRepository, NewBranch
+    NewRepository, NewBranch, UserRenamed, UserColorChanged
 from ..shared.models import Repository, Branch
 
 logger = logging.getLogger('IDArling.Interface')
@@ -438,6 +438,7 @@ class SettingsDialog(QDialog):
         self.setWindowTitle("Settings")
         iconPath = self._plugin.resource('settings.png')
         self.setWindowIcon(QIcon(iconPath))
+        self.finished.connect(self._commit)
 
         tabs = QTabWidget(self)
 
@@ -447,35 +448,11 @@ class SettingsDialog(QDialog):
         layout.setFormAlignment(Qt.AlignVCenter)
         tabs.addTab(tab, "General Settings")
 
-        display = "Enable users display in the navigation bar"
-        navbarColorizerCheckbox = QCheckBox(display)
-        layout.addRow(navbarColorizerCheckbox)
-
-        def navbarColorizerActionToggled():
-            self._plugin.config["user"]["navbar_colorizer"] = \
-                    navbarColorizerCheckbox.isChecked()
-            self._plugin.save_config()
-        checkbox = navbarColorizerCheckbox
-        checkbox.toggled.connect(navbarColorizerActionToggled)
-        checked = self._plugin.config["user"]["navbar_colorizer"]
-        navbarColorizerCheckbox.setChecked(checked)
-
-        display = "Enable notifications"
-        notificationsCheckbox = QCheckBox(display)
-        layout.addRow(notificationsCheckbox)
-
-        def notificationsActionToggled():
-            self._plugin.config["user"]["notifications"] = \
-                    notificationsCheckbox.isChecked()
-            self._plugin.save_config()
-        notificationsCheckbox.toggled.connect(notificationsActionToggled)
-        checked = self._plugin.config["user"]["notifications"]
-        notificationsCheckbox.setChecked(checked)
+        userWidget = QWidget(tab)
+        userLayout = QHBoxLayout(userWidget)
+        layout.addRow(userWidget)
 
         # User color
-        colorWidget = QWidget(tab)
-        colorLayout = QHBoxLayout(colorWidget)
-
         colorButton = QPushButton("")
         colorButton.setFixedSize(50, 30)
 
@@ -494,55 +471,48 @@ class SettingsDialog(QDialog):
                 css = 'QPushButton {background-color: #%06x; color: #%06x;}' \
                     % (rgb_color_qt, rgb_color_qt)
                 colorButton.setStyleSheet(css)
-                self.color = rgb_color_ida
+                self._color = rgb_color_ida
 
         # Add a handler on clicking color button
         def colorButtonActivated(_):
-            color = QColorDialog.getColor()
-            setColor(color)
+            setColor(QColorDialog.getColor())
 
-        color = QColor(self._plugin.config["user"]["color"])
-        setColor(color)
+        self._color = self._plugin.config["user"]["color"]
+        setColor(QColor(self._color))
         colorButton.clicked.connect(colorButtonActivated)
-        colorLayout.addWidget(colorButton)
+        userLayout.addWidget(colorButton)
 
         # User name
-        self.usernameLine = QLineEdit()
-        self.usernameLine.setText(self._plugin.config["user"]["name"])
-        colorLayout.addWidget(self.usernameLine)
-        layout.addRow(colorWidget)
+        self._nameLineEdit = QLineEdit()
+        name = self._plugin.config["user"]["name"]
+        self._nameLineEdit.setText(name)
+        userLayout.addWidget(self._nameLineEdit)
+
+        text = "Show other users in the navigation bar"
+        self._navbarColorizerCheckbox = QCheckBox(text)
+        layout.addRow(self._navbarColorizerCheckbox)
+        checked = self._plugin.config["user"]["navbar_colorizer"]
+        self._navbarColorizerCheckbox.setChecked(checked)
+
+        text = "Allow other users to send notifications"
+        self._notificationsCheckbox = QCheckBox(text)
+        layout.addRow(self._notificationsCheckbox)
+        checked = self._plugin.config["user"]["notifications"]
+        self._notificationsCheckbox.setChecked(checked)
 
         # Log level
-        debugLevelLabel = QLabel("Log Level: ")
-        debugLevelComboBox = QComboBox()
-        debugLevelComboBox.addItem("CRITICAL", logging.CRITICAL)
-        debugLevelComboBox.addItem("ERROR", logging.ERROR)
-        debugLevelComboBox.addItem("WARNING", logging.WARNING)
-        debugLevelComboBox.addItem("INFO", logging.INFO)
-        debugLevelComboBox.addItem("DEBUG", logging.DEBUG)
-        debugLevelComboBox.addItem("TRACE", logging.TRACE)
-
-        def debugLevelInitialized():
-            from idarling.plugin import logger
-
-            index = debugLevelComboBox.findData(logger.getEffectiveLevel())
-            debugLevelComboBox.setCurrentIndex(index)
-        debugLevelInitialized()
-
-        def debugLevelActivated(index):
-            from idarling.plugin import logger
-
-            level = debugLevelComboBox.itemData(index)
-            logger.setLevel(level)
-            self._plugin.config["level"] = level
-            self._plugin.save_config()
-        debugLevelComboBox.activated.connect(debugLevelActivated)
-        layout.addRow(debugLevelLabel, debugLevelComboBox)
-
-        layout.addItem(QSpacerItem(10, 10))
-        self._acceptButton = QPushButton("OK")
-        self._acceptButton.clicked.connect(self.accept)
-        layout.addRow(self._acceptButton)
+        debugLevelLabel = QLabel("Logging level: ")
+        self._debugLevelComboBox = QComboBox()
+        self._debugLevelComboBox.addItem("CRITICAL", logging.CRITICAL)
+        self._debugLevelComboBox.addItem("ERROR", logging.ERROR)
+        self._debugLevelComboBox.addItem("WARNING", logging.WARNING)
+        self._debugLevelComboBox.addItem("INFO", logging.INFO)
+        self._debugLevelComboBox.addItem("DEBUG", logging.DEBUG)
+        self._debugLevelComboBox.addItem("TRACE", logging.TRACE)
+        level = logger.getEffectiveLevel()
+        index = self._debugLevelComboBox.findData(level)
+        self._debugLevelComboBox.setCurrentIndex(index)
+        layout.addRow(debugLevelLabel, self._debugLevelComboBox)
 
         # Network Settings tab
         tab = QWidget(tabs)
@@ -552,13 +522,12 @@ class SettingsDialog(QDialog):
 
         topWidget = QWidget(tab)
         layout.addWidget(topWidget)
-        topLayout = QHBoxLayout(tab)
-        topWidget.setLayout(topLayout)
+        topLayout = QHBoxLayout(topWidget)
 
-        servers = self._plugin.config["servers"]
-        self._serversTable = QTableWidget(len(servers), 2, self)
-        self._serversTable.setHorizontalHeaderLabels(("Servers", ""))
-        for i, server in enumerate(servers):
+        self._servers = list(self._plugin.config["servers"])
+        self._serversTable = QTableWidget(len(self._servers), 2, self)
+        topLayout.addWidget(self._serversTable)
+        for i, server in enumerate(self._servers):
             item = QTableWidgetItem('%s:%d' % (server["host"], server["port"]))
             item.setData(Qt.UserRole, server)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
@@ -575,6 +544,7 @@ class SettingsDialog(QDialog):
                 checkbox.setFlags((checkbox.flags() & ~Qt.ItemIsSelectable))
             self._serversTable.setItem(i, 1, checkbox)
 
+        self._serversTable.setHorizontalHeaderLabels(("Servers", ""))
         horizontalHeader = self._serversTable.horizontalHeader()
         horizontalHeader.setSectionsClickable(False)
         horizontalHeader.setSectionResizeMode(0, QHeaderView.Stretch)
@@ -582,15 +552,13 @@ class SettingsDialog(QDialog):
         self._serversTable.verticalHeader().setVisible(False)
         self._serversTable.setSelectionBehavior(QTableWidget.SelectRows)
         self._serversTable.setSelectionMode(QTableWidget.SingleSelection)
-        self._serversTable.itemClicked.connect(self._server_clicked)
-        self._serversTable.itemDoubleClicked.connect(
-            self._server_double_clicked)
-        minSZ = self._serversTable.minimumSize()
-        self._serversTable.setMinimumSize(300, minSZ.height())
-        topLayout.addWidget(self._serversTable)
+        self._serversTable.itemClicked.connect(self._single_click)
+        self._serversTable.itemDoubleClicked.connect(self._double_click)
+        self._serversTable.setMaximumHeight(100)
 
-        buttonsWidget = QWidget(self)
+        buttonsWidget = QWidget(topWidget)
         buttonsLayout = QVBoxLayout(buttonsWidget)
+        topLayout.addWidget(buttonsWidget)
 
         # Add server button
         self._addButton = QPushButton("Add Server")
@@ -609,75 +577,41 @@ class SettingsDialog(QDialog):
         self._deleteButton.clicked.connect(self._delete_button_clicked)
         buttonsLayout.addWidget(self._deleteButton)
 
-        # Cancel button
-        self._quitButton = QPushButton("Close")
-        self._quitButton.clicked.connect(self.reject)
-        buttonsLayout.addWidget(self._quitButton)
-        topLayout.addWidget(buttonsWidget)
-
         bottomWidget = QWidget(tab)
+        bottomLayout = QFormLayout(bottomWidget)
         layout.addWidget(bottomWidget)
-        bottomLayout = QHBoxLayout(tab)
-        bottomWidget.setLayout(bottomLayout)
 
-        def update_keep_alive():
-            self._plugin.save_config()
-            cnt = self._plugin.config["keep"]["cnt"]
-            intvl = self._plugin.config["keep"]["intvl"]
-            idle = self._plugin.config["keep"]["idle"]
-            if self._plugin.network.client:
-                self._plugin.network.client.set_keep_alive(cnt, intvl, idle)
-
-        keepWidget = QWidget(tab)
-        keepLayout = QFormLayout(keepWidget)
         keepCntLabel = QLabel("Keep-Alive Count: ")
-        keepCntSpinBox = QSpinBox(keepWidget)
-        keepCntSpinBox.setRange(0, 86400)
-        keepCntSpinBox.setValue(self._plugin.config["keep"]["cnt"])
-        keepCntSpinBox.setSuffix(" packets")
-
-        def keepCntSpinBoxChanged(cnt):
-            self._plugin.config["keep"]["cnt"] = cnt
-            update_keep_alive()
-        keepCntSpinBox.valueChanged.connect(keepCntSpinBoxChanged)
-        keepLayout.addRow(keepCntLabel, keepCntSpinBox)
+        self._keepCntSpinBox = QSpinBox(bottomWidget)
+        self._keepCntSpinBox.setRange(0, 86400)
+        self._keepCntSpinBox.setValue(self._plugin.config["keep"]["cnt"])
+        self._keepCntSpinBox.setSuffix(" packets")
+        bottomLayout.addRow(keepCntLabel, self._keepCntSpinBox)
 
         keepIntvlLabel = QLabel("Keep-Alive Interval: ")
-        keepIntvlSpinBox = QSpinBox(keepWidget)
-        keepIntvlSpinBox.setRange(0, 86400)
-        keepIntvlSpinBox.setValue(self._plugin.config["keep"]["intvl"])
-        keepIntvlSpinBox.setSuffix(" seconds")
-
-        def keepIntvlSpinBoxChanged(intvl):
-            self._plugin.config["keep"]["intvl"] = intvl
-            update_keep_alive()
-        keepIntvlSpinBox.valueChanged.connect(keepIntvlSpinBoxChanged)
-        keepLayout.addRow(keepIntvlLabel, keepIntvlSpinBox)
+        self._keepIntvlSpinBox = QSpinBox(bottomWidget)
+        self._keepIntvlSpinBox.setRange(0, 86400)
+        self._keepIntvlSpinBox.setValue(self._plugin.config["keep"]["intvl"])
+        self._keepIntvlSpinBox.setSuffix(" seconds")
+        bottomLayout.addRow(keepIntvlLabel, self._keepIntvlSpinBox)
 
         keepIdleLabel = QLabel("Keep-Alive Idle: ")
-        keepIdleSpinBox = QSpinBox(keepWidget)
-        keepIdleSpinBox.setRange(0, 86400)
-        keepIdleSpinBox.setValue(self._plugin.config["keep"]["idle"])
-        keepIdleSpinBox.setSuffix(" seconds")
-
-        def keepIdleSpinBoxChanged(idle):
-            self._plugin.config["keep"]["idle"] = idle
-            update_keep_alive()
-        keepIdleSpinBox.valueChanged.connect(keepIdleSpinBoxChanged)
-        keepLayout.addRow(keepIdleLabel, keepIdleSpinBox)
-        keepWidget.setLayout(keepLayout)
-        bottomLayout.addWidget(keepWidget)
+        self._keepIdleSpinBox = QSpinBox(bottomWidget)
+        self._keepIdleSpinBox.setRange(0, 86400)
+        self._keepIdleSpinBox.setValue(self._plugin.config["keep"]["idle"])
+        self._keepIdleSpinBox.setSuffix(" seconds")
+        bottomLayout.addRow(keepIdleLabel, self._keepIdleSpinBox)
 
         self.resize(tab.sizeHint().width() + 5, tab.sizeHint().height() + 30)
 
-    def _server_clicked(self, _):
+    def _single_click(self, _):
         """
         Called when a server item is clicked.
         """
         self._editButton.setEnabled(True)
         self._deleteButton.setEnabled(True)
 
-    def _server_double_clicked(self, _):
+    def _double_click(self, _):
         item = self._serversTable.selectedItems()[0]
         server = item.data(Qt.UserRole)
         if not self._plugin.network.connected \
@@ -711,16 +645,16 @@ class SettingsDialog(QDialog):
         :param dialog: the add server dialog
         """
         server = dialog.get_result()
-        servers = self._plugin.config["servers"]
-        servers.append(server)
-        self._plugin.save_config()
+        self._servers.append(server)
         rowCount = self._serversTable.rowCount()
         self._serversTable.insertRow(rowCount)
+
         newServer = QTableWidgetItem('%s:%d' %
                                      (server["host"], server["port"]))
         newServer.setData(Qt.UserRole, server)
         newServer.setFlags(newServer.flags() & ~Qt.ItemIsEditable)
         self._serversTable.setItem(rowCount, 0, newServer)
+
         newCheckbox = QTableWidgetItem()
         state = Qt.Unchecked if server["no_ssl"] else Qt.Checked
         newCheckbox.setCheckState(state)
@@ -736,16 +670,16 @@ class SettingsDialog(QDialog):
         :param dialog: the edit server dialog
         """
         server = dialog.get_result()
-        servers = self._plugin.config["servers"]
         item = self._serversTable.selectedItems()[0]
-        servers[item.row()] = server
+        self._servers[item.row()] = server
+
         item.setText('%s:%d' % (server["host"], server["port"]))
         item.setData(Qt.UserRole, server)
         item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+
         checkbox = self._serversTable.item(item.row(), 1)
         state = Qt.Unchecked if server["no_ssl"] else Qt.Checked
         checkbox.setCheckState(state)
-        self._plugin.save_config()
         self.update()
 
     def _delete_button_clicked(self, _):
@@ -754,22 +688,48 @@ class SettingsDialog(QDialog):
         """
         item = self._serversTable.selectedItems()[0]
         server = item.data(Qt.UserRole)
-        servers = self._plugin.config["servers"]
-        servers.remove(server)
+        self._servers.remove(server)
         self._plugin.save_config()
         self._serversTable.removeRow(item.row())
         self.update()
 
-    def get_result(self):
-        """
-        Get the result (name, color, navbar coloration, notification) from this
-        dialog.
+    def _commit(self, _):
+        checked = self._navbarColorizerCheckbox.isChecked()
+        self._plugin.config["user"]["navbar_colorizer"] = checked
 
-        :return: the result
-        """
-        name = self.usernameLine.text()
-        color = self.color
-        return name, color
+        checked = self._notificationsCheckbox.isChecked()
+        self._plugin.config["user"]["notifications"] = checked
+
+        name = self._nameLineEdit.text()
+        if self._plugin.config["user"]["name"] != name:
+            old_name = self._plugin.config["user"]["name"]
+            self._plugin.network.send_packet(UserRenamed(old_name, name))
+            self._plugin.config["user"]["name"] = name
+
+        if self._plugin.config["user"]["color"] != self._color:
+            name = self._plugin.config["user"]["name"]
+            old_color = self._plugin.config["user"]["color"]
+            packet = UserColorChanged(name, old_color, self._color)
+            self._plugin.network.send_packet(packet)
+            self._plugin.config["user"]["color"] = self._color
+
+        from idarling.plugin import logger
+        index = self._debugLevelComboBox.currentIndex()
+        level = self._debugLevelComboBox.itemData(index)
+        logger.setLevel(level)
+        self._plugin.config["level"] = level
+
+        self._plugin.config["servers"] = self._servers
+        cnt = self._keepCntSpinBox.value()
+        self._plugin.config["keep"]["cnt"] = cnt
+        intvl = self._keepIntvlSpinBox.value()
+        self._plugin.config["keep"]["intvl"] = intvl
+        idle = self._keepIdleSpinBox.value()
+        self._plugin.config["keep"]["idle"] = idle
+        if self._plugin.network.client:
+            self._plugin.network.client.set_keep_alive(cnt, intvl, idle)
+
+        self._plugin.save_config()
 
 
 class ServerInfoDialog(QDialog):
@@ -788,7 +748,7 @@ class ServerInfoDialog(QDialog):
         super(ServerInfoDialog, self).__init__()
 
         # General setup of the dialog
-        logger.debug("Add server settings dialog")
+        logger.debug("Showing server info dialog")
         self.setWindowTitle(title)
         iconPath = plugin.resource('settings.png')
         self.setWindowIcon(QIcon(iconPath))

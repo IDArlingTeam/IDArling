@@ -74,9 +74,9 @@ class ClientsDiscovery(QObject):
         while len(request):
             try:
                 sent = self._socket.sendto(request, ("<broadcast>", 31013))
+                request = request[sent:]
             except socket.error:
                 self._logger.warning("Couldn't send discovery request")
-            request = request[sent:]
 
     def _notify_read(self):
         response, address = self._socket.recvfrom(4096)

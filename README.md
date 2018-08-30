@@ -67,13 +67,12 @@ you should be able to access the following menus:
 
 * Where is my old servers?
 
-In commit 08eca13d4ecd51cd518cb54546f971e3b43edf04 the config file name is changed
-from `state.json` to `config.json`, to enhance the config file storage. Thus all
-old servers are not displayed in your server list. But don't worry, you can still
-find them in your previous config file. The path of your config file depends
-your platform. For example, under Linux, the path should be: 
-`$HOME/.idapro/idarling/files/state.json`
-You can still find your old servers there.
+In commit `08eca13d4ecd51cd518cb54546f971e3b43edf04`, the config file name was
+changed from `state.json` to `config.json` to enhance the config file storage.
+Thus, your old servers won't be displayed in your server list. But don't worry,
+you can still find them in your previous config file. The path of your config
+file depends your platform. For example, under Linux, the path should be
+`$HOME/.idapro/idarling/files/state.json`.
 
 # Thanks
 

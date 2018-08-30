@@ -79,7 +79,7 @@ def start(args):
     server.start(args.host, args.port)
 
     # Allow the use of Ctrl-C to stop the server
-    def sigint_handler(signum, frame):
+    def sigint_handler(_, __):
         server.stop()
         app.exit(0)
     signal.signal(signal.SIGINT, sigint_handler)

@@ -12,13 +12,11 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import logging
 
-from functools import partial
 from PyQt5.QtCore import Qt, QSize, QPoint, QRect
 from PyQt5.QtGui import QPixmap, QIcon, QPainter, QRegion
 from PyQt5.QtWidgets import QWidget, QLabel, QMenu, QAction, QActionGroup
 
 from .dialogs import SettingsDialog
-from ..shared.commands import UserRenamed, UserColorChanged
 
 logger = logging.getLogger('IDArling.Interface')
 
@@ -121,28 +119,9 @@ class StatusWidget(QWidget):
         iconPath = self._plugin.resource('settings.png')
         settings.setIcon(QIcon(iconPath))
 
-        def _settings_accepted(dialog):
-            name, color = dialog.get_result()
-            if self._plugin.config["user"]["name"] != name:
-                old_name = self._plugin.config["user"]["name"]
-                self._plugin.network.send_packet(UserRenamed(old_name, name))
-                self._plugin.config["user"]["name"] = name
-                self._plugin.save_config()
-            if self._plugin.config["user"]["color"] != color:
-                name = self._plugin.config["user"]["name"]
-                old_color = self._plugin.config["user"]["color"]
-                self._plugin.network.send_packet(UserColorChanged(name,
-                                                                  old_color,
-                                                                  color))
-                self._plugin.config["user"]["color"] = color
-                self._plugin.save_config()
-
         # Add a handler on the action
         def settingsActionTriggered():
-            dialog = SettingsDialog(self._plugin)
-            dialog.accepted.connect(partial(_settings_accepted, dialog))
-            dialog.exec_()
-
+            SettingsDialog(self._plugin).exec_()
         settings.triggered.connect(settingsActionTriggered)
         menu.addAction(settings)
 
