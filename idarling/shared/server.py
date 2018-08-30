@@ -222,6 +222,17 @@ class Server(ServerSocket):
     The server implementation used by dedicated and integrated.
     """
 
+    @staticmethod
+    def add_trace_level():
+        logging.TRACE = 5
+        logging.addLevelName(logging.TRACE, "TRACE")
+        logging.Logger.trace = lambda inst, msg, *args, **kwargs: inst.log(
+            logging.TRACE, msg, *args, **kwargs
+        )
+        logging.trace = lambda msg, *args, **kwargs: logging.log(
+            logging.TRACE, msg, *args, **kwargs
+        )
+
     def __init__(self, logger, ssl, parent=None):
         ServerSocket.__init__(self, logger, parent)
         self._clients = []

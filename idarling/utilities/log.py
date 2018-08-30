@@ -13,6 +13,7 @@
 import logging
 import os
 
+from ..shared.server import Server
 from .misc import local_resource
 
 
@@ -23,23 +24,24 @@ def start_logging():
 
     :return: the main logger
     """
-    logger = logging.getLogger('IDArling')
+    Server.add_trace_level()
+    logger = logging.getLogger("IDArling")
     logger.setLevel(logging.INFO)
 
     # Get the absolute path to the log file
-    logPath = local_resource('logs', 'idarling.%s.log' % os.getpid())
+    logPath = local_resource("logs", "idarling.%s.log" % os.getpid())
 
     # Log to the console
     streamHandler = logging.StreamHandler()
-    logFormat = '[%(levelname)s] %(message)s'
+    logFormat = "[%(levelname)s] %(message)s"
     formatter = logging.Formatter(fmt=logFormat)
     streamHandler.setFormatter(formatter)
     logger.addHandler(streamHandler)
 
     # Log to the log file
     fileHandler = logging.FileHandler(logPath)
-    logFormat = '[%(asctime)s][%(levelname)s] %(message)s'
-    formatter = logging.Formatter(fmt=logFormat, datefmt='%H:%M:%S')
+    logFormat = "[%(asctime)s][%(levelname)s] %(message)s"
+    formatter = logging.Formatter(fmt=logFormat, datefmt="%H:%M:%S")
     fileHandler.setFormatter(formatter)
     logger.addHandler(fileHandler)
 

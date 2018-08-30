@@ -68,7 +68,7 @@ class ClientsDiscovery(QObject):
         self._timer.stop()
 
     def _send_request(self):
-        self._logger.debug("Sending discovery request...")
+        self._logger.trace("Sending discovery request...")
         request = DISCOVERY_REQUEST + " " + self._info
         request = request.encode("utf-8")
         while len(request):
@@ -82,15 +82,15 @@ class ClientsDiscovery(QObject):
         response, address = self._socket.recvfrom(4096)
         response = response.decode("utf-8")
         if response == DISCOVERY_REPLY:
-            self._logger.debug("Received discovery reply from %s:%d" % address)
+            self._logger.trace("Received discovery reply from %s:%d" % address)
 
 
 class ServersDiscovery(QObject):
     def __init__(self, logger, parent=None):
         super(ServersDiscovery, self).__init__(parent)
         self._logger = logger
-        self._active = []
         self._servers = []
+        self._new_servers = []
 
         self._socket = None
         self._read_notifier = None
@@ -139,24 +139,24 @@ class ServersDiscovery(QObject):
         request, address = self._socket.recvfrom(4096)
         request = request.decode("utf-8")
         if request.startswith(DISCOVERY_REQUEST):
-            self._logger.debug(
+            self._logger.trace(
                 "Received discovery request from %s:%d" % address
             )
             _, host, port, ssl = request.split()
             server = {"host": host, "port": int(port), "no_ssl": ssl != "True"}
-            if server not in self._active:
-                self._active.append(server)
-            if server not in self._servers:
+            if server in self._servers:
                 self._servers.append(server)
-            self._logger.debug("Server discovered: %s" % server)
-            self._logger.debug("Sending discovery reply to %s:%d..." % address)
+            if server in self._new_servers:
+                self._new_servers.append(server)
+            self._logger.trace("Server discovered: %s" % server)
+            self._logger.trace("Sending discovery reply to %s:%d..." % address)
             reply = DISCOVERY_REPLY
             reply = reply.encode("utf-8")
             self._socket.sendto(reply, address)
 
     def _trim_replies(self):
-        self._logger.debug(
+        self._logger.trace(
             "Discovered %d servers: %s" % (len(self.servers), self.servers)
         )
-        self._servers = self._active
-        self._active = []
+        self._servers = self._new_servers
+        self._new_servers = []

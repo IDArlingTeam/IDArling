@@ -520,6 +520,7 @@ class SettingsDialog(QDialog):
         debugLevelComboBox.addItem("WARNING", logging.WARNING)
         debugLevelComboBox.addItem("INFO", logging.INFO)
         debugLevelComboBox.addItem("DEBUG", logging.DEBUG)
+        debugLevelComboBox.addItem("TRACE", logging.TRACE)
 
         def debugLevelInitialized():
             from idarling.plugin import logger

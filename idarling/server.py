@@ -27,19 +27,9 @@ class DedicatedServer(Server):
     The dedicated server implementation.
     """
 
-    def __init__(self, ssl, level, parent=None):
-        logger = self.start_logging()
-        logger.setLevel(getattr(logging, level))
-        Server.__init__(self, logger, ssl, parent)
-
-    def local_file(self, filename):
-        filesDir = os.path.join(os.path.dirname(__file__), 'files')
-        filesDir = os.path.abspath(filesDir)
-        if not os.path.exists(filesDir):
-            os.makedirs(filesDir)
-        return os.path.join(filesDir, filename)
-
-    def start_logging(self):
+    @staticmethod
+    def start_logging():
+        Server.add_trace_level()
         logger = logging.getLogger('IDArling.Server')
 
         # Get path to the log file
@@ -64,6 +54,18 @@ class DedicatedServer(Server):
         logger.addHandler(fileHandler)
 
         return logger
+
+    def __init__(self, ssl, level, parent=None):
+        logger = DedicatedServer.start_logging()
+        logger.setLevel(getattr(logging, level))
+        Server.__init__(self, logger, ssl, parent)
+
+    def local_file(self, filename):
+        filesDir = os.path.join(os.path.dirname(__file__), 'files')
+        filesDir = os.path.abspath(filesDir)
+        if not os.path.exists(filesDir):
+            os.makedirs(filesDir)
+        return os.path.join(filesDir, filename)
 
 
 def start(args):
@@ -110,7 +112,7 @@ def main():
     security.add_argument('--no-ssl', action='store_true',
                           help='disable SSL (not recommended)')
 
-    levels = ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"]
+    levels = ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "TRACE"]
     parser.add_argument('-l', '--level', type=str, choices=levels,
                         default="INFO", help='the log level')
 
