@@ -10,9 +10,11 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import colorsys
 import json
 import logging
 import os
+import random
 
 import ida_idaapi
 import ida_kernwin
@@ -77,17 +79,7 @@ class Plugin(ida_idaapi.plugin_t):
         self._network = Network(self)
 
         # Configuration
-        self._config = {
-            "level": logging.INFO,
-            "servers": [],
-            "keep": {"cnt": 4, "intvl": 15, "idle": 240},
-            "user": {
-                "color": -1,
-                "name": "Undefined",
-                "navbar_colorizer": True,
-                "notifications": True,
-            },
-        }
+        self._config = self.default_config()
 
     @property
     def core(self):
@@ -193,6 +185,21 @@ class Plugin(ida_idaapi.plugin_t):
         :return: the config
         """
         return self._config
+
+    def default_config(self):
+        r, g, b = colorsys.hls_to_rgb(random.random(), 0.5, 1.0)
+        color = int(b * 255) << 16 | int(g * 255) << 8 | int(r * 255)
+        return {
+            "level": logging.INFO,
+            "servers": [],
+            "keep": {"cnt": 4, "intvl": 15, "idle": 240},
+            "user": {
+                "color": color,
+                "name": "Undefined",
+                "navbar_colorizer": True,
+                "notifications": True,
+            },
+        }
 
     def load_config(self):
         """

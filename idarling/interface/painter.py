@@ -11,9 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import collections
-import colorsys
 import logging
-import random
 import struct
 
 import ida_funcs
@@ -105,19 +103,6 @@ class Painter(object):
 
         self._uiHooks = UIHooks(self)
         result = self._uiHooks.hook()
-
-        # ---------------------------------------------------------------------
-        # Current user parameters
-        # ---------------------------------------------------------------------
-
-        # Choose a random color for the current user if it's not user-defined
-
-        if self._plugin.config["user"]["color"] == -1:
-            r, g, b = colorsys.hls_to_rgb(random.random(), 0.5, 1.0)
-            color = int(b * 255) << 16 | int(g * 255) << 8 | int(r * 255)
-            self._plugin.config["user"]["color"] = color
-            self._plugin.save_config()
-
         if not result:
             raise RuntimeError("Failed to install painter")
 
