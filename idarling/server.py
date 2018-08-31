@@ -19,7 +19,7 @@ import traceback
 
 from PyQt5.QtCore import QCoreApplication, QTimer
 
-from idarling.shared.server import Server
+from .shared.server import Server
 
 
 class DedicatedServer(Server):
@@ -33,25 +33,25 @@ class DedicatedServer(Server):
         logger = logging.getLogger("IDArling.Server")
 
         # Get path to the log file
-        logDir = os.path.join(os.path.dirname(__file__), "logs")
-        logDir = os.path.abspath(logDir)
-        if not os.path.exists(logDir):
-            os.makedirs(logDir)
-        logPath = os.path.join(logDir, "idarling.%s.log" % os.getpid())
+        log_dir = os.path.join(os.path.dirname(__file__), "logs")
+        log_dir = os.path.abspath(log_dir)
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        log_path = os.path.join(log_dir, "idarling.%s.log" % os.getpid())
 
         # Configure the logger
-        logFormat = "[%(asctime)s][%(levelname)s] %(message)s"
-        formatter = logging.Formatter(fmt=logFormat, datefmt="%H:%M:%S")
+        log_format = "[%(asctime)s][%(levelname)s] %(message)s"
+        formatter = logging.Formatter(fmt=log_format, datefmt="%H:%M:%S")
 
         # Log to the console
-        streamHandler = logging.StreamHandler()
-        streamHandler.setFormatter(formatter)
-        logger.addHandler(streamHandler)
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(formatter)
+        logger.addHandler(stream_handler)
 
         # Log to the log file
-        fileHandler = logging.FileHandler(logPath)
-        fileHandler.setFormatter(formatter)
-        logger.addHandler(fileHandler)
+        file_handler = logging.FileHandler(log_path)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
 
         return logger
 
@@ -61,11 +61,11 @@ class DedicatedServer(Server):
         Server.__init__(self, logger, ssl, parent)
 
     def local_file(self, filename):
-        filesDir = os.path.join(os.path.dirname(__file__), "files")
-        filesDir = os.path.abspath(filesDir)
-        if not os.path.exists(filesDir):
-            os.makedirs(filesDir)
-        return os.path.join(filesDir, filename)
+        files_dir = os.path.join(os.path.dirname(__file__), "files")
+        files_dir = os.path.abspath(files_dir)
+        if not os.path.exists(files_dir):
+            os.makedirs(files_dir)
+        return os.path.join(files_dir, filename)
 
 
 def start(args):

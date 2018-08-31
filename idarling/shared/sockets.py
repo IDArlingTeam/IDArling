@@ -19,7 +19,7 @@ import sys
 
 from PyQt5.QtCore import QCoreApplication, QEvent, QObject, QSocketNotifier
 
-from .packets import Packet, PacketDeferred, Query, Reply, Container
+from .packets import Container, Packet, PacketDeferred, Query, Reply
 
 
 class PacketEvent(QEvent):
@@ -125,17 +125,19 @@ class ClientSocket(QObject):
          after `cnt` failed ping.
         """
         # Taken from https://github.com/markokr/skytools/
-        TCP_KEEPCNT = getattr(socket, "TCP_KEEPCNT", None)
-        TCP_KEEPINTVL = getattr(socket, "TCP_KEEPINTVL", None)
-        TCP_KEEPIDLE = getattr(socket, "TCP_KEEPIDLE", None)
-        TCP_KEEPALIVE = getattr(socket, "TCP_KEEPALIVE", None)
-        SIO_KEEPALIVE_VALS = getattr(socket, "SIO_KEEPALIVE_VALS", None)
+        TCP_KEEPCNT = getattr(socket, "TCP_KEEPCNT", None)  # noqa: N806
+        TCP_KEEPINTVL = getattr(socket, "TCP_KEEPINTVL", None)  # noqa: N806
+        TCP_KEEPIDLE = getattr(socket, "TCP_KEEPIDLE", None)  # noqa: N806
+        TCP_KEEPALIVE = getattr(socket, "TCP_KEEPALIVE", None)  # noqa: N806
+        SIO_KEEPALIVE_VALS = getattr(  # noqa: N806
+            socket, "SIO_KEEPALIVE_VALS", None
+        )
         if (
             TCP_KEEPIDLE is None
             and TCP_KEEPALIVE is None
             and sys.platform == "darwin"
         ):
-            TCP_KEEPALIVE = 0x10
+            TCP_KEEPALIVE = 0x10  # noqa: N806
 
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
         if TCP_KEEPCNT is not None:
@@ -177,7 +179,9 @@ class ClientSocket(QObject):
                 if b"\n" in self._read_buffer:
                     pos = self._read_buffer.index(b"\n")
                     line = self._read_buffer[:pos]
-                    self._read_buffer = self._read_buffer[pos + 1 :]
+                    self._read_buffer = self._read_buffer[
+                        pos + 1 :  # noqa: E203
+                    ]
 
                     # Try to parse the line as a packet
                     try:

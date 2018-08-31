@@ -13,7 +13,7 @@
 import json
 import sqlite3
 
-from .models import Repository, Branch
+from .models import Branch, Repository
 from .packets import Default, DefaultEvent
 
 

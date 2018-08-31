@@ -25,10 +25,10 @@ def local_resource(dirname, filename):
     :param filename: the file name
     :return: the path of the resource
     """
-    resDir = os.path.join(LOCAL_PATH, dirname)
-    if not os.path.exists(resDir):
-        os.makedirs(resDir)
-    return os.path.join(resDir, filename)
+    res_dir = os.path.join(LOCAL_PATH, dirname)
+    if not os.path.exists(res_dir):
+        os.makedirs(res_dir)
+    return os.path.join(res_dir, filename)
 
 
 PLUGIN_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))

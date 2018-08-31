@@ -11,25 +11,25 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import ctypes
-import logging
-import shutil
-import tempfile
-import os
-import sys
 from functools import partial
+import logging
+import os
+import shutil
+import sys
+import tempfile
 
 import ida_diskio
 import ida_idaapi
-import ida_loader
 import ida_kernwin
+import ida_loader
 
-from PyQt5.QtCore import Qt, QCoreApplication, QFileInfo
+from PyQt5.QtCore import QCoreApplication, QFileInfo, Qt  # noqa: I202
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QProgressDialog, QMessageBox
+from PyQt5.QtWidgets import QMessageBox, QProgressDialog
 
-from ..utilities.misc import local_resource
-from ..shared.commands import DownloadDatabase, UploadDatabase, Subscribe
 from .dialogs import OpenDialog, SaveDialog
+from ..shared.commands import DownloadDatabase, Subscribe, UploadDatabase
+from ..utilities.misc import local_resource
 
 logger = logging.getLogger("IDArling.Interface")
 
@@ -58,7 +58,7 @@ class Action(object):
         self._icon = icon
         self._handler = handler
 
-        self._iconId = ida_idaapi.BADADDR
+        self._icon_id = ida_idaapi.BADADDR
 
     def install(self):
         """
@@ -67,21 +67,21 @@ class Action(object):
         :return: did the install succeed
         """
         # Read and load the icon file
-        iconData = str(open(self._icon, "rb").read())
-        self._iconId = ida_kernwin.load_custom_icon(data=iconData)
+        icon_data = str(open(self._icon, "rb").read())
+        self._icon_id = ida_kernwin.load_custom_icon(data=icon_data)
 
         # Create the action description
-        actionDesc = ida_kernwin.action_desc_t(
+        action_desc = ida_kernwin.action_desc_t(
             self._ACTION_ID,
             self._text,
             self._handler,
             None,
             self._tooltip,
-            self._iconId,
+            self._icon_id,
         )
 
         # Register the action using its description
-        result = ida_kernwin.register_action(actionDesc)
+        result = ida_kernwin.register_action(action_desc)
         if not result:
             raise RuntimeError("Failed to register action")
 
@@ -114,8 +114,8 @@ class Action(object):
             return False
 
         # Free the custom icon using its id
-        ida_kernwin.free_custom_icon(self._iconId)
-        self._iconId = ida_idaapi.BADADDR
+        ida_kernwin.free_custom_icon(self._icon_id)
+        self._icon_id = ida_idaapi.BADADDR
 
         logger.debug("Uninstalled the action")
         return True
@@ -222,21 +222,21 @@ class OpenActionHandler(ActionHandler):
         progress = QProgressDialog(text, "Cancel", 0, 1)
         progress.setCancelButton(None)  # Remove cancel button
         progress.setModal(True)  # Set as a modal dialog
-        windowFlags = progress.windowFlags()  # Disable close button
-        progress.setWindowFlags(windowFlags & ~Qt.WindowCloseButtonHint)
+        window_flags = progress.windowFlags()  # Disable close button
+        progress.setWindowFlags(window_flags & ~Qt.WindowCloseButtonHint)
         progress.setWindowTitle("Open from server")
-        iconPath = self._plugin.resource("download.png")
-        progress.setWindowIcon(QIcon(iconPath))
+        icon_path = self._plugin.resource("download.png")
+        progress.setWindowIcon(QIcon(icon_path))
 
         # Send a packet to download the database
         packet = DownloadDatabase.Query(repo.name, branch.name)
         callback = partial(self._on_progress, progress)
 
-        def setDownloadCallback(reply):
+        def set_download_callback(reply):
             reply.downback = callback
 
         d = self._plugin.network.send_packet(packet)
-        d.add_initback(setDownloadCallback)
+        d.add_initback(set_download_callback)
         d.add_callback(partial(self._database_downloaded, branch, progress))
         d.add_errback(logger.exception)
         progress.show()
@@ -253,16 +253,16 @@ class OpenActionHandler(ActionHandler):
         progress.close()
 
         # Get the absolute path of the file
-        appPath = QCoreApplication.applicationFilePath()
-        appName = QFileInfo(appPath).fileName()
-        fileExt = "i64" if "64" in appName else "idb"
-        fileName = "%s_%s.%s" % (branch.repo, branch.name, fileExt)
-        filePath = local_resource("files", fileName)
+        app_path = QCoreApplication.applicationFilePath()
+        app_name = QFileInfo(app_path).fileName()
+        file_ext = "i64" if "64" in app_name else "idb"
+        file_name = "%s_%s.%s" % (branch.repo, branch.name, file_ext)
+        file_path = local_resource("files", file_name)
 
         # Write the packet content to disk
-        with open(filePath, "wb") as outputFile:
-            outputFile.write(reply.content)
-        logger.info("Saved file %s" % fileName)
+        with open(file_path, "wb") as output_file:
+            output_file.write(reply.content)
+        logger.info("Saved file %s" % file_name)
 
         # Save the old database
         database = ida_loader.get_path(ida_loader.PATH_TYPE_IDB)
@@ -270,7 +270,7 @@ class OpenActionHandler(ActionHandler):
             ida_loader.save_database(database, ida_loader.DBFL_TEMP)
 
         # Get the dynamic library
-        idaname = "ida64" if "64" in appName else "ida"
+        idaname = "ida64" if "64" in app_name else "ida"
         if sys.platform == "win32":
             dllname, dlltype = idaname + ".dll", ctypes.windll
         elif sys.platform == "linux2":
@@ -283,46 +283,43 @@ class OpenActionHandler(ActionHandler):
         dll = dlltype[os.path.join(dllpath, dllname)]
 
         # Close the old database
-        oldPath = ida_loader.get_path(ida_loader.PATH_TYPE_IDB)
-        if oldPath:
+        old_path = ida_loader.get_path(ida_loader.PATH_TYPE_IDB)
+        if old_path:
             dll.term_database()
 
         # Open the new database
-        LP_c_char = ctypes.POINTER(ctypes.c_char)
-
-        args = [appName, filePath]
+        args = [app_name, file_path]
         argc = len(args)
-        argv = (LP_c_char * (argc + 1))()
+        argv = (ctypes.POINTER(ctypes.c_char) * (argc + 1))()
         for i, arg in enumerate(args):
             arg = arg.encode("utf-8")
             argv[i] = ctypes.create_string_buffer(arg)
 
-        LP_c_int = ctypes.POINTER(ctypes.c_int)
         v = ctypes.c_int(0)
         av = ctypes.addressof(v)
-        pv = ctypes.cast(av, LP_c_int)
+        pv = ctypes.cast(av, ctypes.POINTER(ctypes.c_int))
         dll.init_database(argc, argv, pv)
 
         # Create a copy of the new database
-        fileExt = ".i64" if "64" in appName else ".idb"
-        tmpFile, tmpPath = tempfile.mkstemp(suffix=fileExt)
-        shutil.copyfile(filePath, tmpPath)
+        file_ext = ".i64" if "64" in app_name else ".idb"
+        tmp_file, tmp_path = tempfile.mkstemp(suffix=file_ext)
+        shutil.copyfile(file_path, tmp_path)
 
         class UIHooks(ida_kernwin.UI_Hooks):
             def database_inited(self, is_new_database, idc_script):
                 self.unhook()
 
                 # Remove the tmp database
-                os.close(tmpFile)
-                if os.path.exists(tmpPath):
-                    os.remove(tmpPath)
+                os.close(tmp_file)
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
 
         hooks = UIHooks()
         hooks.hook()
 
         # Open the tmp database
         s = ida_loader.snapshot_t()
-        s.filename = tmpPath
+        s.filename = tmp_path
         ida_kernwin.restore_database_snapshot(s, None, None)
 
 
@@ -362,24 +359,24 @@ class SaveActionHandler(ActionHandler):
 
         # Save the current database
         self._plugin.core.save_netnode()
-        inputPath = ida_loader.get_path(ida_loader.PATH_TYPE_IDB)
-        ida_loader.save_database(inputPath, 0)
+        input_path = ida_loader.get_path(ida_loader.PATH_TYPE_IDB)
+        ida_loader.save_database(input_path, 0)
 
         # Create the packet that will hold the database
         packet = UploadDatabase.Query(repo.name, branch.name)
-        with open(inputPath, "rb") as inputFile:
-            packet.content = inputFile.read()
+        with open(input_path, "rb") as input_file:
+            packet.content = input_file.read()
 
         # Create the progress dialog
         text = "Uploading database to server, please wait..."
         progress = QProgressDialog(text, "Cancel", 0, 1)
         progress.setCancelButton(None)  # Remove cancel button
         progress.setModal(True)  # Set as a modal dialog
-        windowFlags = progress.windowFlags()  # Disable close button
-        progress.setWindowFlags(windowFlags & ~Qt.WindowCloseButtonHint)
+        window_flags = progress.windowFlags()  # Disable close button
+        progress.setWindowFlags(window_flags & ~Qt.WindowCloseButtonHint)
         progress.setWindowTitle("Save to server")
-        iconPath = self._plugin.resource("upload.png")
-        progress.setWindowIcon(QIcon(iconPath))
+        icon_path = self._plugin.resource("upload.png")
+        progress.setWindowIcon(QIcon(icon_path))
 
         # Send the packet to upload the file
         packet.upback = partial(self._on_progress, progress)
@@ -400,8 +397,8 @@ class SaveActionHandler(ActionHandler):
         success.setStandardButtons(QMessageBox.Ok)
         success.setText("Database successfully uploaded!")
         success.setWindowTitle("Save to server")
-        iconPath = self._plugin.resource("upload.png")
-        success.setWindowIcon(QIcon(iconPath))
+        icon_path = self._plugin.resource("upload.png")
+        success.setWindowIcon(QIcon(icon_path))
         success.exec_()
 
         # Subscribe to the new events stream

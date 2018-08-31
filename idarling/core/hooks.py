@@ -25,7 +25,8 @@ import ida_segment
 import ida_struct
 import ida_typeinf
 
-from .events import *
+import events as evt  # noqa: I100,I202
+from .events import Event  # noqa: I201
 from ..shared.commands import UpdateCursors
 
 logger = logging.getLogger("IDArling.Core")
@@ -64,64 +65,66 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         self.last_local_type = None
 
     def make_code(self, insn):
-        self._send_event(MakeCodeEvent(insn.ea))
+        self._send_event(evt.MakeCodeEvent(insn.ea))
         return 0
 
     def make_data(self, ea, flags, tid, size):
-        self._send_event(MakeDataEvent(ea, flags, size, tid))
+        self._send_event(evt.MakeDataEvent(ea, flags, size, tid))
         return 0
 
     def renamed(self, ea, new_name, local_name):
-        self._send_event(RenamedEvent(ea, new_name, local_name))
+        self._send_event(evt.RenamedEvent(ea, new_name, local_name))
         return 0
 
     def func_added(self, func):
-        self._send_event(FuncAddedEvent(func.startEA, func.endEA))
+        self._send_event(evt.FuncAddedEvent(func.start_ea, func.end_ea))
         return 0
 
     def deleting_func(self, func):
-        self._send_event(DeletingFuncEvent(func.startEA))
+        self._send_event(evt.DeletingFuncEvent(func.start_ea))
         return 0
 
     def set_func_start(self, func, new_start):
-        self._send_event(SetFuncStartEvent(func.startEA, new_start))
+        self._send_event(evt.SetFuncStartEvent(func.start_ea, new_start))
         return 0
 
     def set_func_end(self, func, new_end):
-        self._send_event(SetFuncEndEvent(func.startEA, new_end))
+        self._send_event(evt.SetFuncEndEvent(func.start_ea, new_end))
         return 0
 
     def func_tail_appended(self, func, tail):
         self._send_event(
-            FuncTailAppendedEvent(func.startEA, tail.startEA, tail.endEA)
+            evt.FuncTailAppendedEvent(
+                func.start_ea, tail.start_ea, tail.end_ea
+            )
         )
         return 0
 
     def func_tail_deleted(self, func, tail_ea):
-        self._send_event(FuncTailDeletedEvent(func.startEA, tail_ea))
+        self._send_event(evt.FuncTailDeletedEvent(func.start_ea, tail_ea))
         return 0
 
     def tail_owner_changed(self, tail, owner_func, old_owner):
-        self._send_event(TailOwnerChangedEvent(tail.startEA, owner_func))
+        self._send_event(evt.TailOwnerChangedEvent(tail.start_ea, owner_func))
         return 0
 
     def cmt_changed(self, ea, repeatable_cmt):
         cmt = ida_bytes.get_cmt(ea, repeatable_cmt)
         cmt = "" if not cmt else cmt
-        self._send_event(CmtChangedEvent(ea, cmt, repeatable_cmt))
+        self._send_event(evt.CmtChangedEvent(ea, cmt, repeatable_cmt))
         return 0
 
     def range_cmt_changed(self, kind, a, cmt, repeatable):
-        self._send_event(RangeCmtChangedEvent(kind, a, cmt, repeatable))
+        self._send_event(evt.RangeCmtChangedEvent(kind, a, cmt, repeatable))
         return 0
 
     def extra_cmt_changed(self, ea, line_idx, cmt):
-        self._send_event(ExtraCmtChangedEvent(ea, line_idx, cmt))
+        self._send_event(evt.ExtraCmtChangedEvent(ea, line_idx, cmt))
         return 0
 
     def ti_changed(self, ea, type, fname):
         type = ida_typeinf.idc_get_type_raw(ea)
-        self._send_event(TiChangedEvent(ea, type))
+        self._send_event(evt.TiChangedEvent(ea, type))
         return 0
 
     def local_types_changed(self):
@@ -175,7 +178,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 return 0
             sent_types = [t[2] for t in diff]
 
-        self._send_event(LocalTypesChangedEvent(sent_types))
+        self._send_event(evt.LocalTypesChangedEvent(sent_types))
         return 0
 
     def op_type_changed(self, ea, n):
@@ -228,16 +231,16 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         #     op = 'invert_sign'
         else:
             return 0  # FIXME: Find a better way
-        self._send_event(OpTypeChangedEvent(ea, n, op, extra))
+        self._send_event(evt.OpTypeChangedEvent(ea, n, op, extra))
         return 0
 
     def enum_created(self, enum):
         name = ida_enum.get_enum_name(enum)
-        self._send_event(EnumCreatedEvent(enum, name))
+        self._send_event(evt.EnumCreatedEvent(enum, name))
         return 0
 
     def deleting_enum(self, id):
-        self._send_event(EnumDeletedEvent(ida_enum.get_enum_name(id)))
+        self._send_event(evt.EnumDeletedEvent(ida_enum.get_enum_name(id)))
         return 0
 
     def renaming_enum(self, id, is_enum, newname):
@@ -245,19 +248,19 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
             oldname = ida_enum.get_enum_name(id)
         else:
             oldname = ida_enum.get_enum_member_name(id)
-        self._send_event(EnumRenamedEvent(oldname, newname, is_enum))
+        self._send_event(evt.EnumRenamedEvent(oldname, newname, is_enum))
         return 0
 
     def enum_bf_changed(self, id):
         bf_flag = 1 if ida_enum.is_bf(id) else 0
         ename = ida_enum.get_enum_name(id)
-        self._send_event(EnumBfChangedEvent(ename, bf_flag))
+        self._send_event(evt.EnumBfChangedEvent(ename, bf_flag))
         return 0
 
     def enum_cmt_changed(self, tid, repeatable_cmt):
         cmt = ida_enum.get_enum_cmt(tid, repeatable_cmt)
         emname = ida_enum.get_enum_name(tid)
-        self._send_event(EnumCmtChangedEvent(emname, cmt, repeatable_cmt))
+        self._send_event(evt.EnumCmtChangedEvent(emname, cmt, repeatable_cmt))
         return 0
 
     def enum_member_created(self, id, cid):
@@ -265,7 +268,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         name = ida_enum.get_enum_member_name(cid)
         value = ida_enum.get_enum_member_value(cid)
         bmask = ida_enum.get_enum_member_bmask(cid)
-        self._send_event(EnumMemberCreatedEvent(ename, name, value, bmask))
+        self._send_event(evt.EnumMemberCreatedEvent(ename, name, value, bmask))
         return 0
 
     def deleting_enum_member(self, id, cid):
@@ -273,22 +276,24 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         value = ida_enum.get_enum_member_value(cid)
         serial = ida_enum.get_enum_member_serial(cid)
         bmask = ida_enum.get_enum_member_bmask(cid)
-        self._send_event(EnumMemberDeletedEvent(ename, value, serial, bmask))
+        self._send_event(
+            evt.EnumMemberDeletedEvent(ename, value, serial, bmask)
+        )
         return 0
 
     def struc_created(self, tid):
         name = ida_struct.get_struc_name(tid)
         is_union = ida_struct.is_union(tid)
-        self._send_event(StrucCreatedEvent(tid, name, is_union))
+        self._send_event(evt.StrucCreatedEvent(tid, name, is_union))
         return 0
 
     def deleting_struc(self, sptr):
         sname = ida_struct.get_struc_name(sptr.id)
-        self._send_event(StrucDeletedEvent(sname))
+        self._send_event(evt.StrucDeletedEvent(sname))
         return 0
 
     def renaming_struc(self, id, oldname, newname):
-        self._send_event(StrucRenamedEvent(oldname, newname))
+        self._send_event(evt.StrucRenamedEvent(oldname, newname))
         return 0
 
     def struc_member_created(self, sptr, mptr):
@@ -308,7 +313,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 extra["tdelta"] = mt.ri.tdelta
                 extra["flags"] = mt.ri.flags
                 self._send_event(
-                    StrucMemberCreatedEvent(
+                    evt.StrucMemberCreatedEvent(
                         sname, fieldname, offset, flag, nbytes, extra
                     )
                 )
@@ -316,7 +321,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
             elif flag & ida_bytes.enum_flag():
                 extra["serial"] = mt.ec.serial
                 self._send_event(
-                    StrucMemberCreatedEvent(
+                    evt.StrucMemberCreatedEvent(
                         sname, fieldname, offset, flag, nbytes, extra
                     )
                 )
@@ -325,13 +330,13 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 if flag & ida_bytes.strlit_flag():
                     extra["strtype"] = mt.strtype
                 self._send_event(
-                    StrucMemberCreatedEvent(
+                    evt.StrucMemberCreatedEvent(
                         sname, fieldname, offset, flag, nbytes, extra
                     )
                 )
         else:
             self._send_event(
-                StrucMemberCreatedEvent(
+                evt.StrucMemberCreatedEvent(
                     sname, fieldname, offset, flag, nbytes, extra
                 )
             )
@@ -339,13 +344,13 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
 
     def struc_member_deleted(self, sptr, off1, off2):
         sname = ida_struct.get_struc_name(sptr.id)
-        self._send_event(StrucMemberDeletedEvent(sname, off2))
+        self._send_event(evt.StrucMemberDeletedEvent(sname, off2))
         return 0
 
     def renaming_struc_member(self, sptr, mptr, newname):
         sname = ida_struct.get_struc_name(sptr.id)
         offset = mptr.soff
-        self._send_event(StrucMemberRenamedEvent(sname, offset, newname))
+        self._send_event(evt.StrucMemberRenamedEvent(sname, offset, newname))
         return 0
 
     def struc_cmt_changed(self, id, repeatable_cmt):
@@ -357,7 +362,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
             smname = ""
         cmt = ida_struct.get_struc_cmt(id, repeatable_cmt)
         self._send_event(
-            StrucCmtChangedEvent(sname, smname, cmt, repeatable_cmt)
+            evt.StrucCmtChangedEvent(sname, smname, cmt, repeatable_cmt)
         )
         return 0
 
@@ -376,7 +381,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 extra["tdelta"] = mt.ri.tdelta
                 extra["flags"] = mt.ri.flags
                 self._send_event(
-                    StrucMemberChangedEvent(
+                    evt.StrucMemberChangedEvent(
                         sname, soff, mptr.eoff, flag, extra
                     )
                 )
@@ -384,7 +389,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
             elif flag & ida_bytes.enum_flag():
                 extra["serial"] = mt.ec.serial
                 self._send_event(
-                    StrucMemberChangedEvent(
+                    evt.StrucMemberChangedEvent(
                         sname, soff, mptr.eoff, flag, extra
                     )
                 )
@@ -393,24 +398,26 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                 if flag & ida_bytes.strlit_flag():
                     extra["strtype"] = mt.strtype
                 self._send_event(
-                    StrucMemberChangedEvent(
+                    evt.StrucMemberChangedEvent(
                         sname, soff, mptr.eoff, flag, extra
                     )
                 )
         else:
             self._send_event(
-                StrucMemberChangedEvent(sname, soff, mptr.eoff, flag, extra)
+                evt.StrucMemberChangedEvent(
+                    sname, soff, mptr.eoff, flag, extra
+                )
             )
         return 0
 
     def expanding_struc(self, sptr, offset, delta):
         sname = ida_struct.get_struc_name(sptr.id)
-        self._send_event(ExpandingStrucEvent(sname, offset, delta))
+        self._send_event(evt.ExpandingStrucEvent(sname, offset, delta))
         return 0
 
     def segm_added(self, s):
         self._send_event(
-            SegmAddedEvent(
+            evt.SegmAddedEvent(
                 ida_segment.get_segm_name(s),
                 ida_segment.get_segm_class(s),
                 s.start_ea,
@@ -427,34 +434,36 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
 
     # This hook lack of disable addresses option
     def segm_deleted(self, start_ea, end_ea):
-        self._send_event(SegmDeletedEvent(start_ea))
+        self._send_event(evt.SegmDeletedEvent(start_ea))
         return 0
 
     def segm_start_changed(self, s, oldstart):
-        self._send_event(SegmStartChangedEvent(s.start_ea, oldstart))
+        self._send_event(evt.SegmStartChangedEvent(s.start_ea, oldstart))
         return 0
 
     def segm_end_changed(self, s, oldend):
-        self._send_event(SegmEndChangedEvent(s.end_ea, s.start_ea))
+        self._send_event(evt.SegmEndChangedEvent(s.end_ea, s.start_ea))
         return 0
 
     def segm_name_changed(self, s, name):
-        self._send_event(SegmNameChangedEvent(s.start_ea, name))
+        self._send_event(evt.SegmNameChangedEvent(s.start_ea, name))
         return 0
 
     def segm_class_changed(self, s, sclass):
-        self._send_event(SegmClassChangedEvent(s.start_ea, sclass))
+        self._send_event(evt.SegmClassChangedEvent(s.start_ea, sclass))
         return 0
 
     def segm_attrs_updated(self, s):
         # This hook isn't triggered by segregs modifications
         # ida_segregs.get_sreg()
         # ida_segregs.split_sreg_range()
-        self._send_event(SegmAttrsUpdatedEvent(s.start_ea, s.perm, s.bitness))
+        self._send_event(
+            evt.SegmAttrsUpdatedEvent(s.start_ea, s.perm, s.bitness)
+        )
         return 0
 
     def byte_patched(self, ea, old_value):
-        self._send_event(BytePatchedEvent(ea, ida_bytes.get_wide_byte(ea)))
+        self._send_event(evt.BytePatchedEvent(ea, ida_bytes.get_wide_byte(ea)))
         return 0
 
 
@@ -468,7 +477,7 @@ class IDPHooks(Hooks, ida_idp.IDP_Hooks):
         Hooks.__init__(self, plugin)
 
     def ev_undefine(self, ea):
-        self._send_event(UndefinedEvent(ea))
+        self._send_event(evt.UndefinedEvent(ea))
         return ida_idp.IDP_Hooks.ev_undefine(self, ea)
 
     def ev_adjust_argloc(self, *args):
@@ -484,7 +493,7 @@ class HexRaysHooks(Hooks):
         super(HexRaysHooks, self).__init__(plugin)
         self._available = None
         self._installed = False
-        self._funcEA = ida_idaapi.BADADDR
+        self._func_ea = ida_idaapi.BADADDR
         self._labels = {}
         self._cmts = {}
         self._iflags = {}
@@ -517,20 +526,20 @@ class HexRaysHooks(Hooks):
             if func is None:
                 return
 
-            if self._funcEA != func.startEA:
-                self._funcEA = func.startEA
-                self._labels = HexRaysHooks._get_user_labels(self._funcEA)
-                self._cmts = HexRaysHooks._get_user_cmts(self._funcEA)
-                self._iflags = HexRaysHooks._get_user_iflags(self._funcEA)
+            if self._func_ea != func.start_ea:
+                self._func_ea = func.start_ea
+                self._labels = HexRaysHooks._get_user_labels(self._func_ea)
+                self._cmts = HexRaysHooks._get_user_cmts(self._func_ea)
+                self._iflags = HexRaysHooks._get_user_iflags(self._func_ea)
                 self._lvar_settings = HexRaysHooks._get_user_lvar_settings(
-                    self._funcEA
+                    self._func_ea
                 )
-                self._numforms = HexRaysHooks._get_user_numforms(self._funcEA)
-            self._send_user_labels(func.startEA)
-            self._send_user_cmts(func.startEA)
-            self._send_user_iflags(func.startEA)
-            self._send_user_lvar_settings(func.startEA)
-            self._send_user_numforms(func.startEA)
+                self._numforms = HexRaysHooks._get_user_numforms(self._func_ea)
+            self._send_user_labels(func.start_ea)
+            self._send_user_cmts(func.start_ea)
+            self._send_user_iflags(func.start_ea)
+            self._send_user_lvar_settings(func.start_ea)
+            self._send_user_numforms(func.start_ea)
         return 0
 
     @staticmethod
@@ -551,7 +560,7 @@ class HexRaysHooks(Hooks):
     def _send_user_labels(self, ea):
         labels = HexRaysHooks._get_user_labels(ea)
         if labels != self._labels:
-            self._send_event(UserLabelsEvent(ea, labels))
+            self._send_event(evt.UserLabelsEvent(ea, labels))
             self._labels = labels
 
     @staticmethod
@@ -572,7 +581,7 @@ class HexRaysHooks(Hooks):
     def _send_user_cmts(self, ea):
         cmts = HexRaysHooks._get_user_cmts(ea)
         if cmts != self._cmts:
-            self._send_event(UserCmtsEvent(ea, cmts))
+            self._send_event(evt.UserCmtsEvent(ea, cmts))
             self._cmts = cmts
 
     @staticmethod
@@ -603,7 +612,7 @@ class HexRaysHooks(Hooks):
     def _send_user_iflags(self, ea):
         iflags = HexRaysHooks._get_user_iflags(ea)
         if iflags != self._iflags:
-            self._send_event(UserIflagsEvent(ea, iflags))
+            self._send_event(evt.UserIflagsEvent(ea, iflags))
             self._iflags = iflags
 
     @staticmethod
@@ -670,7 +679,7 @@ class HexRaysHooks(Hooks):
     def _send_user_lvar_settings(self, ea):
         lvar_settings = HexRaysHooks._get_user_lvar_settings(ea)
         if lvar_settings != self._lvar_settings:
-            self._send_event(UserLvarSettingsEvent(ea, lvar_settings))
+            self._send_event(evt.UserLvarSettingsEvent(ea, lvar_settings))
             self._lvar_settings = lvar_settings
 
     @staticmethod
@@ -711,7 +720,7 @@ class HexRaysHooks(Hooks):
     def _send_user_numforms(self, ea):
         numforms = HexRaysHooks._get_user_numforms(ea)
         if numforms != self._numforms:
-            self._send_event(UserNumformsEvent(ea, numforms))
+            self._send_event(evt.UserNumformsEvent(ea, numforms))
             self._numforms = numforms
 
 

@@ -13,7 +13,7 @@
 from idarling.plugin import Plugin
 
 
-def PLUGIN_ENTRY():
+def PLUGIN_ENTRY():  # noqa: N802
     """
     Entry point for IDAPython plugins.
 

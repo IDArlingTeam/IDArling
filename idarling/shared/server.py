@@ -15,22 +15,22 @@ import os
 import socket
 import ssl
 
-from .database import Database
-from .discovery import ClientsDiscovery
 from .commands import (
-    GetRepositories,
-    GetBranches,
-    NewRepository,
-    NewBranch,
-    UploadDatabase,
     DownloadDatabase,
+    GetBranches,
+    GetRepositories,
+    InviteTo,
+    NewBranch,
+    NewRepository,
     Subscribe,
     Unsubscribe,
-    InviteTo,
     UpdateCursors,
-    UserRenamed,
+    UploadDatabase,
     UserColorChanged,
+    UserRenamed,
 )
+from .database import Database
+from .discovery import ClientsDiscovery
 from .packets import Command, Event
 from .sockets import ClientSocket, ServerSocket
 
@@ -135,11 +135,11 @@ class ServerClient(ClientSocket):
     def _handle_get_branches(self, query):
         branches = self.parent().database.select_branches(query.repo)
         for branch in branches:
-            branchInfo = branch.repo, branch.name
-            fileName = "%s_%s.idb" % branchInfo
-            filePath = self.parent().local_file(fileName)
-            if os.path.isfile(filePath):
-                branch.tick = self.parent().database.last_tick(*branchInfo)
+            branch_info = branch.repo, branch.name
+            file_name = "%s_%s.idb" % branch_info
+            file_path = self.parent().local_file(file_name)
+            if os.path.isfile(file_path):
+                branch.tick = self.parent().database.last_tick(*branch_info)
             else:
                 branch.tick = -1
         self.send_packet(GetBranches.Reply(query, branches))
@@ -154,24 +154,24 @@ class ServerClient(ClientSocket):
 
     def _handle_upload_database(self, query):
         branch = self.parent().database.select_branch(query.repo, query.branch)
-        fileName = "%s_%s.idb" % (branch.repo, branch.name)
-        filePath = self.parent().local_file(fileName)
+        file_name = "%s_%s.idb" % (branch.repo, branch.name)
+        file_path = self.parent().local_file(file_name)
 
         # Write the file received to disk
-        with open(filePath, "wb") as outputFile:
-            outputFile.write(query.content)
-        self._logger.info("Saved file %s" % fileName)
+        with open(file_path, "wb") as output_file:
+            output_file.write(query.content)
+        self._logger.info("Saved file %s" % file_name)
         self.send_packet(UploadDatabase.Reply(query))
 
     def _handle_download_database(self, query):
         branch = self.parent().database.select_branch(query.repo, query.branch)
-        fileName = "%s_%s.idb" % (branch.repo, branch.name)
-        filePath = self.parent().local_file(fileName)
+        file_name = "%s_%s.idb" % (branch.repo, branch.name)
+        file_path = self.parent().local_file(file_name)
 
         # Read file from disk and sent it
         reply = DownloadDatabase.Reply(query)
-        with open(filePath, "rb") as inputFile:
-            reply.content = inputFile.read()
+        with open(file_path, "rb") as input_file:
+            reply.content = input_file.read()
         self.send_packet(reply)
 
     def _handle_subscribe(self, packet):

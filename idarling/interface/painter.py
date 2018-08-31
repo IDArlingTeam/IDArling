@@ -13,6 +13,7 @@
 import collections
 import logging
 import struct
+import sys
 
 import ida_funcs
 import ida_idaapi
@@ -20,6 +21,10 @@ import ida_kernwin
 import ida_nalt
 import ida_registry
 import idautils
+
+if sys.version_info > (3,):
+    long = int
+
 
 logger = logging.getLogger("IDArling.Painter")
 
@@ -38,7 +43,7 @@ class Painter(object):
             return 0xffffff
         selected = struct.unpack("<I", palette[8:12])[0]
         index = 176 + selected * 208
-        return struct.unpack("<I", palette[index : index + 4])[0]
+        return struct.unpack("<I", palette[index : index + 4])[0]  # noqa: E203
 
     def __init__(self, plugin):
         """
@@ -101,8 +106,8 @@ class Painter(object):
                     self._painter.ida_nav_colorizer = ida_nav_colorizer
                 self._painter.bg_color = Painter.get_ida_bg_color()
 
-        self._uiHooks = UIHooks(self)
-        result = self._uiHooks.hook()
+        self._ui_hooks = UIHooks(self)
+        result = self._ui_hooks.hook()
         if not result:
             raise RuntimeError("Failed to install painter")
 
@@ -116,7 +121,7 @@ class Painter(object):
         :return: did the uninstall succeed
         """
 
-        result = self._uiHooks.unhook()
+        result = self._ui_hooks.unhook()
         if not result:
             raise RuntimeError("Uninstalled the painter")
 
@@ -167,7 +172,8 @@ class Painter(object):
         self.nbytes = nbytes
         return long(orig)
 
-    def paint_navbar(self):
+    @staticmethod
+    def paint_navbar():
         """
         Request a repainting for the navbar
         """
@@ -213,7 +219,8 @@ class Painter(object):
                 color = self.bg_color
             self.set_paint_instruction(address, color)
 
-    def set_paint_instruction(self, address, color):
+    @staticmethod
+    def set_paint_instruction(address, color):
         """
         Wrapper around set_item_color
 
@@ -222,7 +229,8 @@ class Painter(object):
         """
         ida_nalt.set_item_color(address, color)
 
-    def get_paint_instruction(self, address):
+    @staticmethod
+    def get_paint_instruction(address):
         """
         Wrapper around get_item_color, get the color of a given address
 
@@ -259,7 +267,7 @@ class Painter(object):
                 return
         if new_func:
             # add the color to the new function color stack
-            self._painted_functions[new_func.startEA].append(new_func.color)
+            self._painted_functions[new_func.start_ea].append(new_func.color)
             # finaly paint the function
             self.set_paint_function(new_func, color)
 
@@ -278,8 +286,8 @@ class Painter(object):
         # if the deqeue is empty, this is the first time we meet this function
         # we must save the original color to restore it
         #
-        if new_func and not self._painted_functions[new_func.startEA]:
-            self._painted_functions[new_func.startEA].append(new_func.color)
+        if new_func and not self._painted_functions[new_func.start_ea]:
+            self._painted_functions[new_func.start_ea].append(new_func.color)
 
         if user_position:
             address = user_position["address"]
@@ -290,10 +298,10 @@ class Painter(object):
             if (func and not new_func) or (
                 func and new_func and func != new_func
             ):
-                color = self._painted_functions[func.startEA].pop()
+                color = self._painted_functions[func.start_ea].pop()
                 # if the queue is not empty, repaint all the instructions with
                 # the background color
-                if self._painted_functions[func.startEA]:
+                if self._painted_functions[func.start_ea]:
                     self.paint_function_instructions(address)
                 self.set_paint_function(func, color)
 
@@ -324,7 +332,8 @@ class Painter(object):
                 color = color if color != self.bg_color else self.DEFCOLOR
                 self.set_paint_instruction(ea, color)
 
-    def set_paint_function(self, function, color):
+    @staticmethod
+    def set_paint_function(function, color):
         """
         Set function color
 
@@ -427,7 +436,7 @@ class Painter(object):
             if e == old_color:
                 self._painted_instructions[user_address][n] = new_color
         # If the color is the current color instruction (not in the deque yet)
-        # repaint the given instrution with the new color
+        # repaint the given instruction with the new color
         if new_color not in self._painted_instructions[user_address]:
             self.set_paint_instruction(user_address, new_color)
 

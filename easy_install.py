@@ -20,59 +20,59 @@ import ida_diskio
 import ida_loader
 
 # Allow the user to override the download URL
-if 'URL' not in locals():
-    URL = 'https://github.com/IDArlingTeam/IDArling/archive/master.zip'
+if "URL" not in locals():
+    URL = "https://github.com/IDArlingTeam/IDArling/archive/master.zip"
 
-print('[*] Installing IDArling...')
-if os.name == 'nt':
+print("[*] Installing IDArling...")
+if os.name == "nt":
     # Install into the user directory on Windows
-    userDir = ida_diskio.get_user_idadir()
-    if not os.path.exists(userDir):
-        os.makedirs(userDir, 0755)
-    destDir = os.path.join(userDir, 'idarling')
-    if not os.path.exists(destDir):
-        os.makedirs(destDir, 0755)
+    user_dir = ida_diskio.get_user_idadir()
+    if not os.path.exists(user_dir):
+        os.makedirs(user_dir, 493)  # 0755
+    dest_dir = os.path.join(user_dir, "idarling")
+    if not os.path.exists(dest_dir):
+        os.makedirs(dest_dir, 493)  # 0755
 else:
     # Install into the plugins directory on Linux
-    destDir = os.path.join(ida_diskio.idadir(None), 'plugins')
+    dest_dir = os.path.join(ida_diskio.idadir(None), "plugins")
 
-print('[*] Downloading master.zip archive...')
-archivePath = os.path.join(destDir, 'master.zip')
-if os.path.exists(archivePath):
-    os.remove(archivePath)
-with open(archivePath, 'wb') as f:
+print("[*] Downloading master.zip archive...")
+archive_path = os.path.join(dest_dir, "master.zip")
+if os.path.exists(archive_path):
+    os.remove(archive_path)
+with open(archive_path, "wb") as f:
     f.write(urllib2.urlopen(URL).read())
 
-print('[*] Unzipping master.zip archive...')
-archiveDir = os.path.join(destDir, 'IDArling-master')
-if os.path.exists(archiveDir):
-    shutil.rmtree(archiveDir)
-with zipfile.ZipFile(archivePath, 'r') as zip:
-    for zipfile in zip.namelist():
-        if zipfile.startswith(os.path.basename(archiveDir)):
-            zip.extract(zipfile, destDir)
+print("[*] Unzipping master.zip archive...")
+archive_dir = os.path.join(dest_dir, "IDArling-master")
+if os.path.exists(archive_dir):
+    shutil.rmtree(archive_dir)
+with zipfile.ZipFile(archive_path, "r") as zip:
+    for zip_file in zip.namelist():
+        if zip_file.startswith(os.path.basename(archive_dir)):
+            zip.extract(zip_file, dest_dir)
 
-print('[*] Moving the IDArling files...')
-srcPath = os.path.join(archiveDir, 'idarling_plugin.py')
-dstPath = os.path.join(destDir, os.path.basename(srcPath))
-if os.path.exists(dstPath):
-    os.remove(dstPath)
-shutil.move(srcPath, dstPath)
-srcDir = os.path.join(archiveDir, 'idarling')
-dstDir = os.path.join(destDir, os.path.basename(srcDir))
-if os.path.exists(dstDir):
-    shutil.rmtree(dstDir)
-shutil.move(srcDir, dstDir)
+print("[*] Moving the IDArling files...")
+src_path = os.path.join(archive_dir, "idarling_plugin.py")
+dst_path = os.path.join(dest_dir, os.path.basename(src_path))
+if os.path.exists(dst_path):
+    os.remove(dst_path)
+shutil.move(src_path, dst_path)
+src_dir = os.path.join(archive_dir, "idarling")
+dst_dir = os.path.join(dest_dir, os.path.basename(src_dir))
+if os.path.exists(dst_dir):
+    shutil.rmtree(dst_dir)
+shutil.move(src_dir, dst_dir)
 
-print('[*] Removing master.zip archive...')
-if os.path.exists(archivePath):
-    os.remove(archivePath)
-if os.path.exists(archiveDir):
-    shutil.rmtree(archiveDir)
+print("[*] Removing master.zip archive...")
+if os.path.exists(archive_path):
+    os.remove(archive_path)
+if os.path.exists(archive_dir):
+    shutil.rmtree(archive_dir)
 
-print('[*] Loading IDArling into IDA Pro...')
-if os.name == 'nt':
-    content = '''
+print("[*] Loading IDArling into IDA Pro...")
+if os.name == "nt":
+    content = """
 #-----BEGIN IDARLING-----
 import os
 import ida_diskio
@@ -80,29 +80,29 @@ import ida_kernwin
 import ida_loader
 
 def load():
-    userDir = ida_diskio.get_user_idadir()
-    pluginDir = os.path.join(userDir, 'idarling')
-    pluginPath = os.path.join(pluginDir, 'idarling_plugin.py')
-    ida_loader.load_plugin(pluginPath)
+    user_dir = ida_diskio.get_user_idadir()
+    plugin_dir = os.path.join(user_dir, 'idarling')
+    plugin_path = os.path.join(plugin_dir, 'idarling_plugin.py')
+    ida_loader.load_plugin(plugin_path)
 ida_kernwin.register_timer(0, load)
 #-----END IDARLING-----
-    '''
-    sys.path.append(destDir)
+    """
+    sys.path.append(dest_dir)
     exec(content)
 
-    print('[*] Editing idapythonrc.py file...')
-    userDir = ida_diskio.get_user_idadir()
-    idapyrcPath = os.path.join(userDir, 'idapythonrc.py')
-    idapyrcContent = ''
-    if os.path.exists(idapyrcPath):
-        with open(idapyrcPath, 'r') as f:
-            idapyrcContent = f.read()
+    print("[*] Editing idapythonrc.py file...")
+    user_dir = ida_diskio.get_user_idadir()
+    idapyrc_path = os.path.join(user_dir, "idapythonrc.py")
+    idapyrc_content = ""
+    if os.path.exists(idapyrc_path):
+        with open(idapyrc_path, "r") as f:
+            idapyrc_content = f.read()
 
-    if content.split('\n')[1] not in idapyrcContent:
-        with open(idapyrcPath, 'a') as f:
+    if content.split("\n")[1] not in idapyrc_content:
+        with open(idapyrc_path, "a") as f:
             f.write(content)
 else:
-    pluginPath = os.path.join(destDir, 'idarling_plugin.py')
-    ida_loader.load_plugin(pluginPath)
+    plugin_path = os.path.join(dest_dir, "idarling_plugin.py")
+    ida_loader.load_plugin(plugin_path)
 
-print('[*] IDArling installed successfully!')
+print("[*] IDArling installed successfully!")

@@ -13,8 +13,8 @@
 import logging
 import os
 
-from ..shared.server import Server
 from .misc import local_resource
+from ..shared.server import Server
 
 
 def start_logging():
@@ -29,20 +29,20 @@ def start_logging():
     logger.setLevel(logging.INFO)
 
     # Get the absolute path to the log file
-    logPath = local_resource("logs", "idarling.%s.log" % os.getpid())
+    log_path = local_resource("logs", "idarling.%s.log" % os.getpid())
 
     # Log to the console
-    streamHandler = logging.StreamHandler()
-    logFormat = "[%(levelname)s] %(message)s"
-    formatter = logging.Formatter(fmt=logFormat)
-    streamHandler.setFormatter(formatter)
-    logger.addHandler(streamHandler)
+    stream_handler = logging.StreamHandler()
+    log_format = "[%(levelname)s] %(message)s"
+    formatter = logging.Formatter(fmt=log_format)
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
 
     # Log to the log file
-    fileHandler = logging.FileHandler(logPath)
-    logFormat = "[%(asctime)s][%(levelname)s] %(message)s"
-    formatter = logging.Formatter(fmt=logFormat, datefmt="%H:%M:%S")
-    fileHandler.setFormatter(formatter)
-    logger.addHandler(fileHandler)
+    file_handler = logging.FileHandler(log_path)
+    log_format = "[%(asctime)s][%(levelname)s] %(message)s"
+    formatter = logging.Formatter(fmt=log_format, datefmt="%H:%M:%S")
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
 
     return logger

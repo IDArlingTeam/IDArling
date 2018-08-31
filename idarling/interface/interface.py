@@ -15,11 +15,11 @@ import logging
 
 import ida_kernwin
 
-from PyQt5.QtCore import Qt, QObject
-from PyQt5.QtGui import QContextMenuEvent, QIcon, QImage, QShowEvent, QPixmap
+from PyQt5.QtCore import QObject, Qt  # noqa: I202
+from PyQt5.QtGui import QContextMenuEvent, QIcon, QImage, QPixmap, QShowEvent
 from PyQt5.QtWidgets import (
-    qApp,
     QAction,
+    qApp,
     QDialog,
     QGroupBox,
     QLabel,
@@ -28,12 +28,12 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from ..module import Module
-from ..shared.commands import InviteTo
 from .actions import OpenAction, SaveAction
 from .painter import Painter
 from .toasts import Toast
 from .widgets import StatusWidget
+from ..module import Module
+from ..shared.commands import InviteTo
 
 logger = logging.getLogger("IDArling.Interface")
 
@@ -58,8 +58,8 @@ class Interface(Module):
         super(Interface, self).__init__(plugin)
         self._window = self._find_main_window()
 
-        self._openAction = OpenAction(plugin)
-        self._saveAction = SaveAction(plugin)
+        self._open_action = OpenAction(plugin)
+        self._save_action = SaveAction(plugin)
         self._painter = Painter(plugin)
 
         class EventHandler(QObject):
@@ -79,7 +79,7 @@ class Interface(Module):
                 )
                 label.setPixmap(pixmap)
 
-            def eventFilter(self, obj, ev):
+            def eventFilter(self, obj, ev):  # noqa: N802
                 if isinstance(obj, QDialog) and isinstance(ev, QShowEvent):
                     if obj.windowTitle() == "About":
                         for child in obj.children():
@@ -118,15 +118,15 @@ class Interface(Module):
                         pixmap = QPixmap(self._plugin.resource("users.png"))
                         everyone.setIcon(QIcon(pixmap))
 
-                        def inviteTo(name):
+                        def invite_to(name):
                             loc = ida_kernwin.get_screen_ea()
                             packet = InviteTo(name, loc)
                             self._plugin.network.send_packet(packet)
 
-                        def inviteToEveryone():
-                            inviteTo("everyone")
+                        def invite_to_everyone():
+                            invite_to("everyone")
 
-                        everyone.triggered.connect(inviteToEveryone)
+                        everyone.triggered.connect(invite_to_everyone)
                         menu.addAction(everyone)
 
                         menu.addSeparator()
@@ -164,10 +164,10 @@ class Interface(Module):
                             action = QAction(name, menu)
                             action.setIcon(QIcon(QPixmap(image)))
 
-                            def inviteToUser():
-                                inviteTo(name)
+                            def invite_to_user():
+                                invite_to(name)
 
-                            action.triggered.connect(inviteToUser)
+                            action.triggered.connect(invite_to_user)
                             return action
 
                         painter = self._plugin.interface.painter
@@ -177,26 +177,26 @@ class Interface(Module):
                         self._augment = False
                 return False
 
-        self._eventFilter = EventHandler(self._plugin)
-        self._statusWidget = StatusWidget(self._plugin)
+        self._event_filter = EventHandler(self._plugin)
+        self._status_widget = StatusWidget(self._plugin)
 
     def _install(self):
-        self._openAction.install()
-        self._saveAction.install()
+        self._open_action.install()
+        self._save_action.install()
         self._install_event_filter()
         self._painter.install()
 
-        self._window.statusBar().addPermanentWidget(self._statusWidget)
+        self._window.statusBar().addPermanentWidget(self._status_widget)
         logger.debug("Installed widgets in status bar")
         return True
 
     def _uninstall(self):
-        self._openAction.uninstall()
-        self._saveAction.uninstall()
+        self._open_action.uninstall()
+        self._save_action.uninstall()
         self._uninstall_event_filter()
         self._painter.uninstall()
 
-        self._window.statusBar().removeWidget(self._statusWidget)
+        self._window.statusBar().removeWidget(self._status_widget)
         logger.debug("Uninstalled widgets from status bar")
         return True
 
@@ -204,42 +204,42 @@ class Interface(Module):
         """
         Force to update the actions' status (enabled/disabled).
         """
-        self._openAction.update()
-        self._saveAction.update()
+        self._open_action.update()
+        self._save_action.update()
 
     def _install_event_filter(self):
         """
         Install the Qt event filter.
         """
-        qApp.instance().installEventFilter(self._eventFilter)
+        qApp.instance().installEventFilter(self._event_filter)
 
     def _uninstall_event_filter(self):
         """
         Uninstall the Qt event filter.
         """
-        qApp.instance().removeEventFilter(self._eventFilter)
+        qApp.instance().removeEventFilter(self._event_filter)
 
     def show_notification(self, text, icon, callback):
         if not self._plugin.config["user"]["notifications"]:
             return
         toast = Toast(self._window)
-        toast.setText(text)
-        toast.setIcon(icon)
-        toast.setCallback(callback)
+        toast.set_text(text)
+        toast.set_icon(icon)
+        toast.set_callback(callback)
         toast.show()
 
     def notify_disconnected(self):
-        self._statusWidget.set_state(StatusWidget.STATE_DISCONNECTED)
-        self._statusWidget.set_server(None)
+        self._status_widget.set_state(StatusWidget.STATE_DISCONNECTED)
+        self._status_widget.set_server(None)
         self._update_actions()
 
     def notify_connecting(self):
-        self._statusWidget.set_state(StatusWidget.STATE_CONNECTING)
-        self._statusWidget.set_server(self._plugin.network.server)
+        self._status_widget.set_state(StatusWidget.STATE_CONNECTING)
+        self._status_widget.set_server(self._plugin.network.server)
         self._update_actions()
 
     def notify_connected(self):
-        self._statusWidget.set_state(StatusWidget.STATE_CONNECTED)
+        self._status_widget.set_state(StatusWidget.STATE_CONNECTED)
         self._update_actions()
 
     @property

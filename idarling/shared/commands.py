@@ -10,14 +10,14 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from .models import Repository, Branch
+from .models import Branch, Repository
 from .packets import (
     Command,
+    Container,
     DefaultCommand,
     ParentCommand,
     Query as IQuery,
     Reply as IReply,
-    Container,
 )
 
 

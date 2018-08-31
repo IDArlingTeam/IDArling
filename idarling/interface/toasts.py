@@ -11,15 +11,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from PyQt5.QtCore import (
-    Qt,
-    QPoint,
-    QRect,
-    QPropertyAnimation,
-    QTimer,
     pyqtProperty,
+    QPoint,
+    QPropertyAnimation,
+    QRect,
+    Qt,
+    QTimer,
 )
-from PyQt5.QtGui import QPixmap, QPainter, QBrush, QColor
-from PyQt5.QtWidgets import QWidget, QLabel, QHBoxLayout
+from PyQt5.QtGui import QBrush, QColor, QPainter, QPixmap
+from PyQt5.QtWidgets import QHBoxLayout, QLabel, QWidget
 
 
 class Toast(QWidget):
@@ -42,17 +42,17 @@ class Toast(QWidget):
         self._layout.addWidget(self._text)
         self.setLayout(self._layout)
 
-        self._popupOpacity = 0.0
+        self._popup_opacity = 0.0
         self._animation = QPropertyAnimation()
         self._animation.setTargetObject(self)
-        self._animation.setPropertyName("popupOpacity")
+        self._animation.setPropertyName("popup_opacity")
         self._animation.finished.connect(self.hide)
 
         self._timer = QTimer()
-        self._timer.timeout.connect(self.hideAnimation)
+        self._timer.timeout.connect(self.hide_animation)
         self._callback = None
 
-    def paintEvent(self, event):
+    def paintEvent(self, event):  # noqa: N802
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
@@ -71,29 +71,29 @@ class Toast(QWidget):
         painter.setPen(Qt.NoPen)
         painter.drawRect(rect)
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event):  # noqa: N802
         if self._callback:
             self._callback()
-        self.hideAnimation()
+        self.hide_animation()
 
-    def setText(self, text):
+    def set_text(self, text):
         self._text.setText(text)
         self.adjustSize()
 
-    def setIcon(self, path):
+    def set_icon(self, path):
         pixmap = QPixmap(path)
-        pixmapHeight = self._text.sizeHint().height()
+        pixmap_height = self._text.sizeHint().height()
         self._icon.setPixmap(
             pixmap.scaled(
-                pixmapHeight,
-                pixmapHeight,
+                pixmap_height,
+                pixmap_height,
                 Qt.KeepAspectRatio,
                 Qt.SmoothTransformation,
             )
         )
         self._layout.insertWidget(0, self._icon)
 
-    def setCallback(self, callback):
+    def set_callback(self, callback):
         self._callback = callback
 
     def show(self):
@@ -118,10 +118,10 @@ class Toast(QWidget):
         self._timer.start(3500)
 
     def hide(self):
-        if self._popupOpacity == 0.0:
+        if self._popup_opacity == 0.0:
             super(Toast, self).hide()
 
-    def hideAnimation(self):
+    def hide_animation(self):
         self._timer.stop()
         self._animation.setDuration(500)
         self._animation.setStartValue(1.0)
@@ -129,10 +129,10 @@ class Toast(QWidget):
         self._animation.start()
 
     @pyqtProperty(float)
-    def popupOpacity(self):
-        return self._popupOpacity
+    def popup_opacity(self):
+        return self._popup_opacity
 
-    @popupOpacity.setter
-    def popupOpacity(self, opacity):
-        self._popupOpacity = opacity
+    @popup_opacity.setter
+    def popup_opacity(self, opacity):
+        self._popup_opacity = opacity
         self.setWindowOpacity(opacity)

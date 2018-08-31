@@ -14,10 +14,10 @@ import logging
 import socket
 import ssl
 
-from ..module import Module
-from ..shared.discovery import ServersDiscovery
 from .client import Client
 from .server import IntegratedServer
+from ..module import Module
+from ..shared.discovery import ServersDiscovery
 
 logger = logging.getLogger("IDArling.Network")
 

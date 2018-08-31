@@ -15,12 +15,12 @@ import logging
 import ida_kernwin
 
 from ..shared.commands import (
+    InviteTo,
     Subscribe,
     Unsubscribe,
-    InviteTo,
     UpdateCursors,
-    UserRenamed,
     UserColorChanged,
+    UserRenamed,
 )
 from ..shared.packets import Command, Event
 from ..shared.sockets import ClientSocket

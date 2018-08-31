@@ -11,6 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import logging
+import sys
 
 import ida_bytes
 import ida_enum
@@ -28,6 +29,10 @@ import ida_typeinf
 import ida_ua
 
 from ..shared.packets import DefaultEvent
+
+if sys.version_info > (3,):
+    unicode = str
+
 
 logger = logging.getLogger("IDArling.Core")
 
@@ -383,7 +388,7 @@ class OpTypeChangedEvent(Event):
         if self.op == "struct":
             path_len = len(self.extra["spath"])
             path = ida_pro.tid_array(path_len)
-            for i in xrange(path_len):
+            for i in range(path_len):
                 sname = Event.encode(self.extra["spath"][i])
                 path[i] = ida_struct.get_struc_id(sname)
             insn = ida_ua.insn_t()

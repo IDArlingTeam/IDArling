@@ -19,7 +19,7 @@ import random
 import ida_idaapi
 import ida_kernwin
 
-from PyQt5.QtCore import QCoreApplication
+from PyQt5.QtCore import QCoreApplication  # noqa: I202
 
 from .core.core import Core
 from .interface.interface import Interface
@@ -212,12 +212,12 @@ class Plugin(ida_idaapi.plugin_t):
             ]
         }
         """
-        configPath = local_resource("files", "config.json")
-        if not os.path.isfile(configPath):
+        config_path = local_resource("files", "config.json")
+        if not os.path.isfile(config_path):
             return
-        with open(configPath, "rb") as configFile:
+        with open(config_path, "rb") as config_file:
             try:
-                self._config.update(json.loads(configFile.read()))
+                self._config.update(json.loads(config_file.read()))
             except ValueError:
                 logger.warning("Couldn't load config file")
                 return
@@ -228,10 +228,10 @@ class Plugin(ida_idaapi.plugin_t):
         """
         Save the config file.
         """
-        configPath = local_resource("files", "config.json")
-        with open(configPath, "wb") as configFile:
+        config_path = local_resource("files", "config.json")
+        with open(config_path, "wb") as config_file:
             logger.debug("Saved config: %s" % self._config)
-            configFile.write(json.dumps(self._config))
+            config_file.write(json.dumps(self._config))
 
     def notify_disconnected(self):
         """

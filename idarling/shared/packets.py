@@ -23,7 +23,7 @@ def with_metaclass(meta, *bases):
     :return: the new type
     """
 
-    class metaclass(type):
+    class Metaclass(type):
         def __new__(cls, name, this_bases, d):
             return meta(name, bases, d)
 
@@ -31,7 +31,7 @@ def with_metaclass(meta, *bases):
         def __prepare__(cls, name, _):
             return meta.__prepare__(name, bases)
 
-    return type.__new__(metaclass, "temporary_class", (), {})
+    return type.__new__(Metaclass, "temporary_class", (), {})
 
 
 class Serializable(object):
@@ -133,7 +133,7 @@ class PacketFactory(type):
         return cls
 
     @classmethod
-    def get_class(mcs, dct, server=False):
+    def get_class(mcs, dct, server=False):  # noqa: N804
         """
         Get the class corresponding to the given dictionary.
 
@@ -322,7 +322,7 @@ class EventFactory(PacketFactory):
         return cls
 
     @classmethod
-    def get_class(mcs, dct, server=False):
+    def get_class(mcs, dct, server=False):  # noqa: N804
         if server:  # Server only knows about DefaultEvent
             return DefaultEvent
 
@@ -431,7 +431,7 @@ class CommandFactory(PacketFactory):
         return cls
 
     @classmethod
-    def get_class(mcs, dct, server=False):
+    def get_class(mcs, dct, server=False):  # noqa: N804
         cls = CommandFactory._COMMANDS[dct["command_type"]]
         if type(cls) != mcs:
             cls = type(cls).get_class(dct, server)

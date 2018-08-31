@@ -16,10 +16,9 @@ import ida_idp
 import ida_kernwin
 import ida_netnode
 
+from .hooks import HexRaysHooks, Hooks, IDBHooks, IDPHooks, UIHooks, ViewHooks
 from ..module import Module
 from ..shared.commands import Subscribe, Unsubscribe
-
-from .hooks import Hooks, IDBHooks, IDPHooks, HexRaysHooks, ViewHooks, UIHooks
 
 logger = logging.getLogger("IDArling.Core")
 
@@ -35,14 +34,14 @@ class Core(Module):
         super(Core, self).__init__(plugin)
         self._hooked = False
 
-        self._idbHooks = None
-        self._idpHooks = None
-        self._hxeHooks = None
-        self._viewHooks = None
-        self._uiHooks = None
+        self._idb_hooks = None
+        self._idp_hooks = None
+        self._hxe_hooks = None
+        self._view_hooks = None
+        self._ui_hooks = None
 
-        self._uiHooksCore = None
-        self._idbHooksCore = None
+        self._ui_hooks_core = None
+        self._idb_hooks_core = None
 
         # Database members
         self._repo = None
@@ -53,11 +52,11 @@ class Core(Module):
         logger.debug("Installing hooks")
         core = self
 
-        self._idbHooks = IDBHooks(self._plugin)
-        self._idpHooks = IDPHooks(self._plugin)
-        self._hxeHooks = HexRaysHooks(self._plugin)
-        self._viewHooks = ViewHooks(self._plugin)
-        self._uiHooks = UIHooks(self._plugin)
+        self._idb_hooks = IDBHooks(self._plugin)
+        self._idp_hooks = IDPHooks(self._plugin)
+        self._hxe_hooks = HexRaysHooks(self._plugin)
+        self._view_hooks = ViewHooks(self._plugin)
+        self._ui_hooks = UIHooks(self._plugin)
 
         class UIHooksCore(Hooks, ida_kernwin.UI_Hooks):
             """
@@ -85,8 +84,8 @@ class Core(Module):
                     )
                     core.hook_all()
 
-        self._uiHooksCore = UIHooksCore(self._plugin)
-        self._uiHooksCore.hook()
+        self._ui_hooks_core = UIHooksCore(self._plugin)
+        self._ui_hooks_core.hook()
 
         class IDBHooksCore(Hooks, ida_idp.IDB_Hooks):
             """
@@ -106,14 +105,14 @@ class Core(Module):
                 core.ticks = 0
                 return 0
 
-        self._idbHooksCore = IDBHooksCore(self._plugin)
-        self._idbHooksCore.hook()
+        self._idb_hooks_core = IDBHooksCore(self._plugin)
+        self._idb_hooks_core.hook()
         return True
 
     def _uninstall(self):
         logger.debug("Uninstalling hooks")
-        self._idbHooksCore.unhook()
-        self._uiHooksCore.unhook()
+        self._idb_hooks_core.unhook()
+        self._ui_hooks_core.unhook()
         self.unhook_all()
         return True
 
@@ -123,11 +122,11 @@ class Core(Module):
         """
         if self._hooked:
             return
-        self._idbHooks.hook()
-        self._idpHooks.hook()
-        self._hxeHooks.hook()
-        self._viewHooks.hook()
-        self._uiHooks.hook()
+        self._idb_hooks.hook()
+        self._idp_hooks.hook()
+        self._hxe_hooks.hook()
+        self._view_hooks.hook()
+        self._ui_hooks.hook()
         self._hooked = True
 
     def unhook_all(self):
@@ -136,11 +135,11 @@ class Core(Module):
         """
         if not self._hooked:
             return
-        self._idbHooks.unhook()
-        self._idpHooks.unhook()
-        self._hxeHooks.unhook()
-        self._viewHooks.unhook()
-        self._uiHooks.unhook()
+        self._idb_hooks.unhook()
+        self._idp_hooks.unhook()
+        self._hxe_hooks.unhook()
+        self._view_hooks.unhook()
+        self._ui_hooks.unhook()
         self._hooked = False
 
     @property
