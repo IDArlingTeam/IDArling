@@ -10,6 +10,7 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import platform
 import socket
 
 from PyQt5.QtCore import QObject, QSocketNotifier, QTimer
@@ -112,7 +113,8 @@ class ServersDiscovery(QObject):
         self._logger.debug("Starting servers discovery....")
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        if platform.system() == "Darwin":
+            self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         self._socket.bind(("", 31013))
         self._socket.settimeout(0)
         self._socket.setblocking(0)
