@@ -10,7 +10,6 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import logging
 import sys
 
 import ida_bytes
@@ -34,62 +33,43 @@ if sys.version_info > (3,):
     unicode = str
 
 
-logger = logging.getLogger("IDArling.Core")
-
-
 class Event(DefaultEvent):
+    """
+    This is a common class for events that provides utilities methods to
+    encode/decode string and raw bytes. Events should also implement __call__
+    which is called when it needs to be replayed into IDA.
+    """
+
     @staticmethod
     def encode(s):
-        """
-        Encodes a unicode string into UTF-8 bytes.
-
-        :param s: the unicode string
-        :return: the utf-8 bytes
-        """
+        """Encodes a unicode string into UTF-8 bytes."""
         if not isinstance(s, unicode):
             return s
         return s.encode("utf-8")
 
     @staticmethod
     def encode_bytes(s):
-        """
-        Encodes a unicode string into raw bytes.
-
-        :param s: the unicode string
-        :return: the raw bytes
-        """
+        """Encodes a unicode string into raw bytes."""
         if not isinstance(s, unicode):
             return s
         return s.encode("raw_unicode_escape")
 
     @staticmethod
     def decode(s):
-        """
-        Decodes UTF-8 bytes into a unicode string.
-
-        :param s: the utf-8 bytes
-        :return: the unicode string
-        """
+        """Decodes UTF-8 bytes into a unicode string."""
         if not isinstance(s, str):
             return s
         return s.decode("utf-8")
 
     @staticmethod
     def decode_bytes(s):
-        """
-        Decodes raw bytes into a unicode string.
-
-        :param s: the raw bytes
-        :return: the unicode string
-        """
+        """Decodes raw bytes into a unicode string."""
         if not isinstance(s, str):
             return s
         return s.decode("raw_unicode_escape")
 
     def __call__(self):
-        """
-        Trigger the event. This will reproduce the action into IDA.
-        """
+        """Reproduce the underlying user action into IDA."""
         raise NotImplementedError("__call__() not implemented")
 
 
@@ -254,7 +234,7 @@ class RangeCmtChangedEvent(Event):
             segment = ida_segment.getseg(self.start_ea)
             ida_segment.set_segment_cmt(segment, cmt, self.rptble)
         else:
-            logger.warning("Unsupported range kind: %d" % self.kind)
+            raise Exception("Unsupported range kind: %d" % self.kind)
 
 
 class ExtraCmtChangedEvent(Event):
@@ -334,7 +314,7 @@ class LocalTypesChangedEvent(Event):
                 local_type.append(None)
 
         def alloc_oridinal(target_ordinal):
-            # get_ordinal_qty() will return (current max ordinal + 1)
+            # Get_ordinal_qty() will return (current max ordinal + 1)
             missing_ord = (
                 target_ordinal - ida_typeinf.get_ordinal_qty(None) + 1
             )
@@ -343,19 +323,14 @@ class LocalTypesChangedEvent(Event):
 
         for t in local_type:
             if t is not None:
-                logger.debug("Processing: %s", str(t))
                 alloc_oridinal(t[0])
 
-                # Can't change some local types if not delete them first
-                # Example: struct aaa{int a;}'
+                # Can't change some local types if we don't delete them first
                 ida_typeinf.del_numbered_type(None, t[0])
 
                 cur_tinfo = ida_typeinf.tinfo_t()
                 cur_tinfo.deserialize(None, t[1], t[2])
-                logger.debug(
-                    "set_numbered_type ret: %d",
-                    cur_tinfo.set_numbered_type(None, t[0], 0, t[3]),
-                )
+                cur_tinfo.set_numbered_type(None, t[0], 0, t[3])
                 ida_typeinf.import_type(None, -1, t[-1])
 
         ida_kernwin.request_refresh(ida_kernwin.IWID_LOCTYPS)
@@ -398,8 +373,7 @@ class OpTypeChangedEvent(Event):
             )
         if self.op == "stkvar":
             ida_bytes.op_stkvar(self.ea, self.n)
-        # IDA hooks for is_invsign seems broken
-        # Inverting sign don't trigger the hook
+        # FIXME: No hooks are called when inverting sign
         # if self.op == 'invert_sign':
         #     idc.toggle_sign(ea, n)
 
@@ -833,9 +807,7 @@ class BytePatchedEvent(Event):
 class HexRaysEvent(Event):
     @staticmethod
     def refresh_pseudocode_view():
-        """
-        Refresh the pseudocode view in IDA.
-        """
+        """Refreshes the pseudocode view in IDA."""
         names = ["Pseudocode-%c" % chr(ord("A") + i) for i in range(5)]
         for name in names:
             widget = ida_kernwin.find_widget(name)
@@ -889,7 +861,7 @@ class UserIflagsEvent(HexRaysEvent):
         self.iflags = iflags
 
     def __call__(self):
-        # FIXME: Hey-Rays bindings are broken
+        # FIXME: Hey-Rays bindings are currently broken
         # iflags = ida_hexrays.user_iflags_new()
         # for (cl_ea, cl_op), f in self.iflags:
         #     cl = ida_hexrays.citem_locator_t(cl_ea, cl_op)
@@ -973,17 +945,17 @@ class UserLvarSettingsEvent(HexRaysEvent):
         elif dct["atype"] == ida_typeinf.ALOC_STACK:
             location.set_stkoff(dct["stkoff"])
         elif dct["atype"] == ida_typeinf.ALOC_DIST:
-            pass  # Not supported (yet)
+            pass  # FIXME: Not supported
         elif dct["atype"] == ida_typeinf.ALOC_REG1:
             location.set_reg1(dct["reg1"])
         elif dct["atype"] == ida_typeinf.ALOC_REG2:
             location.set_reg2(dct["reg1"], dct["reg2"])
         elif dct["atype"] == ida_typeinf.ALOC_RREL:
-            pass  # Not supported (yet)
+            pass  # FIXME: Not supported
         elif dct["atype"] == ida_typeinf.ALOC_STATIC:
             location.set_ea(dct["ea"])
         elif dct["atype"] == ida_typeinf.ALOC_CUSTOM:
-            pass  # Not supported (yet)
+            pass  # FIXME: Not supported
         return location
 
 

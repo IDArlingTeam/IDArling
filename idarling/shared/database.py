@@ -19,24 +19,17 @@ from .packets import Default, DefaultEvent
 
 class Database(object):
     """
-    An utility object used by the server, that be used to query
-    asynchronously the underling SQL database.
+    This object is used to access the SQL database used by the server. It
+    also defines some utility methods. Currently, only SQLite3 is implemented.
     """
 
     def __init__(self, dbpath):
-        """
-        Initialize the database wrapper.
-
-        :param dbpath: the database path
-        """
         self._conn = sqlite3.connect(dbpath, check_same_thread=False)
-        self._conn.isolation_level = None
-        self._conn.row_factory = sqlite3.Row
+        self._conn.isolation_level = None  # No need to commit
+        self._conn.row_factory = sqlite3.Row  # Use Row objects
 
     def initialize(self):
-        """
-        Creates all the tables used by the wrapper.
-        """
+        """Create all the default tables."""
         self._create(
             "repos",
             [
@@ -72,74 +65,37 @@ class Database(object):
         )
 
     def insert_repo(self, repo):
-        """
-        Inserts a new repository into the database.
-
-        :param repo: the repository
-        """
+        """Insert a new repository into the database."""
         self._insert("repos", Default.attrs(repo.__dict__))
 
     def select_repo(self, name):
-        """
-        Selects the repository with the given name.
-
-        :param name: the name
-        :return: the repository or None
-        """
+        """Select the repository with the given name."""
         objects = self.select_repos(name, 1)
         return objects[0] if objects else None
 
     def select_repos(self, name=None, limit=None):
-        """
-        Selects the repositories with the given name.
-
-        :param name: the name, or None if all
-        :param limit: the number of results
-        :return: a list of the repositories
-        """
+        """Select the repositories with the given name."""
         results = self._select("repos", {"name": name}, limit)
         return [Repository(**result) for result in results]
 
     def insert_branch(self, branch):
-        """
-        Inserts a new branch into the database.
-
-        :param branch: the branch
-        """
+        """Insert a new branch into the database."""
         attrs = Default.attrs(branch.__dict__)
         attrs.pop("tick")
         self._insert("branches", attrs)
 
     def select_branch(self, repo, name):
-        """
-        Selects the branch with the given name and repo.
-
-        :param repo: the repository name
-        :param name: the branch name
-        :return: the branch or None
-        """
+        """Select the branch with the given repo and name."""
         objects = self.select_branches(repo, name, 1)
         return objects[0] if objects else None
 
     def select_branches(self, repo=None, name=None, limit=None):
-        """
-        Selects the branches with the given repo and name.
-
-        :param repo: the repository name, or None if all
-        :param name: the branch name, or None if all
-        :param limit: the number of results to return
-        :return: a list of branches
-        """
+        """Select the branches with the given repo and name."""
         results = self._select("branches", {"repo": repo, "name": name}, limit)
         return [Branch(**result) for result in results]
 
     def insert_event(self, client, event):
-        """
-        Inserts a new event into the database.
-
-        :param client: the client
-        :param event: the event
-        """
+        """Insert a new event into the database."""
         dct = DefaultEvent.attrs(event.__dict__)
         self._insert(
             "events",
@@ -152,14 +108,7 @@ class Database(object):
         )
 
     def select_events(self, repo, branch, tick):
-        """
-        Get all events sent after the given ticks count.
-
-        :param repo: the repository name
-        :param branch: the branch name
-        :param tick: the ticks count
-        :return: a list of events
-        """
+        """Get all events sent after the given tick count."""
         c = self._conn.cursor()
         sql = "select * from events where repo = ? and branch = ?"
         sql += "and tick > ? order by tick asc;"
@@ -172,13 +121,7 @@ class Database(object):
         return events
 
     def last_tick(self, repo, branch):
-        """
-        Get the last tick for the specified repo and branch.
-
-        :param repo: the repo name
-        :param branch: the branch name
-        :return: the last tick
-        """
+        """Get the last tick of the specified repo and branch."""
         c = self._conn.cursor()
         sql = "select tick from events where repo = ? and branch = ? "
         sql += "order by tick desc limit 1;"
@@ -187,25 +130,13 @@ class Database(object):
         return result["tick"] if result else 0
 
     def _create(self, table, cols):
-        """
-        Creates a table with the given name and columns.
-
-        :param table: the table name
-        :param cols: the columns
-        """
+        """Create a table with the given name and columns."""
         c = self._conn.cursor()
         sql = "create table if not exists {} ({});"
         c.execute(sql.format(table, ", ".join(cols)))
 
     def _select(self, table, fields, limit=None):
-        """
-        Selects the rows of a table matching the given values.
-
-        :param table: the table name
-        :param fields: the fields and values to match
-        :param limit: the number of results to return
-        :return: the selected rows
-        """
+        """Select the rows of a table matching the given values."""
         c = self._conn.cursor()
         sql = "select * from {}".format(table)
         fields = {key: val for key, val in fields.items() if val}
@@ -217,12 +148,7 @@ class Database(object):
         return c.fetchall()
 
     def _insert(self, table, fields):
-        """
-        Inserts a row into a table with the given values.
-
-        :param table: the table name
-        :param fields: the field and values
-        """
+        """Insert a row into a table with the given values."""
         c = self._conn.cursor()
         sql = "insert into {} ({}) values ({});"
         keys = ", ".join(fields.keys())

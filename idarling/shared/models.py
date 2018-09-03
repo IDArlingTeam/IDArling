@@ -15,8 +15,8 @@ from .packets import Default
 
 class Model(Default):
     """
-    An object that can be serialized before being sent over the network,
-    but that can also be saved into the server SQL database.
+    A model is an object can be serialized and sent over the network, but that
+    can be saved into the SQL database used by the server.
     """
 
     def build(self, dct):
@@ -31,8 +31,6 @@ class Model(Default):
         """
         Return a textual representation of the object. It will mainly be used
         for pretty-printing into the console.
-
-        :return: the representation
         """
         attrs = u", ".join(
             [
@@ -45,19 +43,13 @@ class Model(Default):
 
 class Repository(Model):
     """
-    The class representing a repository.
+    The IDA databases are organized into repositories and branches. This is
+    inspired by Git. A repository regroups multiples revisions of a database.
+    It has a name, the hash of the input file, the path to the input file,
+    the type of the input and the data of the database creation.
     """
 
     def __init__(self, name, hash, file, type, date):
-        """
-        Initialize a repository.
-
-        :param name: the repository name
-        :param hash: the hash of the input file
-        :param file: the name of the input file
-        :param type: the type of the input file
-        :param date: the date of creation
-        """
         super(Repository, self).__init__()
         self.name = name
         self.hash = hash
@@ -68,18 +60,12 @@ class Repository(Model):
 
 class Branch(Model):
     """
-    The class representing a branch.
+    The IDA databases are organized into repositories and branches. This is
+    inspired by Git. A branch is a revision of a database. It has a repository,
+    a name, a date of creation, and a current tick (events) count.
     """
 
     def __init__(self, repo, name, date, tick=0):
-        """
-        Initialize a branch.
-
-        :param repo: the name of the repo
-        :param name: the name of the branch
-        :param date: the date of creation
-        :param tick: the last tick received
-        """
         super(Branch, self).__init__()
         self.repo = repo
         self.name = name

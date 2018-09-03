@@ -33,7 +33,7 @@ class GetRepositories(ParentCommand):
             self.repos = repos
 
         def build_command(self, dct):
-            dct["repos"] = [repo.build(dict()) for repo in self.repos]
+            dct["repos"] = [repo.build({}) for repo in self.repos]
 
         def parse_command(self, dct):
             self.repos = [Repository.new(repo) for repo in dct["repos"]]
@@ -53,7 +53,7 @@ class GetBranches(ParentCommand):
             self.branches = branches
 
         def build_command(self, dct):
-            dct["branches"] = [br.build(dict()) for br in self.branches]
+            dct["branches"] = [br.build({}) for br in self.branches]
 
         def parse_command(self, dct):
             self.branches = [Branch.new(br) for br in dct["branches"]]

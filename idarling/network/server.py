@@ -10,21 +10,18 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import logging
-
 from ..shared.server import Server
-from ..utilities.misc import local_resource
-
-logger = logging.getLogger("IDArling.Network")
 
 
 class IntegratedServer(Server):
     """
-    The integrated server implementation.
+    The integrated server inherits the logic from Server. It simply needs to
+    define the server_file method to indicate where to save the databases.
     """
 
-    def __init__(self, parent=None):
-        Server.__init__(self, logger, None, parent)
+    def __init__(self, plugin, parent=None):
+        self._plugin = plugin
+        Server.__init__(self, plugin.logger, None, parent)
 
-    def local_file(self, filename):
-        return local_resource("files", filename)
+    def server_file(self, filename):
+        return self._plugin.user_resource("files", filename)

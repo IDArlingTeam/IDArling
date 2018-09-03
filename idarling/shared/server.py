@@ -37,16 +37,38 @@ from .sockets import ClientSocket, ServerSocket
 
 class ServerClient(ClientSocket):
     """
-    The client (server-side) implementation.
+    This class represents a client socket for the server. It implements all the
+    handlers for the packet the client is susceptible to send.
     """
 
     def __init__(self, logger, parent=None):
         ClientSocket.__init__(self, logger, parent)
         self._repo = None
         self._branch = None
-        self._color = None
         self._name = None
+        self._color = None
+        self._ea = None
         self._handlers = {}
+
+    @property
+    def repo(self):
+        """Get the user repository."""
+        return self._repo
+
+    @property
+    def branch(self):
+        """Get the user branch."""
+        return self._branch
+
+    @property
+    def name(self):
+        """Get the user name."""
+        return self._name
+
+    @property
+    def color(self):
+        """Get the user color."""
+        return self._color
 
     def connect(self, sock):
         ClientSocket.connect(self, sock)
@@ -77,27 +99,9 @@ class ServerClient(ClientSocket):
             UserColorChanged: self._handle_user_color_changed,
         }
 
-    @property
-    def repo(self):
-        """
-        Get the current repository.
-
-        :return: the name
-        """
-        return self._repo
-
-    @property
-    def branch(self):
-        """
-        Get the current branch.
-
-        :return: the name
-        """
-        return self._branch
-
     def disconnect(self, err=None):
         ClientSocket.disconnect(self, err)
-        self.parent().unregister_client(self)
+        self.parent().client_unsubscribe(self)
         self._logger.info("Disconnected")
 
     def recv_packet(self, packet):
@@ -120,10 +124,8 @@ class ServerClient(ClientSocket):
 
             # Save the event into the database
             self.parent().database.insert_event(self, packet)
-
             # Forward the event to the other clients
-            for client in self.parent().find_clients(self._should_forward):
-                client.send_packet(packet)
+            self.parent().forward_packet(self, packet)
         else:
             return False
         return True
@@ -137,7 +139,7 @@ class ServerClient(ClientSocket):
         for branch in branches:
             branch_info = branch.repo, branch.name
             file_name = "%s_%s.idb" % branch_info
-            file_path = self.parent().local_file(file_name)
+            file_path = self.parent().server_file(file_name)
             if os.path.isfile(file_path):
                 branch.tick = self.parent().database.last_tick(*branch_info)
             else:
@@ -155,7 +157,7 @@ class ServerClient(ClientSocket):
     def _handle_upload_database(self, query):
         branch = self.parent().database.select_branch(query.repo, query.branch)
         file_name = "%s_%s.idb" % (branch.repo, branch.name)
-        file_path = self.parent().local_file(file_name)
+        file_path = self.parent().server_file(file_name)
 
         # Write the file received to disk
         with open(file_path, "wb") as output_file:
@@ -166,7 +168,7 @@ class ServerClient(ClientSocket):
     def _handle_download_database(self, query):
         branch = self.parent().database.select_branch(query.repo, query.branch)
         file_name = "%s_%s.idb" % (branch.repo, branch.name)
-        file_path = self.parent().local_file(file_name)
+        file_path = self.parent().server_file(file_name)
 
         # Read file from disk and sent it
         reply = DownloadDatabase.Reply(query)
@@ -180,11 +182,11 @@ class ServerClient(ClientSocket):
         self._name = packet.name
         self._color = packet.color
         self._ea = packet.ea
-        self.parent().register_client(self)
+        self.parent().client_subscribe(self)
 
         # Inform others people that we are subscribing
-        for client in self.parent().find_clients(self._should_forward):
-            client.send_packet(packet)
+        self.parent().forward_packet(self, packet)
+
         # Send all missed events
         events = self.parent().database.select_events(
             self._repo, self._branch, packet.tick
@@ -194,81 +196,79 @@ class ServerClient(ClientSocket):
             self.send_packet(event)
 
     def _handle_unsubscribe(self, packet):
-        self.parent().unregister_client(self)
+        # Inform others people that we are unsubscribing
         packet.color = self._color
-        for client in self.parent().find_clients(self._should_forward):
-            client.send_packet(packet)
+        self.parent().forward_packet(self, packet)
+
+        self.parent().client_unsubscribe(self)
         self._repo = None
         self._branch = None
         self._name = None
         self._color = None
 
     def _handle_invite_to(self, packet):
-        for client in self.parent().find_clients(self._should_forward):
-            if client._name == packet.name or packet.name == "everyone":
-                packet.name = self._name
-                client.send_packet(packet)
+        def matches(other):
+            return other.name == packet.name or packet.name == "everyone"
+
+        packet.name = self._name
+        self.parent().forward_packet(self, packet, matches)
 
     def _handle_update_cursors(self, packet):
-        for client in self.parent().find_clients(self._should_forward):
-            client.send_packet(packet)
+        self.parent().forward_packet(self, packet)
 
     def _handle_user_renamed(self, packet):
         # TODO:
         # Check if the new_name is already used
         self._name = packet.new_name
-        for client in self.parent().find_clients(self._should_forward):
-            client.send_packet(packet)
+        self.parent().forward_packet(self, packet)
 
     def _handle_user_color_changed(self, packet):
-        for client in self.parent().find_clients(self._should_forward):
-            client.send_packet(packet)
-
-    def _should_forward(self, client):
-        return (
-            client.repo == self._repo
-            and client.branch == self._branch
-            and client != self
-        )
+        self.parent().forward_packet(self, packet)
 
 
 class Server(ServerSocket):
     """
-    The server implementation used by dedicated and integrated.
+    This class represents a server socket for the server. It is used by both
+    the integrated and dedicated server implementations. It doesn't do much.
     """
-
-    @staticmethod
-    def add_trace_level():
-        logging.TRACE = 5
-        logging.addLevelName(logging.TRACE, "TRACE")
-        logging.Logger.trace = lambda inst, msg, *args, **kwargs: inst.log(
-            logging.TRACE, msg, *args, **kwargs
-        )
-        logging.trace = lambda msg, *args, **kwargs: logging.log(
-            logging.TRACE, msg, *args, **kwargs
-        )
 
     def __init__(self, logger, ssl, parent=None):
         ServerSocket.__init__(self, logger, parent)
-        self._clients = []
-        self._database = Database(self.local_file("database.db"))
-        self._database.initialize()
         self._ssl = ssl
+        self._clients = {}
+
+        # Initialize the database
+        self._database = Database(self.server_file("database.db"))
+        self._database.initialize()
+
         self._discovery = ClientsDiscovery(logger)
 
-    def start(self, host, port=0):
-        """
-        Starts the server on the specified host and port.
+    @property
+    def database(self):
+        """Get the database in use."""
+        return self._database
 
-        :param host: the host
-        :param port: the port
-        :return: did the operation succeed?
-        """
+    @property
+    def host(self):
+        """Gets the host name of the server."""
+        return self._socket.getsockname()[0]
+
+    @property
+    def port(self):
+        """Get the port number of the server."""
+        return self._socket.getsockname()[1]
+
+    def start(self, host, port=0):
+        """Starts the server on the specified host and port."""
         self._logger.info("Starting server on %s:%d" % (host, port))
+
+        # Load the system certificate chain
         if self._ssl:
             cert, key = self._ssl
             self._ssl = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
             self._ssl.load_cert_chain(certfile=cert, keyfile=key)
+
+        # Create, bind and set the socket options
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
@@ -277,20 +277,18 @@ class Server(ServerSocket):
             self._logger.warning("Could not start server")
             self._logger.exception(e)
             return False
-        sock.settimeout(0)
-        sock.setblocking(0)
+        sock.settimeout(0)  # No timeout
+        sock.setblocking(0)  # No blocking
         sock.listen(5)
         self.connect(sock)
+
+        # Start discovering clients
         host, port = sock.getsockname()
         self._discovery.start(host, port, self._ssl)
         return True
 
     def stop(self):
-        """
-        Stops the server.
-
-        :return: did the operation succeed?
-        """
+        """Terminates all the connections and stops the server."""
         self._logger.info("Shutting down server")
         for client in self._clients:
             client.disconnect()
@@ -298,72 +296,38 @@ class Server(ServerSocket):
         self._discovery.stop()
         return True
 
-    @property
-    def host(self):
-        """
-        Gets the host name.
-
-        :return: the host name
-        """
-        return self._socket.getsockname()[0]
-
-    @property
-    def port(self):
-        """
-        Gets the port number.
-        :return:
-        """
-        return self._socket.getsockname()[1]
-
     def _accept(self, sock):
         client = ServerClient(self._logger, self)
+
+        # Wrap the socket in an SSL tunnel
         if self._ssl:
             sock = self._ssl.wrap_socket(sock, server_side=True)
-        sock.settimeout(0)
-        sock.setblocking(0)
+
+        sock.settimeout(0)  # No timeout
+        sock.setblocking(0)  # No blocking
         client.connect(sock)
 
-    def local_file(self, filename):
-        """
-        Get the absolute path of a local file.
+    def forward_packet(self, client, packet, matches=None):
+        """Sends the packet to the other clients on the same database."""
+        clients = self._clients.get((client.repo, client.branch), [])
+        for other in clients:
+            if other != client and (not matches or matches(other)):
+                other.send_packet(packet)
 
-        :param filename: the file name
-        :return: the path
-        """
-        raise NotImplementedError("local_file() not implemented")
+    def client_subscribe(self, client):
+        """Called to register a client who just subscribed."""
+        clients = self._clients.get((client.repo, client.branch), [])
+        if client not in clients:
+            clients.append(client)
+        self._clients[(client.repo, client.branch)] = clients
 
-    def find_clients(self, func):
-        """
-        Find all the clients matching the specified criterion.
+    def client_unsubscribe(self, client):
+        """Called to register a client who just unsubscribed."""
+        clients = self._clients.get((client.repo, client.branch), [])
+        if client in clients:
+            clients.remove(client)
+        self._clients[(client.repo, client.branch)] = clients
 
-        :param func: the filtering function
-        :return: the matching clients
-        """
-        return filter(func, self._clients)
-
-    def register_client(self, client):
-        """
-        Add a client to the list of connected clients.
-
-        :param client: the client
-        """
-        if client not in self._clients:
-            self._clients.append(client)
-
-    def unregister_client(self, client):
-        """
-        Remove a client to the list of connected clients.
-
-        :param client: the client
-        """
-        if client in self._clients:
-            self._clients.remove(client)
-
-    @property
-    def database(self):
-        """
-        Get the server's database.
-
-        :return: the database
-        """
-        return self._database
+    def server_file(self, filename):
+        """Get the absolute path of a local resource."""
+        raise NotImplementedError("server_file() not implemented")

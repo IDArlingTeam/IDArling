@@ -10,8 +10,6 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import logging
-
 import ida_idp
 import ida_kernwin
 import ida_netnode
@@ -20,19 +18,20 @@ from .hooks import HexRaysHooks, Hooks, IDBHooks, IDPHooks, UIHooks, ViewHooks
 from ..module import Module
 from ..shared.commands import Subscribe, Unsubscribe
 
-logger = logging.getLogger("IDArling.Core")
-
 
 class Core(Module):
     """
-    The core module, responsible for all interactions with the IDA kernel.
+    This is the core module. It is responsible for interacting with the IDA
+    kernel. It will handle hooking, sending, and replaying of user events.
     """
 
     NETNODE_NAME = "$ idarling"
 
     def __init__(self, plugin):
         super(Core, self).__init__(plugin)
-        self._hooked = False
+        self._repo = None
+        self._branch = None
+        self._tick = 0
 
         self._idb_hooks = None
         self._idp_hooks = None
@@ -42,16 +41,46 @@ class Core(Module):
 
         self._ui_hooks_core = None
         self._idb_hooks_core = None
+        self._hooked = False
 
-        # Database members
-        self._repo = None
-        self._branch = None
-        self._tick = 0
+    @property
+    def repo(self):
+        """Get the current repository."""
+        return self._repo
+
+    @repo.setter
+    def repo(self, name):
+        """Set the the current repository and save the netnode."""
+        self._repo = name
+        self.save_netnode()
+
+    @property
+    def branch(self):
+        """Get the current branch."""
+        return self._branch
+
+    @branch.setter
+    def branch(self, name):
+        """Set the current branch and save the netnode."""
+        self._branch = name
+        self.save_netnode()
+
+    @property
+    def tick(self):
+        """Get the current tick count."""
+        return self._tick
+
+    @tick.setter
+    def tick(self, tick):
+        """Set the current tick count and save the netnode."""
+        self._tick = tick
+        self.save_netnode()
 
     def _install(self):
-        logger.debug("Installing hooks")
+        self._plugin.logger.debug("Installing hooks")
         core = self
 
+        # Instantiate the hooks
         self._idb_hooks = IDBHooks(self._plugin)
         self._idp_hooks = IDPHooks(self._plugin)
         self._hxe_hooks = HexRaysHooks(self._plugin)
@@ -60,7 +89,8 @@ class Core(Module):
 
         class UIHooksCore(Hooks, ida_kernwin.UI_Hooks):
             """
-            The concrete class for all core UI-related events.
+            The UI core hook is used to determine when IDA is fully loaded
+            and we can starting hooking to receive our user events.
             """
 
             def __init__(self, plugin):
@@ -70,7 +100,7 @@ class Core(Module):
             def ready_to_run(self, *_):
                 core.load_netnode()
 
-                # Subscribe to the events stream if needed
+                # Send a subscribe packet if this database is on the server
                 if core.repo and core.branch:
                     self._plugin.network.send_packet(
                         Subscribe(
@@ -89,7 +119,8 @@ class Core(Module):
 
         class IDBHooksCore(Hooks, ida_idp.IDB_Hooks):
             """
-            The concrete class for all core IDB-related events.
+            The IDB core hook is used to know when the database is being
+            closed. We the need to unhook our user events.
             """
 
             def __init__(self, plugin):
@@ -97,9 +128,11 @@ class Core(Module):
                 Hooks.__init__(self, plugin)
 
             def closebase(self):
+                core.unhook_all()
+
                 name = self._plugin.config["user"]["name"]
                 self._plugin.network.send_packet(Unsubscribe(name))
-                core.unhook_all()
+
                 core.repo = None
                 core.branch = None
                 core.ticks = 0
@@ -110,18 +143,17 @@ class Core(Module):
         return True
 
     def _uninstall(self):
-        logger.debug("Uninstalling hooks")
+        self._plugin.logger.debug("Uninstalling hooks")
         self._idb_hooks_core.unhook()
         self._ui_hooks_core.unhook()
         self.unhook_all()
         return True
 
     def hook_all(self):
-        """
-        Add the hooks to be notified of incoming IDA events.
-        """
+        """Install all the user event hooks."""
         if self._hooked:
             return
+
         self._idb_hooks.hook()
         self._idp_hooks.hook()
         self._hxe_hooks.hook()
@@ -130,11 +162,10 @@ class Core(Module):
         self._hooked = True
 
     def unhook_all(self):
-        """
-        Remove the hooks to not be notified of incoming IDA events.
-        """
+        """Uninstall all the user event hooks."""
         if not self._hooked:
             return
+
         self._idb_hooks.unhook()
         self._idp_hooks.unhook()
         self._hxe_hooks.unhook()
@@ -142,82 +173,27 @@ class Core(Module):
         self._ui_hooks.unhook()
         self._hooked = False
 
-    @property
-    def repo(self):
-        """
-        Get the current repository.
-
-        :return: the repo name
-        """
-        return self._repo
-
-    @repo.setter
-    def repo(self, name):
-        """
-        Set the the current repository.
-
-        :param name: the repo name
-        """
-        self._repo = name
-        self.save_netnode()
-
-    @property
-    def branch(self):
-        """
-        Get the current branch.
-
-        :return: the branch name
-        """
-        return self._branch
-
-    @branch.setter
-    def branch(self, name):
-        """
-        Set the current branch.
-
-        :param name: the branch name
-        """
-        self._branch = name
-        self.save_netnode()
-
-    @property
-    def tick(self):
-        """
-        Get the current tick.
-
-        :return: the tick
-        """
-        return self._tick
-
-    @tick.setter
-    def tick(self, tick):
-        """
-        Set the current tick.
-
-        :param tick: the tick
-        """
-        self._tick = tick
-        self.save_netnode()
-
     def load_netnode(self):
         """
-        Load members from the custom netnode.
+        Load data from our custom netnode. Netnodes are the mechanism used by
+        IDA to load and save information into a database. IDArling uses its own
+        netnode to remember which repo and branch a database corresponds to.
         """
         node = ida_netnode.netnode(Core.NETNODE_NAME, 0, True)
+
         self._repo = node.hashval("repo") or None
         self._branch = node.hashval("branch") or None
         self._tick = int(node.hashval("tick") or "0")
 
-        logger.debug(
+        self._plugin.logger.debug(
             "Loaded netnode: repo=%s, branch=%s, tick=%d"
             % (self._repo, self._branch, self._tick)
         )
 
     def save_netnode(self):
-        """
-        Save members to the custom netnode.
-        """
+        """Save data into our custom netnode."""
         node = ida_netnode.netnode(Core.NETNODE_NAME, 0, True)
+
         if self._repo:
             node.hashset("repo", str(self._repo))
         if self._branch:
@@ -225,12 +201,13 @@ class Core(Module):
         if self._tick:
             node.hashset("tick", str(self._tick))
 
-        logger.debug(
+        self._plugin.logger.debug(
             "Saved netnode: repo=%s, branch=%s, tick=%d"
             % (self._repo, self._branch, self._tick)
         )
 
     def notify_connected(self):
+        # Send a subscribe packet if this database is on the server
         if self._repo and self._branch:
             name = self._plugin.config["user"]["name"]
             color = self._plugin.config["user"]["color"]

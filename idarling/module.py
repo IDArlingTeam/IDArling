@@ -14,70 +14,44 @@
 
 class Module(object):
     """
-    This is the base class of every module in the plugin.
+    The plugin is organized into modules. Modules allow grouping the
+    functionality of the plugin and facilitate information communication.
     """
 
     def __init__(self, plugin):
-        """
-        Initialize the module.
-
-        :param plugin: the plugin instance
-        """
         self._plugin = plugin
         self._installed = False
 
     def install(self):
-        """
-         Install the module (called by the plugin).
-
-         :return: if the module was properly installed
-        """
+        """Install the module. Called by the plugin."""
         if self._installed:
             return False
         self._installed = True
         return self._install()
 
     def _install(self):
-        """
-        Install the module (called by the base class).
-
-        :return: if the module was properly installed
-        """
+        """Install the module. Overloaded by the module."""
         raise NotImplementedError("_install() not implemented")
 
     def uninstall(self):
-        """
-        Uninstall the module (called by the plugin).
-
-        :return: if the module was properly uninstalled
-        """
+        """Uninstall the module. Called by the plugin."""
         if not self._installed:
             return False
         self._installed = False
         return self._uninstall()
 
     def _uninstall(self):
-        """
-        Uninstall the module (called by the base class).
-
-        :return: if the module properly uninstalled
-        """
+        """Uninstall the module. Overloaded by the module."""
         raise NotImplementedError("_uninstall() not implemented")
 
     def notify_disconnected(self):
-        """
-        Notify the module that a disconnection has occurred.
-        """
+        """Notify the module that a disconnection has occurred."""
         pass
 
     def notify_connecting(self):
-        """
-        Notify the module that a connection is being established.
-        """
+        """Notify the module that a connection is being established."""
         pass
 
     def notify_connected(self):
-        """
-        Notify the module that a connection has being established.
-        """
+        """Notify the module that a connection has being established."""
         pass

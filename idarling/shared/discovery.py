@@ -21,6 +21,12 @@ DISCOVERY_REPLY = "IDARLING_DISCOVERY_REPLY"
 
 
 class ClientsDiscovery(QObject):
+    """
+    This class is used by the server to discover client on the local network.
+    It uses an UDP socket broadcasting the server hostname and port on the
+    port 31013. A client will reply back with a simple message.
+    """
+
     def __init__(self, logger, parent=None):
         super(ClientsDiscovery, self).__init__(parent)
         self._logger = logger
@@ -30,23 +36,22 @@ class ClientsDiscovery(QObject):
         self._read_notifier = None
         self._started = False
 
+        # Timer signaling that it's time to broadcast
         self._timer = QTimer()
         self._timer.setInterval(10000)
         self._timer.timeout.connect(self._send_request)
 
-    @property
-    def started(self):
-        return self._started
-
     def start(self, host, port, ssl):
+        """Start the discovery process and broadcast the given information."""
         self._logger.debug("Starting clients discovery...")
         self._info = "%s %d %s" % (host, port, ssl)
 
+        # Create a datagram socket capable of broadcasting
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        self._socket.settimeout(0)
-        self._socket.setblocking(0)
+        self._socket.settimeout(0)  # No timeout
+        self._socket.setblocking(0)  # No blocking
 
         self._read_notifier = QSocketNotifier(
             self._socket.fileno(), QSocketNotifier.Read, self
@@ -58,6 +63,7 @@ class ClientsDiscovery(QObject):
         self._send_request()
 
     def stop(self):
+        """Stop the discovery process."""
         self._logger.debug("Stopping clients discovery...")
         self._read_notifier.setEnabled(False)
         try:
@@ -69,6 +75,7 @@ class ClientsDiscovery(QObject):
         self._timer.stop()
 
     def _send_request(self):
+        """This function sends to discovery request packets."""
         self._logger.trace("Sending discovery request...")
         request = DISCOVERY_REQUEST + " " + self._info
         request = request.encode("utf-8")
@@ -80,6 +87,7 @@ class ClientsDiscovery(QObject):
                 self._logger.warning("Couldn't send discovery request")
 
     def _notify_read(self):
+        """This function is called when a discovery reply is received."""
         response, address = self._socket.recvfrom(4096)
         response = response.decode("utf-8")
         if response == DISCOVERY_REPLY:
@@ -87,6 +95,12 @@ class ClientsDiscovery(QObject):
 
 
 class ServersDiscovery(QObject):
+    """
+    This class is used by the client to discover servers on the local network.
+    It uses an UDP socket listening on port 31013 to received the request
+    broadcasted by the server. Discovery server will be shown in the UI.
+    """
+
     def __init__(self, logger, parent=None):
         super(ServersDiscovery, self).__init__(parent)
         self._logger = logger
@@ -97,20 +111,21 @@ class ServersDiscovery(QObject):
         self._read_notifier = None
         self._started = False
 
+        # Timer used to trim the servers list
         self._timer = QTimer()
         self._timer.setInterval(10000)
-        self._timer.timeout.connect(self._trim_replies)
+        self._timer.timeout.connect(self._trim_servers_list)
 
     @property
     def servers(self):
+        """Get the servers discovered."""
         return self._servers
 
-    @property
-    def started(self):
-        return self._started
-
     def start(self):
+        """Start the discovery process and listen for discovery requests."""
         self._logger.debug("Starting servers discovery....")
+
+        # Create a datagram socket bound on port 31013
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         if platform.system() == "Darwin":
@@ -128,6 +143,7 @@ class ServersDiscovery(QObject):
         self._timer.start()
 
     def stop(self):
+        """Stop the discovery process"""
         self._logger.debug("Stopping servers discovery...")
         self._read_notifier.setEnabled(False)
         try:
@@ -139,25 +155,35 @@ class ServersDiscovery(QObject):
         self._timer.stop()
 
     def _notify_read(self):
+        """This function is called when a discovery request is received."""
         request, address = self._socket.recvfrom(4096)
         request = request.decode("utf-8")
         if request.startswith(DISCOVERY_REQUEST):
             self._logger.trace(
                 "Received discovery request from %s:%d" % address
             )
+            # Get the server information
             _, host, port, ssl = request.split()
             server = {"host": host, "port": int(port), "no_ssl": ssl != "True"}
+
+            # Append it to both lists
             if server not in self._servers:
                 self._servers.append(server)
             if server not in self._new_servers:
                 self._new_servers.append(server)
+
             self._logger.trace("Server discovered: %s" % server)
             self._logger.trace("Sending discovery reply to %s:%d..." % address)
+            # Reply to the discovery request
             reply = DISCOVERY_REPLY
             reply = reply.encode("utf-8")
             self._socket.sendto(reply, address)
 
-    def _trim_replies(self):
+    def _trim_servers_list(self):
+        """
+        This function will trim the server list, only keeping the server which
+        sent us a discovery request in the last ten seconds.
+        """
         self._logger.trace(
             "Discovered %d servers: %s" % (len(self.servers), self.servers)
         )

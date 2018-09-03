@@ -14,9 +14,5 @@ from idarling.plugin import Plugin
 
 
 def PLUGIN_ENTRY():  # noqa: N802
-    """
-    Entry point for IDAPython plugins.
-
-    :return: the plugin instance
-    """
+    """Mandatory entry point for IDAPython plugins."""
     return Plugin()

@@ -20,47 +20,33 @@ import traceback
 from PyQt5.QtCore import QCoreApplication, QTimer
 
 from .shared.server import Server
+from .shared.utils import start_logging
 
 
 class DedicatedServer(Server):
     """
-    The dedicated server implementation.
+    This is the dedicated server. It can be invoked from the command line. It
+    requires only PyQt5 and should be invoked from Python 3. The dedicated
+    server should be used when the integrated doesn't fulfil the user's needs.
     """
 
-    @staticmethod
-    def start_logging():
-        Server.add_trace_level()
-        logger = logging.getLogger("IDArling.Server")
-
-        # Get path to the log file
+    def __init__(self, ssl, level, parent=None):
+        # Get the path to the log file
         log_dir = os.path.join(os.path.dirname(__file__), "logs")
         log_dir = os.path.abspath(log_dir)
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
         log_path = os.path.join(log_dir, "idarling.%s.log" % os.getpid())
 
-        # Configure the logger
-        log_format = "[%(asctime)s][%(levelname)s] %(message)s"
-        formatter = logging.Formatter(fmt=log_format, datefmt="%H:%M:%S")
-
-        # Log to the console
-        stream_handler = logging.StreamHandler()
-        stream_handler.setFormatter(formatter)
-        logger.addHandler(stream_handler)
-
-        # Log to the log file
-        file_handler = logging.FileHandler(log_path)
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
-
-        return logger
-
-    def __init__(self, ssl, level, parent=None):
-        logger = DedicatedServer.start_logging()
-        logger.setLevel(getattr(logging, level))
+        level = getattr(logging, level)
+        logger = start_logging(log_path, level)
         Server.__init__(self, logger, ssl, parent)
 
-    def local_file(self, filename):
+    def server_file(self, filename):
+        """
+        This function returns the absolute path to a server's file. It should
+        be located within a files/ subdirectory of the current directory.
+        """
         files_dir = os.path.join(os.path.dirname(__file__), "files")
         files_dir = os.path.abspath(files_dir)
         if not os.path.exists(files_dir):
@@ -69,9 +55,6 @@ class DedicatedServer(Server):
 
 
 def start(args):
-    """
-    The entry point of a Python program.
-    """
     app = QCoreApplication(sys.argv)
     sys.excepthook = traceback.print_exception
 
@@ -85,6 +68,8 @@ def start(args):
 
     signal.signal(signal.SIGINT, sigint_handler)
 
+    # This timer gives the application a chance to be interrupted every 50 ms
+    # even if it stuck in a loop or something
     def safe_timer(timeout, func, *args, **kwargs):
         def timer_event():
             try:
@@ -95,6 +80,7 @@ def start(args):
         QTimer.singleShot(timeout, timer_event)
 
     safe_timer(50, lambda: None)
+
     return app.exec_()
 
 
@@ -104,6 +90,7 @@ def main():
         "--help", action="help", help="show this help message and exit"
     )
 
+    # Users can specify the host and port to start the server on
     parser.add_argument(
         "-h",
         "--host",
@@ -119,6 +106,8 @@ def main():
         help="the port to start listening on",
     )
 
+    # Users must specify the path to the certificate chain and the
+    # corresponding private key of the server, or disable SSL altogether.
     security = parser.add_mutually_exclusive_group(required=True)
     security.add_argument(
         "--ssl",
@@ -131,6 +120,7 @@ def main():
         "--no-ssl", action="store_true", help="disable SSL (not recommended)"
     )
 
+    # Users can also change the logging level if the they want some debug
     levels = ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "TRACE"]
     parser.add_argument(
         "-l",

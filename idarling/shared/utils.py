@@ -11,37 +11,43 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import logging
-import os
-
-from .misc import local_resource
-from ..shared.server import Server
 
 
-def start_logging():
+def start_logging(log_path, level):
     """
-    Set up the main logger to write to a log file with a specific format and
-    intercept both standard output and standard error output.
-
-    :return: the main logger
+    Setup the logger: add a new log level, create a logger which logs into
+    the console and also into a log files located at: logs/idarling.%pid.log.
     """
-    Server.add_trace_level()
+    # Add a new log level called TRACE, and more verbose that DEBUG.
+    logging.TRACE = 5
+    logging.addLevelName(logging.TRACE, "TRACE")
+    logging.Logger.trace = lambda inst, msg, *args, **kwargs: inst.log(
+        logging.TRACE, msg, *args, **kwargs
+    )
+    logging.trace = lambda msg, *args, **kwargs: logging.log(
+        logging.TRACE, msg, *args, **kwargs
+    )
+
     logger = logging.getLogger("IDArling")
-    logger.setLevel(logging.INFO)
+    logger.setLevel(level)
 
-    # Get the absolute path to the log file
-    log_path = local_resource("logs", "idarling.%s.log" % os.getpid())
-
-    # Log to the console
+    # Log to the console with a first format
     stream_handler = logging.StreamHandler()
     log_format = "[%(levelname)s] %(message)s"
     formatter = logging.Formatter(fmt=log_format)
     stream_handler.setFormatter(formatter)
     logger.addHandler(stream_handler)
 
-    # Log to the log file
+    # Log to the disk with a second format
+
     file_handler = logging.FileHandler(log_path)
     log_format = "[%(asctime)s][%(levelname)s] %(message)s"
     formatter = logging.Formatter(fmt=log_format, datefmt="%H:%M:%S")
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
+    # Log to the disk too
+    file_handler = logging.FileHandler(log_path)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 

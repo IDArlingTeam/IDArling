@@ -23,6 +23,12 @@ from PyQt5.QtWidgets import QHBoxLayout, QLabel, QWidget
 
 
 class Toast(QWidget):
+    """
+    A toast is a small notification being displayed in the bottom right
+    corner of the window. It fades in and out, and is used to invite an user
+    to jump to a certain location. Some other uses might be added later.
+    """
+
     def __init__(self, parent=None):
         super(Toast, self).__init__(parent)
         self.setWindowFlags(
@@ -42,22 +48,26 @@ class Toast(QWidget):
         self._layout.addWidget(self._text)
         self.setLayout(self._layout)
 
+        # Fade in and out animation
         self._popup_opacity = 0.0
         self._animation = QPropertyAnimation()
         self._animation.setTargetObject(self)
         self._animation.setPropertyName("popup_opacity")
         self._animation.finished.connect(self.hide)
 
+        # Timer used to auto-close the window
         self._timer = QTimer()
         self._timer.timeout.connect(self.hide_animation)
         self._callback = None
 
     def paintEvent(self, event):  # noqa: N802
+        """We override the painting event to draw the window ourselves."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
         rect = QRect(self.rect())
 
+        # Draw the border
         painter.setBrush(QBrush(QColor(122, 122, 122)))
         painter.setPen(Qt.NoPen)
         painter.drawRect(rect)
@@ -67,20 +77,27 @@ class Toast(QWidget):
         rect.setWidth(rect.width() - 1)
         rect.setHeight(rect.height() - 1)
 
+        # Draw the background
         painter.setBrush(QBrush(QColor(255, 255, 225)))
         painter.setPen(Qt.NoPen)
         painter.drawRect(rect)
 
     def mouseReleaseEvent(self, event):  # noqa: N802
+        """
+        This function is called when the user clicks the window. It triggers
+        the callback function is it has been specified, and hides the window.
+        """
         if self._callback:
             self._callback()
         self.hide_animation()
 
     def set_text(self, text):
+        """Sets the text of the notification."""
         self._text.setText(text)
         self.adjustSize()
 
     def set_icon(self, path):
+        """Set the icon of the notification."""
         pixmap = QPixmap(path)
         pixmap_height = self._text.sizeHint().height()
         self._icon.setPixmap(
@@ -94,15 +111,18 @@ class Toast(QWidget):
         self._layout.insertWidget(0, self._icon)
 
     def set_callback(self, callback):
+        """Set a callback function for when the notification is clicked."""
         self._callback = callback
 
     def show(self):
+        """Shows the notification to user. It triggers a fade in effect."""
         self.setWindowOpacity(0.0)
 
         self._animation.setDuration(500)
         self._animation.setStartValue(0.0)
         self._animation.setEndValue(1.0)
 
+        # Map the notification to the bottom right corner
         pos = QPoint(self.parent().width() - 25, self.parent().height() - 50)
         pos = self.parent().mapToGlobal(pos)
 
@@ -118,10 +138,12 @@ class Toast(QWidget):
         self._timer.start(3500)
 
     def hide(self):
+        """Hides the window only if it is fully transparent."""
         if self._popup_opacity == 0.0:
             super(Toast, self).hide()
 
     def hide_animation(self):
+        """Hides the window. It triggers the fade out animation."""
         self._timer.stop()
         self._animation.setDuration(500)
         self._animation.setStartValue(1.0)

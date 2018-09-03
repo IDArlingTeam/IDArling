@@ -33,7 +33,7 @@ if os.name == "nt":
     if not os.path.exists(dest_dir):
         os.makedirs(dest_dir, 493)  # 0755
 else:
-    # Install into the plugins directory on Linux
+    # Install into the plugins directory on Linux/macOS
     dest_dir = os.path.join(ida_diskio.idadir(None), "plugins")
 
 print("[*] Downloading master.zip archive...")

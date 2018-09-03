@@ -10,8 +10,6 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import logging
-
 import ida_kernwin
 
 from ..shared.commands import (
@@ -25,23 +23,19 @@ from ..shared.commands import (
 from ..shared.packets import Command, Event
 from ..shared.sockets import ClientSocket
 
-logger = logging.getLogger("IDArling.Network")
-
 
 class Client(ClientSocket):
     """
-    The client (client-side) implementation.
+    This class represents a client socket for the client. It implements all the
+    handlers for the packet the server is susceptible to send.
     """
 
     def __init__(self, plugin, parent=None):
-        """
-        Initializes the client.
-
-        :param plugin: the plugin instance
-        """
-        ClientSocket.__init__(self, logger, parent)
+        ClientSocket.__init__(self, plugin.logger, parent)
         self._plugin = plugin
         self._users = {}
+
+        # Setup command handlers
         self._handlers = {
             UpdateCursors: self._handle_update_cursors,
             Subscribe: self._handle_subscribe,
@@ -51,10 +45,14 @@ class Client(ClientSocket):
             UserColorChanged: self._handle_user_color_changed,
         }
 
+    @property
+    def users(self):
+        """Get the information of all users connected to the same database."""
+        return self._users
+
     def disconnect(self, err=None):
         ClientSocket.disconnect(self, err)
-        logger.info("Connection lost")
-
+        self._plugin.logger.info("Connection lost")
         # Notify the plugin
         self._plugin.notify_disconnected()
 
@@ -71,10 +69,13 @@ class Client(ClientSocket):
             except Exception as e:
                 self._logger.warning("Error while calling event")
                 self._logger.exception(e)
+
+            # Check for de-synchronization
             if self._plugin.core.tick >= packet.tick:
                 self._logger.warning("De-synchronization detected!")
                 packet.tick = self._plugin.core.tick
             self._plugin.core.tick = packet.tick
+
             self._plugin.core.hook_all()
         else:
             return False
@@ -96,7 +97,7 @@ class Client(ClientSocket):
 
     def _handle_invite_to(self, packet):
         text = "%s - Jump to %#x" % (packet.name, packet.loc)
-        icon = self._plugin.resource("location.png")
+        icon = self._plugin.plugin_resource("location.png")
 
         def callback():
             ida_kernwin.jumpto(packet.loc)
@@ -117,7 +118,3 @@ class Client(ClientSocket):
         self._plugin.interface.painter.change_user_color(
             packet.name, packet.old_color, packet.new_color
         )
-
-    @property
-    def users(self):
-        return self._users

@@ -16,6 +16,7 @@ import logging
 import os
 import random
 
+import ida_diskio
 import ida_idaapi
 import ida_kernwin
 
@@ -24,24 +25,23 @@ from PyQt5.QtCore import QCoreApplication  # noqa: I202
 from .core.core import Core
 from .interface.interface import Interface
 from .network.network import Network
-from .utilities.log import start_logging
-from .utilities.misc import local_resource, plugin_resource
-
-# Start logging
-logger = start_logging()
+from .shared.utils import start_logging
 
 
 class Plugin(ida_idaapi.plugin_t):
     """
-    The IDArling plugin.
+    This is the main class of the plugin. It subclasses plugin_t as required
+    by IDA. It holds the modules of plugin, which themselves provides the
+    functionality of the plugin (hooking/events, interface, networking, etc.).
     """
 
-    # Internal definitions
+    # Mandatory definitions
     PLUGIN_NAME = "IDArling"
     PLUGIN_VERSION = "0.0.1"
     PLUGIN_AUTHORS = "The IDArling Team"
 
-    # External definitions
+    # These flags specify that the plugin should persist between databases
+    # loading and saving, and should not have a menu entry.
     flags = ida_idaapi.PLUGIN_FIX | ida_idaapi.PLUGIN_HIDE
     comment = "Collaborative Reverse Engineering plugin"
     help = ""
@@ -50,143 +50,38 @@ class Plugin(ida_idaapi.plugin_t):
 
     @staticmethod
     def description():
-        """
-        Get the plugin description (name and version).
-
-        :return: the description
-        """
+        """Return the description displayed in the console."""
         return "{} v{}".format(Plugin.PLUGIN_NAME, Plugin.PLUGIN_VERSION)
 
     @staticmethod
-    def resource(filename):
+    def plugin_resource(filename):
         """
-        Get the absolute path to a resource.
-
-        :param filename: the filename
-        :return: the path
+        Return the absolute path to a plugin resource located within the
+        plugin's installation folder (should be within idarling/resources).
         """
-        return plugin_resource(filename)
+        plugin_path = os.path.abspath(os.path.dirname(__file__))
+        return os.path.join(plugin_path, "resources", filename)
 
-    def __init__(self):
+    @staticmethod
+    def user_resource(directory, filename):
         """
-        Instantiate the plugin and all its modules.
+        Return the absolute path to a user resource located with the local
+        user's directory (should be %APPDATA%\Roaming\Hex-Rays\IDA Pro\idarling
+        under Windows and $HOME/.idapro/idarling/ under Linux and macOS).
         """
-        if QCoreApplication.instance() is None:
-            raise RuntimeError("IDArling cannot be used in terminal mode")
+        local_path = os.path.join(ida_diskio.get_user_idadir(), "idarling")
+        res_dir = os.path.join(local_path, directory)
+        if not os.path.exists(res_dir):
+            os.makedirs(res_dir)
+        return os.path.join(res_dir, filename)
 
-        self._core = Core(self)
-        self._interface = Interface(self)
-        self._network = Network(self)
-
-        # Configuration
-        self._config = self.default_config()
-
-    @property
-    def core(self):
+    @staticmethod
+    def default_config():
         """
-        Get the core module.
-
-        :return: the core module
+        Return the default configuration options. This is used to initialize
+        the configuration file the first time the plugin is launched, and also
+        when the user is resetting the settings via the dialog.
         """
-        return self._core
-
-    @property
-    def interface(self):
-        """
-        Get the interface module.
-
-        :return: the interface module
-        """
-        return self._interface
-
-    @property
-    def network(self):
-        """
-        Get the network module.
-
-        :return: the network module
-        """
-        return self._network
-
-    def init(self):
-        """
-        This method is called when IDA is loading the plugin.
-
-        :return: should the plugin be kept
-        """
-        try:
-            self._init()
-        except Exception as e:
-            logger.error("Failed to initialize")
-            logger.exception(e)
-            skip = ida_idaapi.PLUGIN_SKIP
-            return skip
-
-        self._print_banner()
-        logger.info("Successfully initialized")
-        keep = ida_idaapi.PLUGIN_KEEP
-        return keep
-
-    def _init(self):
-        """
-        Initialize the plugin and all its modules.
-        """
-        self.load_config()
-
-        self._interface.install()
-        self._network.install()
-        self._core.install()
-
-    def _print_banner(self):
-        """
-        Print the banner into the console.
-        """
-        copyright = "(c) %s" % self.PLUGIN_AUTHORS
-
-        logger.info("-" * 75)
-        logger.info("%s - %s" % (self.description(), copyright))
-        logger.info("-" * 75)
-
-    def term(self):
-        """
-        This method is called when IDA is unloading the plugin.
-        """
-        try:
-            self._term()
-        except Exception as e:
-            logger.error("Failed to terminate properly")
-            logger.exception(e)
-            return
-
-        logger.info("Terminated properly")
-
-    def _term(self):
-        """
-        Terminate the plugin and its modules.
-        """
-        self._core.uninstall()
-        self._network.uninstall()
-        self._interface.uninstall()
-
-        self.save_config()
-
-    def run(self, _):
-        """
-        This method is called when IDA is running the plugin as a script.
-        """
-        ida_kernwin.warning("IDArling cannot be run as a script")
-        return False
-
-    @property
-    def config(self):
-        """
-        Get the current configuration of the plugin.
-
-        :return: the config
-        """
-        return self._config
-
-    def default_config(self):
         r, g, b = colorsys.hls_to_rgb(random.random(), 0.5, 1.0)
         color = int(b * 255) << 16 | int(g * 255) << 8 | int(r * 255)
         return {
@@ -201,41 +96,130 @@ class Plugin(ida_idaapi.plugin_t):
             },
         }
 
+    def __init__(self):
+        # Check if the plugin is running with IDA terminal
+        if QCoreApplication.instance() is None:
+            raise RuntimeError("IDArling cannot be used in terminal mode")
+
+        # Load the default configuration
+        self._config = self.default_config()
+        # Then setup the default logger
+        log_path = self.user_resource("logs", "idarling.%s.log" % os.getpid())
+        level = self.config["level"]
+        self._logger = start_logging(log_path, level)
+
+        self._core = Core(self)
+        self._interface = Interface(self)
+        self._network = Network(self)
+
+    @property
+    def config(self):
+        """Get the plugin config."""
+        return self._config
+
+    @property
+    def logger(self):
+        """Get the plugin logger."""
+        return self._logger
+
+    @property
+    def core(self):
+        """Get the core module."""
+        return self._core
+
+    @property
+    def interface(self):
+        """Get the interface module."""
+        return self._interface
+
+    @property
+    def network(self):
+        """Get the network module."""
+        return self._network
+
+    def init(self):
+        """
+        This method is called when IDA is loading the plugin. It will first
+        load the configuration file, then initialize all the modules.
+        """
+        try:
+            self.load_config()
+
+            self._interface.install()
+            self._network.install()
+            self._core.install()
+        except Exception as e:
+            self._logger.error("Failed to initialize")
+            self._logger.exception(e)
+            skip = ida_idaapi.PLUGIN_SKIP
+            return skip
+
+        self._print_banner()
+        self._logger.info("Successfully initialized")
+        keep = ida_idaapi.PLUGIN_KEEP
+        return keep
+
+    def _print_banner(self):
+        """Print the banner that you see in the console."""
+        copyright = "(c) %s" % self.PLUGIN_AUTHORS
+        self._logger.info("-" * 75)
+        self._logger.info("%s - %s" % (self.description(), copyright))
+        self._logger.info("-" * 75)
+
+    def term(self):
+        """
+        This method is called when IDA is unloading the plugin. It will
+        terminated all the modules, then save the configuration file.
+        """
+        try:
+            self._core.uninstall()
+            self._network.uninstall()
+            self._interface.uninstall()
+
+            self.save_config()
+        except Exception as e:
+            self._logger.error("Failed to terminate properly")
+            self._logger.exception(e)
+            return
+
+        self._logger.info("Terminated properly")
+
+    def run(self, _):
+        """
+        This method is called when IDA is running the plugin as a script.
+        Because IDArling isn't runnable per se, we need to return False.
+        """
+        ida_kernwin.warning("IDArling cannot be run as a script")
+        return False
+
     def load_config(self):
         """
-        Load the config file.
-
-        The config file is a JSON file in the form like this:
-        { "servers" : [
-            { "host": "127.0.0.1", "port": 3389, "no_ssl": True },
-            { "host": "127.0.0.2", "port": 3389, "no_ssl": True }
-            ]
-        }
+        Load the configuration file. It is a JSON file that contains all the
+        settings of the plugin. The configured log level is set here.
         """
-        config_path = local_resource("files", "config.json")
+        config_path = self.user_resource("files", "config.json")
         if not os.path.isfile(config_path):
             return
         with open(config_path, "rb") as config_file:
             try:
                 self._config.update(json.loads(config_file.read()))
             except ValueError:
-                logger.warning("Couldn't load config file")
+                self._logger.warning("Couldn't load config file")
                 return
-            logger.setLevel(self._config["level"])
-            logger.debug("Loaded config: %s" % self._config)
+            self._logger.setLevel(self._config["level"])
+            self._logger.debug("Loaded config: %s" % self._config)
 
     def save_config(self):
-        """
-        Save the config file.
-        """
-        config_path = local_resource("files", "config.json")
+        """Save the configuration file."""
+        config_path = self.user_resource("files", "config.json")
         with open(config_path, "wb") as config_file:
-            logger.debug("Saved config: %s" % self._config)
+            self._logger.debug("Saved config: %s" % self._config)
             config_file.write(json.dumps(self._config))
 
     def notify_disconnected(self):
         """
-        Notify the plugin that a disconnection has occurred.
+        Notify the plugin that a disconnection has occurred. The plugin will
+        simply forward the event to all its modules.
         """
         self._core.notify_disconnected()
         self._interface.notify_disconnected()
@@ -243,7 +227,8 @@ class Plugin(ida_idaapi.plugin_t):
 
     def notify_connecting(self):
         """
-        Notify the plugin that a connection is being established.
+        Notify the plugin that a connection is being established. The plugin
+        will simply forward the event to all its modules.
         """
         self._core.notify_connecting()
         self._interface.notify_connecting()
@@ -251,7 +236,8 @@ class Plugin(ida_idaapi.plugin_t):
 
     def notify_connected(self):
         """
-        Notify the plugin that a connection has been established.
+        Notify the plugin that a connection has been established. The plugin
+        will simply forward the event to all its modules.
         """
         self._core.notify_connected()
         self._interface.notify_connected()

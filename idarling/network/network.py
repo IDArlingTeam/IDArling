@@ -10,7 +10,6 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import logging
 import socket
 import ssl
 
@@ -19,12 +18,12 @@ from .server import IntegratedServer
 from ..module import Module
 from ..shared.discovery import ServersDiscovery
 
-logger = logging.getLogger("IDArling.Network")
-
 
 class Network(Module):
     """
-    The network module, responsible for all interactions with the server.
+    This is the interface module. It is responsible for interacting with the
+    server over the network. It manages the three sockets used with the plugin
+    (client, discovery client, integrated server).
     """
 
     def __init__(self, plugin):
@@ -32,33 +31,26 @@ class Network(Module):
         self._client = None
         self._server = None
         self._integrated = None
-
-        self._discovery = ServersDiscovery(logger.getChild(".Discovery"))
+        self._discovery = ServersDiscovery(plugin.logger)
 
     @property
     def client(self):
+        """Get the client socket."""
         return self._client
 
     @property
     def server(self):
-        """
-        Return information about the current server.
-
-        :return: the server we're connected to
-        """
+        """Get the server information."""
         return self._server
 
     @property
     def discovery(self):
+        """Get the discovery socket."""
         return self._discovery
 
     @property
     def connected(self):
-        """
-        Return if we are connected to any server.
-
-        :return: if connected
-        """
+        """Are we connected to a server?"""
         return self._client.connected if self._client else False
 
     def _install(self):
@@ -71,72 +63,62 @@ class Network(Module):
         return True
 
     def connect(self, server):
-        """
-        Connect to the specified server.
-
-        :param server: the server information
-        :return: did the operation succeed?
-        """
+        """Connect to the specified server."""
         # Make sure we're not already connected
         if self.connected:
             return False
-        self._server = server.copy()  # Copy in case of source being changed
+        self._server = server.copy()  # Copy just in case
         host = self._server["host"]
-        if host == "0.0.0.0":
+        if host == "0.0.0.0":  # Windows can't connect to 0.0.0.0
             host = "127.0.0.1"
         port = self._server["port"]
         no_ssl = self._server["port"]
 
-        # Create a client
-        self._client = Client(self._plugin)
-
         # Do the actual connection process
-        logger.info("Connecting to %s:%d..." % (host, port))
+        self._client = Client(self._plugin)
+        self._plugin.logger.info("Connecting to %s:%d..." % (host, port))
         # Notify the plugin of the connection
         self._plugin.notify_connecting()
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+        # Wrap the socket in a SSL tunnel
         if not no_ssl:
             ctx = ssl.create_default_context()
             sock = ctx.wrap_socket(sock, server_hostname=host)
+
         try:
             sock.connect((host, port))
         except socket.error as e:
-            logger.warning("Connection failed")
-            logger.exception(e)
+            self._plugin.logger.warning("Connection failed")
+            self._plugin.logger.exception(e)
             self._client = None
 
             # Notify the plugin
             self._plugin.notify_disconnected()
             return False
-        sock.settimeout(0)
-        sock.setblocking(0)
+        sock.settimeout(0)  # No timeout
+        sock.setblocking(0)  # No blocking
         self._client.connect(sock)
 
-        # TCP Keep-Alive options
+        # Set TCP keep-alive options
         cnt = self._plugin.config["keep"]["cnt"]
         intvl = self._plugin.config["keep"]["intvl"]
         idle = self._plugin.config["keep"]["idle"]
         self._client.set_keep_alive(cnt, intvl, idle)
 
-        # We're connected now
-        logger.info("Connected")
+        self._plugin.logger.info("Connected")
         # Notify the plugin
         self._plugin.notify_connected()
         return True
 
     def disconnect(self):
-        """
-        Disconnect from the current server.
-
-        :return: did the operation succeed?
-        """
+        """Disconnect from the current server."""
         # Make sure we're actually connected
         if not self.connected:
             return False
 
         # Do the actual disconnection process
-        logger.info("Disconnecting...")
+        self._plugin.logger.info("Disconnecting...")
         if self._client:
             self._client.disconnect()
         self._client = None
@@ -147,56 +129,40 @@ class Network(Module):
         return True
 
     def send_packet(self, packet):
-        """
-        Send a packet to the server.
-
-        :param packet: the packet to send
-        :return: a deferred of the reply
-        """
+        """Send a packet to the server."""
         if self.connected:
             return self._client.send_packet(packet)
         return None
 
     def start_server(self):
-        """
-        Starts the integrated server.
-
-        :return: did the operation succeed?
-        """
+        """Start the integrated server."""
         if self._integrated:
             return False
         self.disconnect()
 
-        logger.info("Starting integrated server...")
-        server = IntegratedServer()
+        self._plugin.logger.info("Starting integrated server...")
+        server = IntegratedServer(self._plugin)
         if not server.start("0.0.0.0"):
-            return False
+            return False  # Couldn't start the server
         self._integrated = server
         integrated_arg = {
             "host": "0.0.0.0",
             "port": server.port,
             "no_ssl": True,
         }
+        # Connect the client to the server
         return self.connect(integrated_arg)
 
     def stop_server(self):
-        """
-        Stops the integrated server.
-
-        :return: did the operation succeed?
-        """
+        """Stop the integrated server."""
         self.disconnect()
         if not self._integrated:
             return False
-        logger.info("Stopping integrated server...")
+        self._plugin.logger.info("Stopping integrated server...")
         self._integrated.stop()
         self._integrated = None
         return True
 
     def server_running(self):
-        """
-        Returns if the integrated server is running.
-
-        :return: True if running, False otherwise
-        """
+        """Is the integrated server running?"""
         return bool(self._integrated)

@@ -10,8 +10,6 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import logging
-
 import ida_bytes
 import ida_enum
 import ida_funcs
@@ -29,36 +27,22 @@ import events as evt  # noqa: I100,I202
 from .events import Event  # noqa: I201
 from ..shared.commands import UpdateCursors
 
-logger = logging.getLogger("IDArling.Core")
-
 
 class Hooks(object):
     """
-    This is the base class for every hook of the core module.
+    This is a common class for all client hooks. It adds an utility method to
+    send an user event to all other clients through the server.
     """
 
     def __init__(self, plugin):
-        """
-        Initialize the hook.
-
-        :param plugin: the plugin instance
-        """
         self._plugin = plugin
 
     def _send_event(self, event):
-        """
-        Send an event to the other clients through the server.
-
-        :param event: the event to send
-        """
+        """Sends an event to the server."""
         self._plugin.network.send_packet(event)
 
 
 class IDBHooks(Hooks, ida_idp.IDB_Hooks):
-    """
-    The concrete class for all IDB-related events.
-    """
-
     def __init__(self, plugin):
         ida_idp.IDB_Hooks.__init__(self)
         Hooks.__init__(self, plugin)
@@ -225,12 +209,11 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
             extra["spath"] = spath
         elif is_flag(ida_bytes.stkvar_flag()):
             op = "stkvar"
-        # IDA hooks for is_invsign seems broken
-        # Inverting sign don't trigger the hook
+        # FIXME: No hooks are called when inverting sign
         # elif ida_bytes.is_invsign(ea, flags, n):
         #     op = 'invert_sign'
         else:
-            return 0  # FIXME: Find a better way
+            return 0  # FIXME: Find a better way to do this
         self._send_event(evt.OpTypeChangedEvent(ea, n, op, extra))
         return 0
 
@@ -298,7 +281,6 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
 
     def struc_member_created(self, sptr, mptr):
         extra = {}
-
         sname = ida_struct.get_struc_name(sptr.id)
         fieldname = ida_struct.get_member_name(mptr.id)
         offset = 0 if mptr.unimem() else mptr.soff
@@ -385,7 +367,6 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
                         sname, soff, mptr.eoff, flag, extra
                     )
                 )
-            # Is it really possible to create an enum?
             elif flag & ida_bytes.enum_flag():
                 extra["serial"] = mt.ec.serial
                 self._send_event(
@@ -454,7 +435,7 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         return 0
 
     def segm_attrs_updated(self, s):
-        # This hook isn't triggered by segregs modifications
+        # FIXME: This hook isn't being triggered by segregs modification
         # ida_segregs.get_sreg()
         # ida_segregs.split_sreg_range()
         self._send_event(
@@ -468,10 +449,6 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
 
 
 class IDPHooks(Hooks, ida_idp.IDP_Hooks):
-    """
-    The concrete class for IDP-related events.
-    """
-
     def __init__(self, plugin):
         ida_idp.IDP_Hooks.__init__(self)
         Hooks.__init__(self, plugin)
@@ -485,10 +462,6 @@ class IDPHooks(Hooks, ida_idp.IDP_Hooks):
 
 
 class HexRaysHooks(Hooks):
-    """
-    The concrete class for Hex-Rays-related events.
-    """
-
     def __init__(self, plugin):
         super(HexRaysHooks, self).__init__(plugin)
         self._available = None
@@ -503,7 +476,7 @@ class HexRaysHooks(Hooks):
     def hook(self):
         if self._available is None:
             if not ida_hexrays.init_hexrays_plugin():
-                logger.info("Hex-Rays SDK is not available")
+                self._plugin.logger.info("Hex-Rays SDK is not available")
                 self._available = False
             else:
                 ida_hexrays.install_hexrays_callback(self._hxe_callback)
@@ -595,7 +568,7 @@ class HexRaysHooks(Hooks):
             cl = ida_hexrays.user_iflags_first(it)
             f = ida_hexrays.user_iflags_second(it)
 
-            # Temporary while Hex-Rays fix their API
+            # FIXME: Temporary while Hex-Rays update their API
             def read_type_sign(obj):
                 import ctypes
                 import struct
@@ -725,10 +698,6 @@ class HexRaysHooks(Hooks):
 
 
 class ViewHooks(Hooks, ida_kernwin.View_Hooks):
-    """
-    The concrete class for View-related events.
-    """
-
     def __init__(self, plugin):
         ida_kernwin.View_Hooks.__init__(self)
         Hooks.__init__(self, plugin)
@@ -743,15 +712,10 @@ class ViewHooks(Hooks, ida_kernwin.View_Hooks):
 
 
 class UIHooks(Hooks, ida_kernwin.UI_Hooks):
-    """
-    The concrete class for UI-related events.
-    """
-
     def __init__(self, plugin):
         ida_kernwin.UI_Hooks.__init__(self)
         Hooks.__init__(self, plugin)
         self._state = {}
-        self._lock = False
 
     def get_ea_hint(self, ea):
         if self._plugin.network.connected:
@@ -763,17 +727,14 @@ class UIHooks(Hooks, ida_kernwin.UI_Hooks):
                     return str(name)
 
     def saving(self):
-        if not self._lock:
-            painter = self._plugin.interface.painter
-            users_positions = painter.users_positions
-            for user_position in users_positions.values():
-                address = user_position["address"]
-                color = painter.clear_database(address)
-                self._state[color] = address
-        self._lock = not self._lock
+        painter = self._plugin.interface.painter
+        users_positions = painter.users_positions
+        for user_position in users_positions.values():
+            address = user_position["address"]
+            color = painter.clear_database(address)
+            self._state[color] = address
 
     def saved(self):
-        # restore users cursor
         painter = self._plugin.interface.painter
         for color, address in self._state.items():
             painter.repaint_database(color, address)
