@@ -446,10 +446,10 @@ class Painter(object):
             for n, e in enumerate(self._painted_functions[func.start_ea]):
                 if e == old_color:
                     self._painted_functions[func.start_ea][n] = new_color
-        # If the color is the current color function (not in the deque yet)
-        # repaint the given function with the new color
-        if new_color not in self._painted_functions[user_address]:
-            self.set_paint_function(func, new_color)
+            # If the color is the current color function (not in the deque yet)
+            # repaint the given function with the new color
+            if new_color not in self._painted_functions[user_address]:
+                self.set_paint_function(func, new_color)
 
     # -------------------------------------------------------------------------
     # Misc
