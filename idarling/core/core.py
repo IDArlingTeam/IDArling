@@ -134,9 +134,8 @@ class Core(Module):
 
             def closebase(self):
                 core.unhook_all()
+                core.unsubscribe()
 
-                name = self._plugin.config["user"]["name"]
-                self._plugin.network.send_packet(Unsubscribe(name))
                 self._plugin.interface.painter.uninstall()
 
                 core.repo = None
@@ -212,8 +211,8 @@ class Core(Module):
             % (self._repo, self._branch, self._tick)
         )
 
-    def notify_connected(self):
-        # Send a subscribe packet if this database is on the server
+    def subscribe(self):
+        """Send the subscribe packet."""
         if self._repo and self._branch:
             name = self._plugin.config["user"]["name"]
             color = self._plugin.config["user"]["color"]
@@ -224,3 +223,9 @@ class Core(Module):
                 )
             )
             self.hook_all()
+
+    def unsubscribe(self):
+        """Send the unsubscribe packet."""
+        if self._repo and self._branch:
+            name = self._plugin.config["user"]["name"]
+            self._plugin.network.send_packet(Unsubscribe(name))

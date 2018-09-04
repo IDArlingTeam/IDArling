@@ -177,7 +177,10 @@ class ServersDiscovery(QObject):
             # Reply to the discovery request
             reply = DISCOVERY_REPLY
             reply = reply.encode("utf-8")
-            self._socket.sendto(reply, address)
+            try:
+                self._socket.sendto(reply, address)
+            except socket.error:
+                self._logger.warning("Couldn't send discovery reply")
 
     def _trim_servers_list(self):
         """

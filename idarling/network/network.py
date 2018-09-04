@@ -77,8 +77,8 @@ class Network(Module):
         # Do the actual connection process
         self._client = Client(self._plugin)
         self._plugin.logger.info("Connecting to %s:%d..." % (host, port))
-        # Notify the plugin of the connection
-        self._plugin.notify_connecting()
+        # Update the user interface
+        self._plugin.interface.update()
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         # Wrap the socket in a SSL tunnel
@@ -93,8 +93,8 @@ class Network(Module):
             self._plugin.logger.exception(e)
             self._client = None
 
-            # Notify the plugin
-            self._plugin.notify_disconnected()
+            # Update the user interface
+            self._plugin.interface.update()
             return False
         sock.settimeout(0)  # No timeout
         sock.setblocking(0)  # No blocking
@@ -107,8 +107,10 @@ class Network(Module):
         self._client.set_keep_alive(cnt, intvl, idle)
 
         self._plugin.logger.info("Connected")
-        # Notify the plugin
-        self._plugin.notify_connected()
+        # Update the user interface
+        self._plugin.interface.update()
+        # Subscribe to the events
+        self._plugin.core.subscribe()
         return True
 
     def disconnect(self):
@@ -119,13 +121,9 @@ class Network(Module):
 
         # Do the actual disconnection process
         self._plugin.logger.info("Disconnecting...")
-        if self._client:
-            self._client.disconnect()
+        self._client.disconnect()
         self._client = None
         self._server = None
-
-        # Notify the plugin of the disconnection
-        self._plugin.notify_disconnected()
         return True
 
     def send_packet(self, packet):

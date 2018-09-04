@@ -43,15 +43,3 @@ class Module(object):
     def _uninstall(self):
         """Uninstall the module. Overloaded by the module."""
         raise NotImplementedError("_uninstall() not implemented")
-
-    def notify_disconnected(self):
-        """Notify the module that a disconnection has occurred."""
-        pass
-
-    def notify_connecting(self):
-        """Notify the module that a connection is being established."""
-        pass
-
-    def notify_connected(self):
-        """Notify the module that a connection has being established."""
-        pass

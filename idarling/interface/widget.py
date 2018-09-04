@@ -26,10 +26,6 @@ class StatusWidget(QWidget):
     allow the user to connect to server, as well as to access the settings.
     """
 
-    STATE_DISCONNECTED = 0
-    STATE_CONNECTING = 1
-    STATE_CONNECTED = 2
-
     @staticmethod
     def ida_to_python(c):
         # IDA colors are 0xBBGGRR.
@@ -75,9 +71,6 @@ class StatusWidget(QWidget):
         super(StatusWidget, self).__init__()
         self._plugin = plugin
 
-        self._state = self.STATE_DISCONNECTED
-        self._server = None
-
         # Create the sub-widgets
         def new_label():
             widget = QLabel()
@@ -100,37 +93,35 @@ class StatusWidget(QWidget):
         # Timer signaling it is time to update the widget
         self._timer = QTimer()
         self._timer.setInterval(1000)
-        self._timer.timeout.connect(self.update_widget)
+        self._timer.timeout.connect(self.refresh)
 
     def install(self, window):
         self._timer.start()
         window.statusBar().addPermanentWidget(self)
-        self.update_widget()
+        self.refresh()
 
     def uninstall(self, window):
         self._timer.stop()
         window.statusBar().removeWidget(self)
 
-    def update_widget(self):
+    def refresh(self):
         """Called to update the widget when the network state has changed."""
         self._plugin.logger.trace("Updating widget state")
 
         # Get the corresponding color, text and icon
-        if self._state == StatusWidget.STATE_DISCONNECTED:
-            color, text, icon = "red", "Disconnected", "disconnected.png"
-        elif self._state == StatusWidget.STATE_CONNECTING:
-            color, text, icon = "orange", "Connecting", "connecting.png"
-        elif self._state == StatusWidget.STATE_CONNECTED:
+        if self._plugin.network.connected:
             color, text, icon = "green", "Connected", "connected.png"
+        elif self._plugin.network.client:
+            color, text, icon = "orange", "Connecting", "connecting.png"
         else:
-            self._plugin.logger.warning("Invalid server state")
-            return
+            color, text, icon = "red", "Disconnected", "disconnected.png"
 
         # Update the text of the server widgets
-        if self._server is None:
+        server = self._plugin.network.server
+        if server is None:
             server = "&lt;no server&gt;"
         else:
-            server = "%s:%d" % (self._server["host"], self._server["port"])
+            server = "%s:%d" % (server["host"], server["port"])
         text_format = '%s | %s -- <span style="color: %s;">%s</span>'
         self._servers_text_widget.setText(
             text_format % (self._plugin.description(), server, color, text)
@@ -412,15 +403,3 @@ class StatusWidget(QWidget):
         painter = QPainter(self)
         painter.drawPixmap(event.rect(), buffer, buffer.rect())
         painter.end()
-
-    def set_state(self, state):
-        """Informs the widget of the networking state."""
-        if state != self._state:
-            self._state = state
-            self.update_widget()
-
-    def set_server(self, server):
-        """Inform the widget of the server we're connected to."""
-        if server != self._server:
-            self._server = server
-            self.update_widget()

@@ -175,7 +175,7 @@ class Invite(QWidget):
         if self._popup_opacity == 0.0:
             if self._time == 0:
                 self._time = time.time()
-            self._plugin.interface.widget.update_widget()
+            self._plugin.interface.widget.refresh()
             super(Invite, self).hide()
 
     def hide_animation(self):

@@ -215,30 +215,3 @@ class Plugin(ida_idaapi.plugin_t):
         with open(config_path, "wb") as config_file:
             self._logger.debug("Saved config: %s" % self._config)
             config_file.write(json.dumps(self._config))
-
-    def notify_disconnected(self):
-        """
-        Notify the plugin that a disconnection has occurred. The plugin will
-        simply forward the event to all its modules.
-        """
-        self._core.notify_disconnected()
-        self._interface.notify_disconnected()
-        self._network.notify_disconnected()
-
-    def notify_connecting(self):
-        """
-        Notify the plugin that a connection is being established. The plugin
-        will simply forward the event to all its modules.
-        """
-        self._core.notify_connecting()
-        self._interface.notify_connecting()
-        self._network.notify_connecting()
-
-    def notify_connected(self):
-        """
-        Notify the plugin that a connection has been established. The plugin
-        will simply forward the event to all its modules.
-        """
-        self._core.notify_connected()
-        self._interface.notify_connected()
-        self._network.notify_connected()

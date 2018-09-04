@@ -78,10 +78,13 @@ class Interface(Module):
         self._plugin.logger.debug("Uninstalled user interface elements")
         return True
 
-    def _update_actions(self):
-        """Update the actions status (enabled or not)."""
+    def update(self):
+        """Update the actions and widget."""
+        if not self._plugin.network.connected:
+            del self._invites[:]
         self._open_action.update()
         self._save_action.update()
+        self._widget.refresh()
 
     def show_invite(self, text, icon, callback):
         """
@@ -96,22 +99,3 @@ class Interface(Module):
         invite.callback = callback
         invite.show()
         self._invites.append(invite)
-
-    def notify_disconnected(self):
-        # Update the widget's state
-        del self._invites[:]
-        self._widget.set_state(StatusWidget.STATE_DISCONNECTED)
-        self._widget.set_server(None)
-        self._update_actions()
-
-    def notify_connecting(self):
-        # Update the widget's state
-        self._widget.set_state(StatusWidget.STATE_CONNECTING)
-        self._widget.set_server(self._plugin.network.server)
-        self._update_actions()
-
-    def notify_connected(self):
-        # Update the widget's state
-        self._widget.set_state(StatusWidget.STATE_CONNECTED)
-        self._widget.set_server(self._plugin.network.server)
-        self._update_actions()

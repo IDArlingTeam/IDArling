@@ -717,7 +717,7 @@ class SettingsDialog(QDialog):
             packet = UserColorChanged(name, old_color, self._color)
             self._plugin.network.send_packet(packet)
             self._plugin.config["user"]["color"] = self._color
-            self._plugin.interface.widget.update_widget()
+            self._plugin.interface.widget.refresh()
 
         checked = self._navbar_colorizer_checkbox.isChecked()
         self._plugin.config["user"]["navbar_colorizer"] = checked

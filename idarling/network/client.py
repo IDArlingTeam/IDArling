@@ -45,10 +45,10 @@ class Client(ClientSocket):
         }
 
     def disconnect(self, err=None):
-        self._plugin.logger.info("Connection lost")
-        # Notify the plugin
-        self._plugin.notify_disconnected()
         ClientSocket.disconnect(self, err)
+        # Update the user interface
+        self._plugin.interface.update()
+        self._plugin.logger.info("Connection lost")
 
     def recv_packet(self, packet):
         if isinstance(packet, Command):
@@ -85,12 +85,12 @@ class Client(ClientSocket):
         self._plugin.interface.painter.paint(
             packet.name, packet.color, packet.ea
         )
-        self._plugin.interface.widget.update_widget()
+        self._plugin.interface.widget.refresh()
 
     def _handle_unsubscribe(self, packet):
         if self._plugin.interface.painter.installed:
             self._plugin.interface.painter.unpaint(packet.name)
-        self._plugin.interface.widget.update_widget()
+        self._plugin.interface.widget.refresh()
 
     def _handle_invite_to(self, packet):
         text = "%s - Jump to %#x" % (packet.name, packet.loc)
