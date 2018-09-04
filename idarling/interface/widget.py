@@ -354,6 +354,7 @@ class StatusWidget(QWidget):
                 def action_triggered():
                     if invite.callback:
                         invite.callback()
+                    invite.time = -1
 
                 action.triggered.connect(action_triggered)
                 menu.addAction(action)

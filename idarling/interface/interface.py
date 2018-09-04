@@ -100,10 +100,8 @@ class Interface(Module):
     def notify_disconnected(self):
         # Update the widget's state
         del self._invites[:]
-        self._painter.reset_all()
         self._widget.set_state(StatusWidget.STATE_DISCONNECTED)
         self._widget.set_server(None)
-        self._widget.update_widget()
         self._update_actions()
 
     def notify_connecting(self):

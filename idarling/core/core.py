@@ -114,6 +114,11 @@ class Core(Module):
                     )
                     core.hook_all()
 
+                self._plugin.interface.painter.set_custom_nav_colorizer()
+
+            def database_inited(self, *_):
+                self._plugin.interface.painter.install()
+
         self._ui_hooks_core = UIHooksCore(self._plugin)
         self._ui_hooks_core.hook()
 
@@ -132,6 +137,7 @@ class Core(Module):
 
                 name = self._plugin.config["user"]["name"]
                 self._plugin.network.send_packet(Unsubscribe(name))
+                self._plugin.interface.painter.uninstall()
 
                 core.repo = None
                 core.branch = None

@@ -26,11 +26,7 @@ if sys.version_info > (3,):
 
 
 class Painter(object):
-    """
-    The painter module is responsible for all the database painting. This
-    module is highly inspired by the painting module from Makus Gaasedelen:
-    https://github.com/gaasedelen/lighthouse/blob/master/plugin/lighthouse/painting.py
-    """
+    """The painter module is responsible for all the database painting."""
 
     DEFCOLOR = 0xffffffff
 
@@ -76,13 +72,17 @@ class Painter(object):
     def __init__(self, plugin):
         super(Painter, self).__init__()
         self._plugin = plugin
-        self._ui_hooks = None
+        self._installed = False
 
         self._painted_instructions = collections.defaultdict(collections.deque)
         self._painted_functions = collections.defaultdict(collections.deque)
         self._users_positions = collections.defaultdict(dict)
         self._nbytes = 0
         self._color = None
+
+    @property
+    def installed(self):
+        return self._installed
 
     @property
     def color(self):
@@ -106,36 +106,22 @@ class Painter(object):
         return self._users_positions
 
     def install(self):
-        class UIHooks(ida_kernwin.UI_Hooks):
-            """This hook is used to know when to replace the nav colorizer."""
-
-            def __init__(self, painter):
-                ida_kernwin.UI_Hooks.__init__(self)
-                self._painter = painter
-
-            def ready_to_run(self, *_):
-                # The default nav colorized can only be recovered once!
-                colorizer = self._painter.custom_nav_colorizer
-                ida_nav_colorizer = ida_kernwin.set_nav_colorizer(colorizer)
-                if ida_nav_colorizer is not None:
-                    self._painter.ida_nav_colorizer = ida_nav_colorizer
-                self._painter.bg_color = Painter._get_ida_bg_color()
-
-        self._ui_hooks = UIHooks(self)
-        result = self._ui_hooks.hook()
-        if not result:
-            raise RuntimeError("Failed to install painter")
-
+        self._installed = True
         self._plugin.logger.debug("Painter installed")
         return True
 
     def uninstall(self):
-        result = self._ui_hooks.unhook()
-        if not result:
-            raise RuntimeError("Uninstalled the painter")
-
-        self._plugin.logger.debug("Uninstalled the painter")
+        self._installed = False
+        self._plugin.logger.debug("Painter uninstalled")
         return True
+
+    def set_custom_nav_colorizer(self):
+        # The default nav colorized can only be recovered once!
+        colorizer = self.custom_nav_colorizer
+        ida_nav_colorizer = ida_kernwin.set_nav_colorizer(colorizer)
+        if ida_nav_colorizer is not None:
+            self.ida_nav_colorizer = ida_nav_colorizer
+        self.bg_color = Painter._get_ida_bg_color()
 
     def paint(self, name, color, address):
         """Request a painting of the specified address."""
@@ -326,10 +312,3 @@ class Painter(object):
             # yet, repaint the given function with the new color
             if new_color not in self._painted_functions[user_address]:
                 self._set_paint_function(func, new_color)
-
-    def reset_all(self):
-        for name in self.users_positions.keys():
-            self.unpaint(name)
-        self._painted_instructions.clear()
-        self._painted_functions.clear()
-        self.users_positions.clear()

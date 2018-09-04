@@ -88,7 +88,8 @@ class Client(ClientSocket):
         self._plugin.interface.widget.update_widget()
 
     def _handle_unsubscribe(self, packet):
-        self._plugin.interface.painter.unpaint(packet.name)
+        if self._plugin.interface.painter.installed:
+            self._plugin.interface.painter.unpaint(packet.name)
         self._plugin.interface.widget.update_widget()
 
     def _handle_invite_to(self, packet):

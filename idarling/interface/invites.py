@@ -110,6 +110,11 @@ class Invite(QWidget):
         """Get the invite time."""
         return self._time
 
+    @time.setter
+    def time(self, time):
+        """Set the invite time."""
+        self._time = time
+
     def paintEvent(self, event):  # noqa: N802
         """We override the painting event to draw the invite ourselves."""
         painter = QPainter(self)

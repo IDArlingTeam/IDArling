@@ -107,7 +107,8 @@ class ServerClient(ClientSocket):
     def disconnect(self, err=None):
         # Notify our peers we disconnected
         self.parent().reject(self)
-        self.parent().forward_peers(self, Unsubscribe(self.name))
+        if self.branch and self.repo:
+            self.parent().forward_peers(self, Unsubscribe(self.name))
         ClientSocket.disconnect(self, err)
         self._logger.info("Disconnected")
 
