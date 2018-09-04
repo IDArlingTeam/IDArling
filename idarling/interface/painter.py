@@ -77,28 +77,11 @@ class Painter(object):
         self._painted_instructions = collections.defaultdict(collections.deque)
         self._painted_functions = collections.defaultdict(collections.deque)
         self._users_positions = collections.defaultdict(dict)
-        self._nbytes = 0
-        self._color = None
 
     @property
     def installed(self):
+        """Is the painter active?"""
         return self._installed
-
-    @property
-    def color(self):
-        return self._color
-
-    @color.setter
-    def color(self, color):
-        self._color = color
-
-    @property
-    def nbytes(self):
-        return self._nbytes
-
-    @nbytes.setter
-    def nbytes(self, nbytes):
-        self._nbytes = nbytes
 
     @property
     def users_positions(self):
@@ -106,14 +89,21 @@ class Painter(object):
         return self._users_positions
 
     def install(self):
+        self._reset()
         self._installed = True
         self._plugin.logger.debug("Painter installed")
         return True
 
     def uninstall(self):
+        self._reset()
         self._installed = False
         self._plugin.logger.debug("Painter uninstalled")
         return True
+
+    def _reset(self):
+        self._painted_instructions.clear()
+        self._painted_functions.clear()
+        self._users_positions.clear()
 
     def set_custom_nav_colorizer(self):
         # The default nav colorized can only be recovered once!
@@ -145,7 +135,6 @@ class Painter(object):
         orig = ida_kernwin.call_nav_colorizer(
             self.ida_nav_colorizer, ea, nbytes
         )
-        self.nbytes = nbytes
         return long(orig)
 
     def paint_instruction(self, name, color, address):
