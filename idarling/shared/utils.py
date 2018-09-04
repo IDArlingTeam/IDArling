@@ -12,12 +12,17 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import logging
 
+_loggers = {}
 
-def start_logging(log_path, level):
+
+def start_logging(log_path, log_name, level):
     """
     Setup the logger: add a new log level, create a logger which logs into
-    the console and also into a log files located at: logs/idarling.%pid.log.
+    the console and also into a log files located at: logs/idarling.%pid%.log.
     """
+    if log_name in _loggers:
+        return _loggers[log_name]
+
     # Add a new log level called TRACE, and more verbose that DEBUG.
     logging.TRACE = 5
     logging.addLevelName(logging.TRACE, "TRACE")
@@ -28,7 +33,9 @@ def start_logging(log_path, level):
         logging.TRACE, msg, *args, **kwargs
     )
 
-    logger = logging.getLogger("IDArling")
+    logger = logging.getLogger(log_name)
+    if not isinstance(level, int):
+        level = getattr(logging, level)
     logger.setLevel(level)
 
     # Log to the console with a first format
@@ -51,4 +58,5 @@ def start_logging(log_path, level):
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 
+    _loggers[log_name] = logger
     return logger

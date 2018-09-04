@@ -70,6 +70,11 @@ class ServerClient(ClientSocket):
         """Get the user color."""
         return self._color
 
+    @property
+    def ea(self):
+        """Get the user address."""
+        return self._ea
+
     def connect(self, sock):
         ClientSocket.connect(self, sock)
 
@@ -100,8 +105,10 @@ class ServerClient(ClientSocket):
         }
 
     def disconnect(self, err=None):
+        # Notify our peers we disconnected
+        self.parent().reject(self)
+        self.parent().forward_peers(self, Unsubscribe(self.name))
         ClientSocket.disconnect(self, err)
-        self.parent().client_unsubscribe(self)
         self._logger.info("Disconnected")
 
     def recv_packet(self, packet):
@@ -124,8 +131,8 @@ class ServerClient(ClientSocket):
 
             # Save the event into the database
             self.parent().database.insert_event(self, packet)
-            # Forward the event to the other clients
-            self.parent().forward_packet(self, packet)
+            # Forward the event to our peers
+            self.parent().forward_peers(self, packet)
         else:
             return False
         return True
@@ -182,10 +189,16 @@ class ServerClient(ClientSocket):
         self._name = packet.name
         self._color = packet.color
         self._ea = packet.ea
-        self.parent().client_subscribe(self)
 
-        # Inform others people that we are subscribing
-        self.parent().forward_packet(self, packet)
+        # Inform our peers that we are subscribing
+        self.parent().forward_peers(self, packet)
+
+        # Inform ourselves about our peers existence
+        for peer in self.parent().get_peers(self):
+            packet.name = peer.name
+            packet.color = peer.color
+            packet.ea = peer.ea
+            self.send_packet(packet)
 
         # Send all missed events
         events = self.parent().database.select_events(
@@ -197,33 +210,38 @@ class ServerClient(ClientSocket):
 
     def _handle_unsubscribe(self, packet):
         # Inform others people that we are unsubscribing
-        packet.color = self._color
-        self.parent().forward_packet(self, packet)
+        self.parent().forward_peers(self, packet)
 
-        self.parent().client_unsubscribe(self)
+        # Inform ourselves that our peers ceased to exist
+        for peer in self.parent().get_peers(self):
+            packet.name = peer.name
+            self.send_packet(packet)
+
         self._repo = None
         self._branch = None
         self._name = None
         self._color = None
 
     def _handle_invite_to(self, packet):
-        def matches(other):
-            return other.name == packet.name or packet.name == "everyone"
-
+        target = packet.name
         packet.name = self._name
-        self.parent().forward_packet(self, packet, matches)
+
+        def matches(other):
+            return other.name == target or target == "everyone"
+
+        self.parent().forward_peers(self, packet, matches)
 
     def _handle_update_cursors(self, packet):
-        self.parent().forward_packet(self, packet)
+        self.parent().forward_peers(self, packet)
 
     def _handle_user_renamed(self, packet):
         # TODO:
         # Check if the new_name is already used
         self._name = packet.new_name
-        self.parent().forward_packet(self, packet)
+        self.parent().forward_peers(self, packet)
 
     def _handle_user_color_changed(self, packet):
-        self.parent().forward_packet(self, packet)
+        self.parent().forward_peers(self, packet)
 
 
 class Server(ServerSocket):
@@ -235,7 +253,7 @@ class Server(ServerSocket):
     def __init__(self, logger, ssl, parent=None):
         ServerSocket.__init__(self, logger, parent)
         self._ssl = ssl
-        self._clients = {}
+        self._clients = []
 
         # Initialize the database
         self._database = Database(self.server_file("database.db"))
@@ -290,7 +308,7 @@ class Server(ServerSocket):
     def stop(self):
         """Terminates all the connections and stops the server."""
         self._logger.info("Shutting down server")
-        for client in self._clients:
+        for client in list(self._clients):
             client.disconnect()
         self.disconnect()
         self._discovery.stop()
@@ -306,27 +324,27 @@ class Server(ServerSocket):
         sock.settimeout(0)  # No timeout
         sock.setblocking(0)  # No blocking
         client.connect(sock)
+        self._clients.append(client)
 
-    def forward_packet(self, client, packet, matches=None):
+    def reject(self, client):
+        """Called when a client is disconnected."""
+        self._clients.remove(client)
+
+    def get_peers(self, client, matches=None):
+        """Get the other clients on the same database."""
+        peers = []
+        for peer in self._clients:
+            if peer.repo != client.repo or peer.branch != client.branch:
+                continue
+            if peer == client or (matches and not matches(peer)):
+                continue
+            peers.append(peer)
+        return peers
+
+    def forward_peers(self, client, packet, matches=None):
         """Sends the packet to the other clients on the same database."""
-        clients = self._clients.get((client.repo, client.branch), [])
-        for other in clients:
-            if other != client and (not matches or matches(other)):
-                other.send_packet(packet)
-
-    def client_subscribe(self, client):
-        """Called to register a client who just subscribed."""
-        clients = self._clients.get((client.repo, client.branch), [])
-        if client not in clients:
-            clients.append(client)
-        self._clients[(client.repo, client.branch)] = clients
-
-    def client_unsubscribe(self, client):
-        """Called to register a client who just unsubscribed."""
-        clients = self._clients.get((client.repo, client.branch), [])
-        if client in clients:
-            clients.remove(client)
-        self._clients[(client.repo, client.branch)] = clients
+        for peer in self.get_peers(client, matches):
+            peer.send_packet(packet)
 
     def server_file(self, filename):
         """Get the absolute path of a local resource."""

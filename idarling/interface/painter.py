@@ -35,7 +35,7 @@ class Painter(object):
     DEFCOLOR = 0xffffff
 
     @staticmethod
-    def get_ida_bg_color():
+    def _get_ida_bg_color():
         """
         Return the background color from the disassembly view. It uses the
         IDA registry to recover the color palettes configured by the user. Then
@@ -48,6 +48,31 @@ class Painter(object):
         index = 176 + selected * 208
         return struct.unpack("<I", palette[index : index + 4])[0]  # noqa: E203
 
+    @staticmethod
+    def _get_paint_instruction(address):
+        """This is wrapper around get_item_color."""
+        return ida_nalt.get_item_color(address)
+
+    @staticmethod
+    def _set_paint_instruction(address, color):
+        """This is a wrapper around set_item_color."""
+        ida_nalt.set_item_color(address, color)
+
+    @staticmethod
+    def _get_paint_function(function):
+        return function.color
+
+    @staticmethod
+    def _set_paint_function(function, color):
+        """Set a function's color."""
+        function.color = color
+        ida_funcs.update_func(function)
+
+    @staticmethod
+    def _paint_navbar():
+        """Request a repainting of the navbar."""
+        ida_kernwin.refresh_navband(True)
+
     def __init__(self, plugin):
         super(Painter, self).__init__()
         self._plugin = plugin
@@ -58,6 +83,27 @@ class Painter(object):
         self._users_positions = collections.defaultdict(dict)
         self._nbytes = 0
         self._color = None
+
+    @property
+    def color(self):
+        return self._color
+
+    @color.setter
+    def color(self, color):
+        self._color = color
+
+    @property
+    def nbytes(self):
+        return self._nbytes
+
+    @nbytes.setter
+    def nbytes(self, nbytes):
+        self._nbytes = nbytes
+
+    @property
+    def users_positions(self):
+        """Return the position and color of connected users."""
+        return self._users_positions
 
     def install(self):
         class UIHooks(ida_kernwin.UI_Hooks):
@@ -73,7 +119,7 @@ class Painter(object):
                 ida_nav_colorizer = ida_kernwin.set_nav_colorizer(colorizer)
                 if ida_nav_colorizer is not None:
                     self._painter.ida_nav_colorizer = ida_nav_colorizer
-                self._painter.bg_color = Painter.get_ida_bg_color()
+                self._painter.bg_color = Painter._get_ida_bg_color()
 
         self._ui_hooks = UIHooks(self)
         result = self._ui_hooks.hook()
@@ -98,6 +144,7 @@ class Painter(object):
     def unpaint(self, name):
         """Request a repainting when the user has left."""
         self.unpaint_database(name)
+        self.users_positions.pop(name)
 
     def custom_nav_colorizer(self, ea, nbytes):
         """This is the custom nav colorizer used by the painter."""
@@ -115,22 +162,17 @@ class Painter(object):
         self.nbytes = nbytes
         return long(orig)
 
-    @staticmethod
-    def paint_navbar():
-        """Request a repainting of the navbar."""
-        ida_kernwin.refresh_navband(True)
-
     def paint_instruction(self, name, color, address):
         """Paint a instruction with the specified color."""
         # Get current color
-        current_color = self.get_paint_instruction(address)
+        current_color = self._get_paint_instruction(address)
         # Store current color into the stack
         self._painted_instructions[address].append(current_color)
         # Update the user position and name
         self.users_positions[name]["address"] = address
         self.users_positions[name]["color"] = color
         # Apply the user color
-        self.set_paint_instruction(address, color)
+        self._set_paint_instruction(address, color)
 
     def clear_instruction(self, name):
         """Clear the paint from the specified user."""
@@ -144,17 +186,7 @@ class Painter(object):
             # Otherwise apply the default background color
             except IndexError:
                 color = self.bg_color
-            self.set_paint_instruction(address, color)
-
-    @staticmethod
-    def set_paint_instruction(address, color):
-        """This is a wrapper around set_item_color."""
-        ida_nalt.set_item_color(address, color)
-
-    @staticmethod
-    def get_paint_instruction(address):
-        """This is wrapper around get_item_color."""
-        return ida_nalt.get_item_color(address)
+            self._set_paint_instruction(address, color)
 
     def paint_function(self, name, color, new_address):
         """Paints a function with the specified color."""
@@ -173,9 +205,10 @@ class Painter(object):
                 return
         if new_func:
             # Add the color to the new function color stack
-            self._painted_functions[new_func.start_ea].append(new_func.color)
+            func_color = self._get_paint_function(new_func)
+            self._painted_functions[new_func.start_ea].append(func_color)
             # Finally paint the function
-            self.set_paint_function(new_func, color)
+            self._set_paint_function(new_func, color)
 
     def clear_function(self, name, new_address):
         """Clear paint from the specified user and function."""
@@ -185,7 +218,8 @@ class Painter(object):
         # If the stack is empty, this is the first time we meet this function,
         # so we must save the original color to restore it.
         if new_func and not self._painted_functions[new_func.start_ea]:
-            self._painted_functions[new_func.start_ea].append(new_func.color)
+            func_color = self._get_paint_function(new_func)
+            self._painted_functions[new_func.start_ea].append(func_color)
 
         if user_position:
             address = user_position["address"]
@@ -201,32 +235,26 @@ class Painter(object):
                 # the color popped from the stack.
                 if self._painted_functions[func.start_ea]:
                     self.paint_function_instructions(address)
-                self.set_paint_function(func, color)
+                self._set_paint_function(func, color)
 
     def paint_function_instructions(self, address):
         """Paint a function's instructions with the user color."""
         for start_ea, end_ea in idautils.Chunks(address):
             for ea in idautils.Heads(start_ea, end_ea):
-                color = self.get_paint_instruction(ea)
+                color = self._get_paint_instruction(ea)
                 # Only color instructions that aren't colored yet to keep
                 # an existing user-defined color
                 if color == self.DEFCOLOR:
-                    self.set_paint_instruction(ea, self.bg_color)
+                    self._set_paint_instruction(ea, self.bg_color)
 
     def clear_function_instructions(self, address):
         """Clear paint from a function instructions."""
         for start_ea, end_ea in idautils.Chunks(address):
             for ea in idautils.Heads(start_ea, end_ea):
-                color = self.get_paint_instruction(ea)
+                color = self._get_paint_instruction(ea)
                 # Clear it only if it hasn't been colorized by the user
                 color = color if color != self.bg_color else self.DEFCOLOR
-                self.set_paint_instruction(ea, color)
-
-    @staticmethod
-    def set_paint_function(function, color):
-        """Set a function's color."""
-        function.color = color
-        ida_funcs.update_func(function)
+                self._set_paint_instruction(ea, color)
 
     def paint_database(self, name, color, address):
         """Update the painting when an user has moved to another address."""
@@ -239,7 +267,7 @@ class Painter(object):
         # Paint the instruction
         self.paint_instruction(name, color, address)
         # Paint the navbar
-        self.paint_navbar()
+        self._paint_navbar()
 
     def unpaint_database(self, name):
         """Clear paint associated with the specified name."""
@@ -251,11 +279,11 @@ class Painter(object):
         This method is called when the database is about to be saved to avoid
         saving the cursor into it. It will clear paint from the given address.
         """
-        color = self.get_paint_instruction(address)
-        self.set_paint_instruction(address, self.DEFCOLOR)
+        color = self._get_paint_instruction(address)
+        self._set_paint_instruction(address, self.DEFCOLOR)
         func = ida_funcs.get_func(address)
         if func:
-            self.set_paint_function(func, self.DEFCOLOR)
+            self._set_paint_function(func, self.DEFCOLOR)
         return color
 
     def repaint_database(self, color, address):
@@ -263,10 +291,10 @@ class Painter(object):
         This method is called when the database has finished saving to restore
         the cursors into it. It will restore paint for the given address.
         """
-        self.set_paint_instruction(address, color)
+        self._set_paint_instruction(address, color)
         func = ida_funcs.get_func(address)
         if func:
-            self.set_paint_function(func, color)
+            self._set_paint_function(func, color)
 
     def rename_user(self, old_name, new_name):
         """Notifies the painter that an user has been renamed."""
@@ -285,7 +313,7 @@ class Painter(object):
         # If the color is the current color instruction (not in the stack yet),
         # repaint the given instruction with the new color
         if new_color not in self._painted_instructions[user_address]:
-            self.set_paint_instruction(user_address, new_color)
+            self._set_paint_instruction(user_address, new_color)
 
         # Replace the color in painted functions for the given user
         func = ida_funcs.get_func(user_address)
@@ -297,25 +325,11 @@ class Painter(object):
             # If the color is the current color function (not in the stack
             # yet, repaint the given function with the new color
             if new_color not in self._painted_functions[user_address]:
-                self.set_paint_function(func, new_color)
+                self._set_paint_function(func, new_color)
 
-    @property
-    def color(self):
-        return self._color
-
-    @color.setter
-    def color(self, color):
-        self._color = color
-
-    @property
-    def nbytes(self):
-        return self._nbytes
-
-    @nbytes.setter
-    def nbytes(self, nbytes):
-        self._nbytes = nbytes
-
-    @property
-    def users_positions(self):
-        """Return the position and color of connected users."""
-        return self._users_positions
+    def reset_all(self):
+        for name in self.users_positions.keys():
+            self.unpaint(name)
+        self._painted_instructions.clear()
+        self._painted_functions.clear()
+        self.users_positions.clear()

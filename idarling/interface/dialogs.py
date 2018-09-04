@@ -697,7 +697,7 @@ class SettingsDialog(QDialog):
         index = self._debug_level_combo_box.findData(config["level"])
         self._debug_level_combo_box.setCurrentIndex(index)
 
-        self._servers = []
+        del self._servers[:]
         self._servers_table.clearContents()
         self._keep_cnt_spin_box.setValue(config["keep"]["cnt"])
         self._keep_intvl_spin_box.setValue(config["keep"]["intvl"])
@@ -717,6 +717,7 @@ class SettingsDialog(QDialog):
             packet = UserColorChanged(name, old_color, self._color)
             self._plugin.network.send_packet(packet)
             self._plugin.config["user"]["color"] = self._color
+            self._plugin.interface.widget.update_widget()
 
         checked = self._navbar_colorizer_checkbox.isChecked()
         self._plugin.config["user"]["navbar_colorizer"] = checked

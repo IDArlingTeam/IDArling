@@ -106,7 +106,7 @@ class Plugin(ida_idaapi.plugin_t):
         # Then setup the default logger
         log_path = self.user_resource("logs", "idarling.%s.log" % os.getpid())
         level = self.config["level"]
-        self._logger = start_logging(log_path, level)
+        self._logger = start_logging(log_path, "IDArling.Plugin", level)
 
         self._core = Core(self)
         self._interface = Interface(self)

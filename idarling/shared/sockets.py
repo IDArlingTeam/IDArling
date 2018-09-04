@@ -94,6 +94,7 @@ class ClientSocket(QObject):
         self._read_notifier.setEnabled(False)
         self._write_notifier.setEnabled(False)
         try:
+            self._socket.shutdown(socket.SHUT_RDWR)
             self._socket.close()
         except socket.error:
             pass

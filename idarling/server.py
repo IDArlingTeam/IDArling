@@ -11,7 +11,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import argparse
-import logging
 import os
 import signal
 import sys
@@ -38,8 +37,7 @@ class DedicatedServer(Server):
             os.makedirs(log_dir)
         log_path = os.path.join(log_dir, "idarling.%s.log" % os.getpid())
 
-        level = getattr(logging, level)
-        logger = start_logging(log_path, level)
+        logger = start_logging(log_path, "IDArling.Server", level)
         Server.__init__(self, logger, ssl, parent)
 
     def server_file(self, filename):

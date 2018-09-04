@@ -1,0 +1,425 @@
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+import colorsys
+import time
+
+from PyQt5.QtCore import QPoint, QRect, QSize, Qt, QTimer
+from PyQt5.QtGui import QIcon, QImage, QPainter, QPixmap, QRegion
+from PyQt5.QtWidgets import QAction, QActionGroup, QLabel, QMenu, QWidget
+
+from .dialogs import SettingsDialog
+
+
+class StatusWidget(QWidget):
+    """
+    This is the widget that is displayed in the status bar of the window. It
+    allow the user to connect to server, as well as to access the settings.
+    """
+
+    STATE_DISCONNECTED = 0
+    STATE_CONNECTING = 1
+    STATE_CONNECTED = 2
+
+    @staticmethod
+    def ida_to_python(c):
+        # IDA colors are 0xBBGGRR.
+        r = (c & 255) / 255.
+        g = ((c >> 8) & 255) / 255.
+        b = ((c >> 16) & 255) / 255.
+        return r, g, b
+
+    @staticmethod
+    def python_to_qt(r, g, b):
+        # Qt colors are 0xRRGGBB
+        r = int(r * 255) << 16
+        g = int(g * 255) << 8
+        b = int(b * 255)
+        return 0xff000000 | r | g | b
+
+    @staticmethod
+    def make_icon(template, color):
+        """
+        Create an icon for the specified user color. It will be used to
+        generate on the fly an icon representing the user.
+        """
+        # Get a light and dark version of the user color
+        r, g, b = StatusWidget.ida_to_python(color)
+        h, l, s = colorsys.rgb_to_hls(r, g, b)
+        r, g, b = colorsys.hls_to_rgb(h, 0.5, 1.0)
+        light = StatusWidget.python_to_qt(r, g, b)
+        r, g, b = colorsys.hls_to_rgb(h, 0.25, 1.0)
+        dark = StatusWidget.python_to_qt(r, g, b)
+
+        # Replace the icon pixel with our two colors
+        image = QImage(template)
+        for x in range(image.width()):
+            for y in range(image.height()):
+                c = image.pixel(x, y)
+                if (c & 0xffffff) == 0xffffff:
+                    image.setPixel(x, y, light)
+                if (c & 0xffffff) == 0x000000:
+                    image.setPixel(x, y, dark)
+        return QPixmap(image)
+
+    def __init__(self, plugin):
+        super(StatusWidget, self).__init__()
+        self._plugin = plugin
+
+        self._state = self.STATE_DISCONNECTED
+        self._server = None
+
+        # Create the sub-widgets
+        def new_label():
+            widget = QLabel()
+            widget.setAutoFillBackground(False)
+            widget.setAttribute(Qt.WA_PaintOnScreen)
+            widget.setAttribute(Qt.WA_TranslucentBackground)
+            return widget
+
+        self._servers_text_widget = new_label()
+        self._servers_icon_widget = new_label()
+        self._invites_text_widget = new_label()
+        self._invites_icon_widget = new_label()
+        self._users_text_widget = new_label()
+        self._users_icon_widget = new_label()
+
+        # Set a custom context menu policy
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._context_menu)
+
+        # Timer signaling it is time to update the widget
+        self._timer = QTimer()
+        self._timer.setInterval(1000)
+        self._timer.timeout.connect(self.update_widget)
+
+    def install(self, window):
+        self._timer.start()
+        window.statusBar().addPermanentWidget(self)
+        self.update_widget()
+
+    def uninstall(self, window):
+        self._timer.stop()
+        window.statusBar().removeWidget(self)
+
+    def update_widget(self):
+        """Called to update the widget when the network state has changed."""
+        self._plugin.logger.trace("Updating widget state")
+
+        # Get the corresponding color, text and icon
+        if self._state == StatusWidget.STATE_DISCONNECTED:
+            color, text, icon = "red", "Disconnected", "disconnected.png"
+        elif self._state == StatusWidget.STATE_CONNECTING:
+            color, text, icon = "orange", "Connecting", "connecting.png"
+        elif self._state == StatusWidget.STATE_CONNECTED:
+            color, text, icon = "green", "Connected", "connected.png"
+        else:
+            self._plugin.logger.warning("Invalid server state")
+            return
+
+        # Update the text of the server widgets
+        if self._server is None:
+            server = "&lt;no server&gt;"
+        else:
+            server = "%s:%d" % (self._server["host"], self._server["port"])
+        text_format = '%s | %s -- <span style="color: %s;">%s</span>'
+        self._servers_text_widget.setText(
+            text_format % (self._plugin.description(), server, color, text)
+        )
+        self._servers_text_widget.adjustSize()
+
+        # Update the icon of the server widgets
+        pixmap = QPixmap(self._plugin.plugin_resource(icon))
+        pixmap_height = self._servers_text_widget.sizeHint().height()
+        self._servers_icon_widget.setPixmap(
+            pixmap.scaled(
+                pixmap_height,
+                pixmap_height,
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation,
+            )
+        )
+
+        # Check all invites
+        recent = -1
+        invites = []
+        for invite in list(self._plugin.interface.invites):
+            # Invite is still being displayed
+            if invite.time == 0:
+                continue
+            # Invite was clicked or has expired
+            if invite.time < 0 or time.time() - invite.time > 180:
+                self._plugin.interface.invites.remove(invite)
+
+            if recent < 0 or recent < invite.time:
+                recent = invite.time
+            invites.append(invite)
+
+        # Get the corresponding icon
+        if recent > 0 and time.time() - recent < 10:
+            icon = "hot.png"
+        elif recent > 0 and time.time() - recent < 30:
+            icon = "warm.png"
+        else:
+            icon = "cold.png"
+
+        # Update the text of the invites widgets
+        self._invites_text_widget.setText(" | %d " % len(invites))
+        self._invites_text_widget.adjustSize()
+
+        # Update the icon of the invites widgets
+        pixmap = QPixmap(self._plugin.plugin_resource(icon))
+        pixmap_height = self._servers_text_widget.sizeHint().height()
+        self._invites_icon_widget.setPixmap(
+            pixmap.scaled(
+                pixmap_height,
+                pixmap_height,
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation,
+            )
+        )
+
+        # Update the text of the users widget
+        users = len(self._plugin.interface.painter.users_positions)
+        self._users_text_widget.setText(" | %d" % users)
+        self._users_text_widget.adjustSize()
+
+        # Update the icon of the users widget
+        template = QImage(self._plugin.plugin_resource("user.png"))
+        color = self._plugin.config["user"]["color"]
+        pixmap = self.make_icon(template, color)
+        pixmap_height = self._servers_text_widget.sizeHint().height()
+        self._users_icon_widget.setPixmap(
+            pixmap.scaled(
+                pixmap_height,
+                pixmap_height,
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation,
+            )
+        )
+
+        # Update the size of the widget
+        self.updateGeometry()
+
+    def sizeHint(self):  # noqa: N802
+        """Called when the widget size is being determined internally."""
+        width = 3 + self._servers_text_widget.sizeHint().width()
+        width += 3 + self._servers_icon_widget.sizeHint().width()
+        width += 3 + self._invites_text_widget.sizeHint().width()
+        width += 3 + self._invites_icon_widget.sizeHint().width()
+        width += 3 + self._users_text_widget.sizeHint().width()
+        width += 3 + self._users_icon_widget.sizeHint().width()
+        return QSize(width, self._servers_text_widget.sizeHint().height())
+
+    def _context_menu(self, point):
+        """Called when the context menu is being requested."""
+        self._plugin.logger.debug("Opening widget context menu")
+        width = 3 + self._servers_text_widget.sizeHint().width()
+        width += 3 + self._servers_icon_widget.sizeHint().width()
+
+        if point.x() < width + 3:
+            self._servers_context_menu(point)
+        else:
+            self._invites_context_menu(point)
+
+    def _servers_context_menu(self, point):
+        """Populates the server context menu."""
+        menu = QMenu(self)
+
+        # Add the settings action
+        settings = QAction("Settings...", menu)
+        icon_path = self._plugin.plugin_resource("settings.png")
+        settings.setIcon(QIcon(icon_path))
+
+        # Add a handler on the action
+        def settings_action_triggered():
+            SettingsDialog(self._plugin).exec_()
+
+        settings.triggered.connect(settings_action_triggered)
+        menu.addAction(settings)
+
+        # Add the integrated server action
+        menu.addSeparator()
+        integrated = QAction("Integrated Server", menu)
+        integrated.setCheckable(True)
+
+        def integrated_action_triggered():
+            # Start or stop the server
+            if integrated.isChecked():
+                self._plugin.network.start_server()
+            else:
+                self._plugin.network.stop_server()
+
+        integrated.setChecked(self._plugin.network.server_running())
+        integrated.triggered.connect(integrated_action_triggered)
+        menu.addAction(integrated)
+
+        def create_servers_group(servers):
+            """Create an action group for the specified servers."""
+            servers_group = QActionGroup(self)
+            current_server = self._plugin.network.server
+
+            for server in servers:
+                is_connected = (
+                    self._plugin.network.connected
+                    and server["host"] == current_server["host"]
+                    and server["port"] == current_server["port"]
+                )
+                server_text = "%s:%d" % (server["host"], server["port"])
+                server_action = QAction(server_text, menu)
+                server_action._server = server
+                server_action.setCheckable(True)
+                server_action.setChecked(is_connected)
+                servers_group.addAction(server_action)
+
+            def server_action_triggered(server_action):
+                """
+                Called when a action is clicked. Connects to the new server
+                or disconnects from the old server.
+                """
+                was_connected = (
+                    self._plugin.network.connected
+                    and self._plugin.network.server == server
+                )
+                self._plugin.network.stop_server()
+                self._plugin.network.disconnect()
+                if not was_connected:
+                    self._plugin.network.connect(server_action._server)
+
+            servers_group.triggered.connect(server_action_triggered)
+
+            return servers_group
+
+        # Add the discovered servers
+        servers = self._plugin.network.discovery.servers
+        if (
+            self._plugin.network.server_running()
+            and self._plugin.network.server in servers
+        ):
+            servers.remove(self._plugin.network.server)
+        if servers:
+            menu.addSeparator()
+            servers_group = create_servers_group(servers)
+            menu.addActions(servers_group.actions())
+
+        # Add the configured servers
+        servers = self._plugin.config["servers"]
+        if self._plugin.config["servers"]:
+            menu.addSeparator()
+            servers_group = create_servers_group(servers)
+            menu.addActions(servers_group.actions())
+
+        # Show the context menu
+        menu.exec_(self.mapToGlobal(point))
+
+    def _invites_context_menu(self, point):
+        """Populate the invites context menu."""
+        menu = QMenu(self)
+
+        # Get all active invites
+        invites = []
+        for invite in list(self._plugin.interface.invites):
+            if invite.time > 0:
+                invites.append(invite)
+
+        clear = QAction("Clear invites", menu)
+        icon_path = self._plugin.plugin_resource("clear.png")
+        clear.setIcon(QIcon(icon_path))
+
+        # Add a handler on the action
+        def clear_action_triggered():
+            del self._plugin.interface.invites[:]
+
+        clear.triggered.connect(clear_action_triggered)
+        clear.setEnabled(bool(invites))
+        menu.addAction(clear)
+
+        if invites:
+            menu.addSeparator()
+
+            # Add an action for each invite
+            for invite in invites:
+                action = QAction(invite.text, menu)
+                action.setIcon(QIcon(invite.icon))
+
+                def action_triggered():
+                    if invite.callback:
+                        invite.callback()
+
+                action.triggered.connect(action_triggered)
+                menu.addAction(action)
+
+        # Show the context menu
+        menu.exec_(self.mapToGlobal(point))
+
+    def paintEvent(self, event):  # noqa: N802
+        """Called when the widget is being painted."""
+        # Adjust the buffer size according to the pixel ratio
+        dpr = self.devicePixelRatioF()
+        buffer = QPixmap(self.width() * dpr, self.height() * dpr)
+        buffer.setDevicePixelRatio(dpr)
+        buffer.fill(Qt.transparent)
+
+        painter = QPainter(buffer)
+
+        # Paint the server text widget
+        region = QRegion(
+            QRect(QPoint(0, 0), self._servers_text_widget.sizeHint())
+        )
+        self._servers_text_widget.render(painter, QPoint(0, 0), region)
+        # Paint the server icon widget
+        region = QRegion(
+            QRect(QPoint(0, 0), self._servers_icon_widget.sizeHint())
+        )
+        x = self._servers_text_widget.sizeHint().width() + 3
+        self._servers_icon_widget.render(painter, QPoint(x, 0), region)
+        # Paint the invites text widget
+        region = QRegion(
+            QRect(QPoint(0, 0), self._invites_text_widget.sizeHint())
+        )
+        x += self._servers_icon_widget.sizeHint().width() + 3
+        self._invites_text_widget.render(painter, QPoint(x, 0), region)
+        # Paint the invites icon widget
+        region = QRegion(
+            QRect(QPoint(0, 0), self._invites_icon_widget.sizeHint())
+        )
+        x += self._invites_text_widget.sizeHint().width() + 3
+        self._invites_icon_widget.render(painter, QPoint(x, 0), region)
+        # Paint the users text widget
+        region = QRegion(
+            QRect(QPoint(0, 0), self._users_text_widget.sizeHint())
+        )
+        x += self._invites_icon_widget.sizeHint().width() + 3
+        self._users_text_widget.render(painter, QPoint(x, 0), region)
+        # Paint the users icon widget
+        region = QRegion(
+            QRect(QPoint(0, 0), self._users_icon_widget.sizeHint())
+        )
+        x += self._users_text_widget.sizeHint().width() + 3
+        self._users_icon_widget.render(painter, QPoint(x, 0), region)
+        painter.end()
+
+        painter = QPainter(self)
+        painter.drawPixmap(event.rect(), buffer, buffer.rect())
+        painter.end()
+
+    def set_state(self, state):
+        """Informs the widget of the networking state."""
+        if state != self._state:
+            self._state = state
+            self.update_widget()
+
+    def set_server(self, server):
+        """Inform the widget of the server we're connected to."""
+        if server != self._server:
+            self._server = server
+            self.update_widget()

@@ -155,12 +155,12 @@ class Network(Module):
 
     def stop_server(self):
         """Stop the integrated server."""
-        self.disconnect()
         if not self._integrated:
             return False
         self._plugin.logger.info("Stopping integrated server...")
         self._integrated.stop()
         self._integrated = None
+        self.disconnect()
         return True
 
     def server_running(self):
