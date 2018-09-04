@@ -32,7 +32,7 @@ class Painter(object):
     https://github.com/gaasedelen/lighthouse/blob/master/plugin/lighthouse/painting.py
     """
 
-    DEFCOLOR = 0xffffff
+    DEFCOLOR = 0xffffffff
 
     @staticmethod
     def _get_ida_bg_color():
@@ -43,7 +43,7 @@ class Painter(object):
         """
         palette = ida_registry.reg_read_binary("Palette")
         if palette is None:
-            return Painter.DEFCOLOR
+            return 0xffffff
         selected = struct.unpack("<I", palette[8:12])[0]
         index = 176 + selected * 208
         return struct.unpack("<I", palette[index : index + 4])[0]  # noqa: E203
