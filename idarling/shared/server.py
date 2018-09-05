@@ -104,11 +104,11 @@ class ServerClient(ClientSocket):
             UserColorChanged: self._handle_user_color_changed,
         }
 
-    def disconnect(self, err=None):
+    def disconnect(self, err=None, notify=True):
         # Notify our peers we disconnected
         self.parent().reject(self)
-        if self.branch and self.repo:
-            self.parent().forward_peers(self, Unsubscribe(self.name))
+        if self.branch and self.repo and notify:
+            self.parent().forward_peers(self, Unsubscribe(self.name, False))
         ClientSocket.disconnect(self, err)
         self._logger.info("Disconnected")
 
@@ -192,6 +192,7 @@ class ServerClient(ClientSocket):
         self._ea = packet.ea
 
         # Inform our peers that we are subscribing
+        packet.silent = False
         self.parent().forward_peers(self, packet)
 
         # Inform ourselves about our peers existence
@@ -199,6 +200,7 @@ class ServerClient(ClientSocket):
             packet.name = peer.name
             packet.color = peer.color
             packet.ea = peer.ea
+            packet.silent = True
             self.send_packet(packet)
 
         # Send all missed events
@@ -211,11 +213,13 @@ class ServerClient(ClientSocket):
 
     def _handle_unsubscribe(self, packet):
         # Inform others people that we are unsubscribing
+        packet.silent = False
         self.parent().forward_peers(self, packet)
 
         # Inform ourselves that our peers ceased to exist
         for peer in self.parent().get_peers(self):
             packet.name = peer.name
+            packet.silent = True
             self.send_packet(packet)
 
         self._repo = None
@@ -310,7 +314,7 @@ class Server(ServerSocket):
         """Terminates all the connections and stops the server."""
         self._logger.info("Shutting down server")
         for client in list(self._clients):
-            client.disconnect()
+            client.disconnect(notify=False)
         self.disconnect()
         self._discovery.stop()
         return True

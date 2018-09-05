@@ -12,6 +12,9 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import ida_kernwin
 
+from PyQt5.QtGui import QImage, QPixmap  # noqa: I202
+
+from ..interface.widget import StatusWidget
 from ..shared.commands import (
     InviteTo,
     Subscribe,
@@ -46,6 +49,7 @@ class Client(ClientSocket):
 
     def disconnect(self, err=None):
         ClientSocket.disconnect(self, err)
+        self._plugin.network.disconnect()
         # Update the user interface
         self._plugin.interface.update()
         self._plugin.logger.info("Connection lost")
@@ -87,7 +91,24 @@ class Client(ClientSocket):
         )
         self._plugin.interface.widget.refresh()
 
+        # Show a toast notification
+        if packet.silent:
+            return
+        text = "%s joined the session" % packet.name
+        template = QImage(self._plugin.plugin_resource("user.png"))
+        icon = StatusWidget.make_icon(template, packet.color)
+        self._plugin.interface.show_invite(text, icon)
+
     def _handle_unsubscribe(self, packet):
+        # Show a toast notification
+        if packet.silent:
+            return
+        text = "%s left the session" % packet.name
+        template = QImage(self._plugin.plugin_resource("user.png"))
+        info = self._plugin.interface.painter.users_positions[packet.name]
+        icon = StatusWidget.make_icon(template, info["color"])
+        self._plugin.interface.show_invite(text, icon)
+
         if self._plugin.interface.painter.installed:
             self._plugin.interface.painter.unpaint(packet.name)
         self._plugin.interface.widget.refresh()
@@ -99,7 +120,7 @@ class Client(ClientSocket):
         def callback():
             ida_kernwin.jumpto(packet.loc)
 
-        self._plugin.interface.show_invite(text, icon, callback)
+        self._plugin.interface.show_invite(text, QPixmap(icon), callback)
 
     def _handle_update_cursors(self, packet):
         self._plugin.interface.painter.paint(

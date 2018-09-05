@@ -288,7 +288,7 @@ class ClientSocket(QObject):
         self._logger.debug("Sending packet: %s" % packet)
 
         # Enqueue the packet
-        self._outgoing.append(packet)
+        self._outgoing.append(packet.clone())
         if not self._write_notifier.isEnabled():
             self._write_notifier.setEnabled(True)
 

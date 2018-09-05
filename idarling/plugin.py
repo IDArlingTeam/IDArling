@@ -90,7 +90,7 @@ class Plugin(ida_idaapi.plugin_t):
             "keep": {"cnt": 4, "intvl": 15, "idle": 240},
             "user": {
                 "color": color,
-                "name": "Undefined",
+                "name": "unnamed",
                 "navbar_colorizer": True,
                 "notifications": True,
             },

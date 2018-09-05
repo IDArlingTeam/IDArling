@@ -10,8 +10,6 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import time
-
 from PyQt5.QtCore import (
     pyqtProperty,
     QPoint,
@@ -64,6 +62,15 @@ class Invite(QWidget):
         self._timer = QTimer()
         self._timer.timeout.connect(self.hide_animation)
         self._callback = None
+        self._triggered = False
+
+    @property
+    def time(self):
+        return self._time
+
+    @time.setter
+    def time(self, time):
+        self._time = time
 
     @property
     def text(self):
@@ -106,14 +113,12 @@ class Invite(QWidget):
         self._callback = callback
 
     @property
-    def time(self):
-        """Get the invite time."""
-        return self._time
+    def triggered(self):
+        return self._triggered
 
-    @time.setter
-    def time(self, time):
-        """Set the invite time."""
-        self._time = time
+    @triggered.setter
+    def triggered(self, triggered):
+        self._triggered = triggered
 
     def paintEvent(self, event):  # noqa: N802
         """We override the painting event to draw the invite ourselves."""
@@ -144,8 +149,9 @@ class Invite(QWidget):
         """
         if self._callback:
             self._callback()
-        self._time = -1
-        self.hide_animation()
+        self._triggered = True
+        self._popup_opacity = 0.0
+        self.hide()
 
     def show(self):
         """Shows the invite to user. It triggers a fade in effect."""
@@ -173,8 +179,6 @@ class Invite(QWidget):
     def hide(self):
         """Hides the invite only if it is fully transparent."""
         if self._popup_opacity == 0.0:
-            if self._time == 0:
-                self._time = time.time()
             self._plugin.interface.widget.refresh()
             super(Invite, self).hide()
 

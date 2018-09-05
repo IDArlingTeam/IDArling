@@ -10,6 +10,8 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import time
+
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import qApp, QMainWindow
 
@@ -57,8 +59,16 @@ class Interface(Module):
 
     @property
     def invites(self):
-        """Get active invites."""
-        return self._invites
+        """Get all active invites."""
+        invites = []
+        for invite in self._invites:
+            if (
+                invite.callback
+                and not invite.triggered
+                and time.time() - invite.time < 180.0
+            ):
+                invites.append(invite)
+        return invites
 
     def _install(self):
         self._open_action.install()
@@ -81,12 +91,13 @@ class Interface(Module):
     def update(self):
         """Update the actions and widget."""
         if not self._plugin.network.connected:
-            del self._invites[:]
+            self.clear_invites()
+            self._painter.clear()
         self._open_action.update()
         self._save_action.update()
         self._widget.refresh()
 
-    def show_invite(self, text, icon, callback):
+    def show_invite(self, text, icon, callback=None):
         """
         Display a toast notification to the user. The notification will have
         the specified text, icon and callback function (triggered on click).
@@ -94,8 +105,13 @@ class Interface(Module):
         if not self._plugin.config["user"]["notifications"]:
             return
         invite = Invite(self._plugin, self._window)
+        invite.time = time.time()
         invite.text = text
         invite.icon = QPixmap(icon)
         invite.callback = callback
         invite.show()
         self._invites.append(invite)
+
+    def clear_invites(self):
+        del self._invites[:]
+        self._widget.refresh()

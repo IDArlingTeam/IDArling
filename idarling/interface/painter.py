@@ -105,13 +105,20 @@ class Painter(object):
         self._painted_functions.clear()
         self._users_positions.clear()
 
+    def clear(self):
+        # Remove everybody
+        names = list(self._users_positions.keys())
+        for name in names:
+            self.unpaint(name)
+        self._reset()
+
     def set_custom_nav_colorizer(self):
         # The default nav colorized can only be recovered once!
         colorizer = self.custom_nav_colorizer
         ida_nav_colorizer = ida_kernwin.set_nav_colorizer(colorizer)
         if ida_nav_colorizer is not None:
-            self.ida_nav_colorizer = ida_nav_colorizer
-        self.bg_color = Painter._get_ida_bg_color()
+            self._ida_nav_colorizer = ida_nav_colorizer
+        self._bg_color = Painter._get_ida_bg_color()
 
     def paint(self, name, color, address):
         """Request a painting of the specified address."""
@@ -120,7 +127,7 @@ class Painter(object):
     def unpaint(self, name):
         """Request a repainting when the user has left."""
         self.unpaint_database(name)
-        self.users_positions.pop(name)
+        self._users_positions.pop(name)
 
     def custom_nav_colorizer(self, ea, nbytes):
         """This is the custom nav colorizer used by the painter."""
@@ -133,7 +140,7 @@ class Painter(object):
                 if ea - nbytes * 4 <= infos["address"] <= ea + nbytes * 4:
                     return long(0)
         orig = ida_kernwin.call_nav_colorizer(
-            self.ida_nav_colorizer, ea, nbytes
+            self._ida_nav_colorizer, ea, nbytes
         )
         return long(orig)
 
@@ -144,15 +151,15 @@ class Painter(object):
         # Store current color into the stack
         self._painted_instructions[address].append(current_color)
         # Update the user position and name
-        self.users_positions[name]["address"] = address
-        self.users_positions[name]["color"] = color
+        self._users_positions[name]["address"] = address
+        self._users_positions[name]["color"] = color
         # Apply the user color
         self._set_paint_instruction(address, color)
 
     def clear_instruction(self, name):
         """Clear the paint from the specified user."""
         # Get the user position
-        users_positions = self.users_positions.get(name)
+        users_positions = self._users_positions.get(name)
         if users_positions:
             address = users_positions["address"]
             # If a color has been applied, restore it
@@ -160,7 +167,7 @@ class Painter(object):
                 color = self._painted_instructions[address].pop()
             # Otherwise apply the default background color
             except IndexError:
-                color = self.bg_color
+                color = self._bg_color
             self._set_paint_instruction(address, color)
 
     def paint_function(self, name, color, new_address):
@@ -171,7 +178,7 @@ class Painter(object):
         new_func = ida_funcs.get_func(new_address)
 
         # Get the user previous position
-        user_position = self.users_positions.get(name)
+        user_position = self._users_positions.get(name)
         if user_position:
             address = user_position["address"]
             func = ida_funcs.get_func(address)
@@ -187,7 +194,7 @@ class Painter(object):
 
     def clear_function(self, name, new_address):
         """Clear paint from the specified user and function."""
-        user_position = self.users_positions.get(name)
+        user_position = self._users_positions.get(name)
         new_func = ida_funcs.get_func(new_address)
 
         # If the stack is empty, this is the first time we meet this function,
@@ -220,7 +227,7 @@ class Painter(object):
                 # Only color instructions that aren't colored yet to keep
                 # an existing user-defined color
                 if color == self.DEFCOLOR:
-                    self._set_paint_instruction(ea, self.bg_color)
+                    self._set_paint_instruction(ea, self._bg_color)
 
     def clear_function_instructions(self, address):
         """Clear paint from a function instructions."""
@@ -228,7 +235,7 @@ class Painter(object):
             for ea in idautils.Heads(start_ea, end_ea):
                 color = self._get_paint_instruction(ea)
                 # Clear it only if it hasn't been colorized by the user
-                color = color if color != self.bg_color else self.DEFCOLOR
+                color = color if color != self._bg_color else self.DEFCOLOR
                 self._set_paint_instruction(ea, color)
 
     def paint_database(self, name, color, address):

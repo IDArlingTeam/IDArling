@@ -140,25 +140,17 @@ class StatusWidget(QWidget):
             )
         )
 
-        # Check all invites
-        recent = -1
-        invites = []
-        for invite in list(self._plugin.interface.invites):
-            # Invite is still being displayed
-            if invite.time == 0:
-                continue
-            # Invite was clicked or has expired
-            if invite.time < 0 or time.time() - invite.time > 180:
-                self._plugin.interface.invites.remove(invite)
-
-            if recent < 0 or recent < invite.time:
-                recent = invite.time
-            invites.append(invite)
+        # Get all active invites
+        invites = self._plugin.interface.invites
+        # Find the most recent one
+        most_recent = 0
+        if invites:
+            most_recent = min(invite.time for invite in invites)
 
         # Get the corresponding icon
-        if recent > 0 and time.time() - recent < 10:
+        if most_recent > 0 and time.time() - most_recent < 10.0:
             icon = "hot.png"
-        elif recent > 0 and time.time() - recent < 30:
+        elif most_recent > 0 and time.time() - most_recent < 30.0:
             icon = "warm.png"
         else:
             icon = "cold.png"
@@ -200,6 +192,7 @@ class StatusWidget(QWidget):
 
         # Update the size of the widget
         self.updateGeometry()
+        self.update()
 
     def sizeHint(self):  # noqa: N802
         """Called when the widget size is being determined internally."""
@@ -292,6 +285,7 @@ class StatusWidget(QWidget):
 
         # Add the discovered servers
         servers = self._plugin.network.discovery.servers
+        servers = [s for s, t in servers if time.time() - t < 10.0]
         if (
             self._plugin.network.server_running()
             and self._plugin.network.server in servers
@@ -317,20 +311,14 @@ class StatusWidget(QWidget):
         menu = QMenu(self)
 
         # Get all active invites
-        invites = []
-        for invite in list(self._plugin.interface.invites):
-            if invite.time > 0:
-                invites.append(invite)
+        invites = self._plugin.interface.invites
+        # Sort invites by time ascending
+        invites = sorted(invites, cmp=lambda x: x.time)
 
         clear = QAction("Clear invites", menu)
         icon_path = self._plugin.plugin_resource("clear.png")
         clear.setIcon(QIcon(icon_path))
-
-        # Add a handler on the action
-        def clear_action_triggered():
-            del self._plugin.interface.invites[:]
-
-        clear.triggered.connect(clear_action_triggered)
+        clear.triggered.connect(self._plugin.interface.clear_invites)
         clear.setEnabled(bool(invites))
         menu.addAction(clear)
 
@@ -345,7 +333,8 @@ class StatusWidget(QWidget):
                 def action_triggered():
                     if invite.callback:
                         invite.callback()
-                    invite.time = -1
+                    invite.triggered = True
+                    self.refresh()
 
                 action.triggered.connect(action_triggered)
                 menu.addAction(action)

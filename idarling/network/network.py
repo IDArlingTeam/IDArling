@@ -67,6 +67,7 @@ class Network(Module):
         # Make sure we're not already connected
         if self.connected:
             return False
+
         self._server = server.copy()  # Copy just in case
         host = self._server["host"]
         if host == "0.0.0.0":  # Windows can't connect to 0.0.0.0
@@ -92,6 +93,7 @@ class Network(Module):
             self._plugin.logger.warning("Connection failed")
             self._plugin.logger.exception(e)
             self._client = None
+            self._server = None
 
             # Update the user interface
             self._plugin.interface.update()
@@ -115,13 +117,10 @@ class Network(Module):
 
     def disconnect(self):
         """Disconnect from the current server."""
-        # Make sure we're actually connected
-        if not self.connected:
-            return False
-
         # Do the actual disconnection process
         self._plugin.logger.info("Disconnecting...")
-        self._client.disconnect()
+        if self.connected:
+            self._client.disconnect()
         self._client = None
         self._server = None
         return True

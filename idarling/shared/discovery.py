@@ -12,6 +12,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import platform
 import socket
+import time
 
 from PyQt5.QtCore import QObject, QSocketNotifier, QTimer
 
@@ -105,16 +106,10 @@ class ServersDiscovery(QObject):
         super(ServersDiscovery, self).__init__(parent)
         self._logger = logger
         self._servers = []
-        self._new_servers = []
 
         self._socket = None
         self._read_notifier = None
         self._started = False
-
-        # Timer used to trim the servers list
-        self._timer = QTimer()
-        self._timer.setInterval(10000)
-        self._timer.timeout.connect(self._trim_servers_list)
 
     @property
     def servers(self):
@@ -140,7 +135,6 @@ class ServersDiscovery(QObject):
         self._read_notifier.activated.connect(self._notify_read)
         self._read_notifier.setEnabled(True)
         self._started = True
-        self._timer.start()
 
     def stop(self):
         """Stop the discovery process"""
@@ -152,7 +146,6 @@ class ServersDiscovery(QObject):
             pass
         self._socket = None
         self._started = False
-        self._timer.stop()
 
     def _notify_read(self):
         """This function is called when a discovery request is received."""
@@ -165,14 +158,13 @@ class ServersDiscovery(QObject):
             # Get the server information
             _, host, port, ssl = request.split()
             server = {"host": host, "port": int(port), "no_ssl": ssl != "True"}
-
-            # Append it to both lists
-            if server not in self._servers:
-                self._servers.append(server)
-            if server not in self._new_servers:
-                self._new_servers.append(server)
-
             self._logger.trace("Server discovered: %s" % server)
+
+            # Remove the old value
+            self._servers = [(s, t) for (s, t) in self._servers if s != server]
+            # Append the new value
+            self._servers.append((server, time.time()))
+
             self._logger.trace("Sending discovery reply to %s:%d..." % address)
             # Reply to the discovery request
             reply = DISCOVERY_REPLY
@@ -181,14 +173,3 @@ class ServersDiscovery(QObject):
                 self._socket.sendto(reply, address)
             except socket.error:
                 self._logger.warning("Couldn't send discovery reply")
-
-    def _trim_servers_list(self):
-        """
-        This function will trim the server list, only keeping the server which
-        sent us a discovery request in the last ten seconds.
-        """
-        self._logger.trace(
-            "Discovered %d servers: %s" % (len(self.servers), self.servers)
-        )
-        self._servers = self._new_servers
-        self._new_servers = []

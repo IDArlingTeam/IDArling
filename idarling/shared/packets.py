@@ -132,6 +132,11 @@ class Packet(with_metaclass(PacketFactory, Serializable)):
         self.build(dct)
         return dct
 
+    def clone(self):
+        """Clones the packet."""
+        dct = self.build_packet()
+        return Packet.parse_packet(dct)
+
     def __repr__(self):
         """
         Return a textual representation of a packet. Currently, it is only
