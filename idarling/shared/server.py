@@ -197,11 +197,16 @@ class ServerClient(ClientSocket):
 
         # Inform ourselves about our peers existence
         for peer in self.parent().get_peers(self):
-            packet.name = peer.name
-            packet.color = peer.color
-            packet.ea = peer.ea
-            packet.silent = True
-            self.send_packet(packet)
+            self.send_packet(
+                Subscribe(
+                    packet.repo,
+                    packet.branch,
+                    packet.tick,
+                    peer.name,
+                    peer.color,
+                    peer.ea,
+                )
+            )
 
         # Send all missed events
         events = self.parent().database.select_events(
@@ -218,9 +223,7 @@ class ServerClient(ClientSocket):
 
         # Inform ourselves that our peers ceased to exist
         for peer in self.parent().get_peers(self):
-            packet.name = peer.name
-            packet.silent = True
-            self.send_packet(packet)
+            self.send_packet(Unsubscribe(peer.name))
 
         self._repo = None
         self._branch = None

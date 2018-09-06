@@ -11,7 +11,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import collections
-import copy
 import errno
 import json
 import socket
@@ -289,7 +288,7 @@ class ClientSocket(QObject):
         self._logger.debug("Sending packet: %s" % packet)
 
         # Enqueue the packet
-        self._outgoing.append(copy.deepcopy(packet))
+        self._outgoing.append(packet)
         if not self._write_notifier.isEnabled():
             self._write_notifier.setEnabled(True)
 
