@@ -145,7 +145,7 @@ class StatusWidget(QWidget):
         # Find the most recent one
         most_recent = 0
         if invites:
-            most_recent = min(invite.time for invite in invites)
+            most_recent = max(invite.time for invite in invites)
 
         # Get the corresponding icon
         if most_recent > 0 and time.time() - most_recent < 10.0:
@@ -192,7 +192,6 @@ class StatusWidget(QWidget):
 
         # Update the size of the widget
         self.updateGeometry()
-        self.update()
 
     def sizeHint(self):  # noqa: N802
         """Called when the widget size is being determined internally."""
@@ -313,7 +312,7 @@ class StatusWidget(QWidget):
         # Get all active invites
         invites = self._plugin.interface.invites
         # Sort invites by time ascending
-        invites = sorted(invites, cmp=lambda x: x.time)
+        invites = sorted(invites, key=lambda x: x.time)
 
         clear = QAction("Clear invites", menu)
         icon_path = self._plugin.plugin_resource("clear.png")
