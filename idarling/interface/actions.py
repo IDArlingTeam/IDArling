@@ -355,7 +355,7 @@ class SaveActionHandler(ActionHandler):
         ea = ida_kernwin.get_screen_ea()
         self._plugin.network.send_packet(
             Subscribe(
-                repo.name, branch.name, self._plugin.core.tick, color, name, ea
+                repo.name, branch.name, self._plugin.core.tick, name, color, ea
             )
         )
         self._plugin.core.hook_all()
