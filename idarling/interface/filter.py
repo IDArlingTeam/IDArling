@@ -86,7 +86,7 @@ class EventFilter(QObject):
             # Is it the disassembler context menu?
             if self._augment:
                 # Find where to install our submenu
-                sep = 0
+                sep = None
                 for act in obj.actions():
                     if act.isSeparator():
                         sep = act
