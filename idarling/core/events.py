@@ -112,6 +112,7 @@ class RenamedEvent(Event):
         ida_name.set_name(
             self.ea, Event.encode(self.new_name), flags | ida_name.SN_NOWARN
         )
+        ida_kernwin.request_refresh(ida_kernwin.IWID_DISASMS)
 
 
 class FuncAddedEvent(Event):
