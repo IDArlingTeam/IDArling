@@ -148,12 +148,14 @@ class StatusWidget(QWidget):
             most_recent = max(invite.time for invite in invites)
 
         # Get the corresponding icon
-        if most_recent > 0 and time.time() - most_recent < 10.0:
+        if most_recent > 0 and time.time() - most_recent < 60.0:
             icon = "hot.png"
-        elif most_recent > 0 and time.time() - most_recent < 30.0:
+        elif most_recent > 0 and time.time() - most_recent < 300.0:
             icon = "warm.png"
-        else:
+        elif most_recent > 0:
             icon = "cold.png"
+        else:
+            icon = "empty.png"
 
         # Update the text of the invites widgets
         self._invites_text_widget.setText(" | %d " % len(invites))
