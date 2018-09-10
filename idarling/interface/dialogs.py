@@ -673,7 +673,7 @@ class SettingsDialog(QDialog):
         item = self._servers_table.selectedItems()[0]
         self._servers[item.row()] = server
 
-        item.set_text("%s:%d" % (server["host"], server["port"]))
+        item.setText("%s:%d" % (server["host"], server["port"]))
         item.setData(Qt.UserRole, server)
         item.setFlags(item.flags() & ~Qt.ItemIsEditable)
 
