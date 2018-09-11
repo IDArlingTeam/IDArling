@@ -286,23 +286,24 @@ class StatusWidget(QWidget):
             return servers_group
 
         # Add the discovered servers
-        servers = self._plugin.network.discovery.servers
-        servers = [s for s, t in servers if time.time() - t < 10.0]
+        user_servers = self._plugin.config["servers"]
+        disc_servers = self._plugin.network.discovery.servers
+        disc_servers = [s for s, t in disc_servers if time.time() - t < 10.0]
+        disc_servers = [s for s in disc_servers if s not in user_servers]
         if (
             self._plugin.network.started
-            and self._plugin.network.server in servers
+            and self._plugin.network.server in disc_servers
         ):
-            servers.remove(self._plugin.network.server)
-        if servers:
+            disc_servers.remove(self._plugin.network.server)
+        if disc_servers:
             menu.addSeparator()
-            servers_group = create_servers_group(servers)
+            servers_group = create_servers_group(disc_servers)
             menu.addActions(servers_group.actions())
 
         # Add the configured servers
-        servers = self._plugin.config["servers"]
-        if self._plugin.config["servers"]:
+        if user_servers:
             menu.addSeparator()
-            servers_group = create_servers_group(servers)
+            servers_group = create_servers_group(user_servers)
             menu.addActions(servers_group.actions())
 
         # Show the context menu
