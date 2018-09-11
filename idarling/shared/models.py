@@ -41,16 +41,16 @@ class Model(Default):
         return u"{}({})".format(self.__class__.__name__, attrs)
 
 
-class Repository(Model):
+class Project(Model):
     """
-    The IDA databases are organized into repositories and branches. This is
-    inspired by Git. A repository regroups multiples revisions of a database.
-    It has a name, the hash of the input file, the path to the input file,
-    the type of the input and the data of the database creation.
+    IDBs are organized into projects and databases. A project regroups
+    multiples revisions of an IDB. It has a name, the hash of the input file,
+    the path to the input file, the type of the input file and the date of the
+    database creation.
     """
 
     def __init__(self, name, hash, file, type, date):
-        super(Repository, self).__init__()
+        super(Project, self).__init__()
         self.name = name
         self.hash = hash
         self.file = file
@@ -58,16 +58,16 @@ class Repository(Model):
         self.date = date
 
 
-class Branch(Model):
+class Database(Model):
     """
-    The IDA databases are organized into repositories and branches. This is
-    inspired by Git. A branch is a revision of a database. It has a repository,
-    a name, a date of creation, and a current tick (events) count.
+    IDBs are organized into projects and databases. A database corresponds to
+    a revision of an IDB. It has a project, a name, a date of creation, and a
+    current tick (events) count.
     """
 
-    def __init__(self, repo, name, date, tick=0):
-        super(Branch, self).__init__()
-        self.repo = repo
+    def __init__(self, project, name, date, tick=0):
+        super(Database, self).__init__()
+        self.project = project
         self.name = name
         self.date = date
         self.tick = tick

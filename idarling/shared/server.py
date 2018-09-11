@@ -16,23 +16,23 @@ import socket
 import ssl
 
 from .commands import (
-    DownloadDatabase,
-    GetBranches,
-    GetRepositories,
+    DownloadFile,
+    GetDatabases,
+    GetProjects,
     InviteTo,
-    NewBranch,
-    NewRepository,
+    NewDatabase,
+    NewProject,
     Subscribe,
     Unsubscribe,
     UpdateCursors,
-    UploadDatabase,
+    UpdateFile,
     UserColorChanged,
     UserRenamed,
 )
-from .database import Database
 from .discovery import ClientsDiscovery
 from .packets import Command, Event
 from .sockets import ClientSocket, ServerSocket
+from .storage import Storage
 
 
 class ServerClient(ClientSocket):
@@ -43,22 +43,22 @@ class ServerClient(ClientSocket):
 
     def __init__(self, logger, parent=None):
         ClientSocket.__init__(self, logger, parent)
-        self._repo = None
-        self._branch = None
+        self._project = None
+        self._database = None
         self._name = None
         self._color = None
         self._ea = None
         self._handlers = {}
 
     @property
-    def repo(self):
-        """Get the user repository."""
-        return self._repo
+    def project(self):
+        """Get the user project."""
+        return self._project
 
     @property
-    def branch(self):
-        """Get the user branch."""
-        return self._branch
+    def database(self):
+        """Get the user database."""
+        return self._database
 
     @property
     def name(self):
@@ -90,12 +90,12 @@ class ServerClient(ClientSocket):
 
         # Setup command handlers
         self._handlers = {
-            GetRepositories.Query: self._handle_get_repositories,
-            GetBranches.Query: self._handle_get_branches,
-            NewRepository.Query: self._handle_new_repository,
-            NewBranch.Query: self._handle_new_branch,
-            UploadDatabase.Query: self._handle_upload_database,
-            DownloadDatabase.Query: self._handle_download_database,
+            GetProjects.Query: self._handle_get_projects,
+            GetDatabases.Query: self._handle_get_databases,
+            NewProject.Query: self._handle_new_project,
+            NewDatabase.Query: self._handle_new_database,
+            UpdateFile.Query: self._handle_upload_file,
+            DownloadFile.Query: self._handle_download_file,
             Subscribe: self._handle_subscribe,
             Unsubscribe: self._handle_unsubscribe,
             InviteTo: self._handle_invite_to,
@@ -107,7 +107,7 @@ class ServerClient(ClientSocket):
     def disconnect(self, err=None, notify=True):
         # Notify our peers we disconnected
         self.parent().reject(self)
-        if self.branch and self.repo and notify:
+        if self._project and self._database and notify:
             self.parent().forward_peers(self, Unsubscribe(self.name, False))
         ClientSocket.disconnect(self, err)
         self._logger.info("Disconnected")
@@ -118,75 +118,81 @@ class ServerClient(ClientSocket):
             self._handlers[packet.__class__](packet)
 
         elif isinstance(packet, Event):
-            if not self._repo or not self._branch:
+            if not self._project or not self._database:
                 self._logger.warning(
                     "Received a packet from an unsubscribed client"
                 )
                 return True
 
             # Check for de-synchronization
-            tick = self.parent().database.last_tick(self.repo, self.branch)
+            tick = self.parent().storage.last_tick(
+                self._project, self._database
+            )
             if tick >= packet.tick:
                 self._logger.warning("De-synchronization detected!")
                 packet.tick = tick + 1
 
             # Save the event into the database
-            self.parent().database.insert_event(self, packet)
+            self.parent().storage.insert_event(self, packet)
             # Forward the event to our peers
             self.parent().forward_peers(self, packet)
         else:
             return False
         return True
 
-    def _handle_get_repositories(self, query):
-        repos = self.parent().database.select_repos()
-        self.send_packet(GetRepositories.Reply(query, repos))
+    def _handle_get_projects(self, query):
+        projects = self.parent().storage.select_projects()
+        self.send_packet(GetProjects.Reply(query, projects))
 
-    def _handle_get_branches(self, query):
-        branches = self.parent().database.select_branches(query.repo)
-        for branch in branches:
-            branch_info = branch.repo, branch.name
-            file_name = "%s_%s.idb" % branch_info
+    def _handle_get_databases(self, query):
+        databases = self.parent().storage.select_databases(query.project)
+        for database in databases:
+            database_info = database.project, database.name
+            file_name = "%s_%s.idb" % database_info
             file_path = self.parent().server_file(file_name)
             if os.path.isfile(file_path):
-                branch.tick = self.parent().database.last_tick(*branch_info)
+                database.tick = self.parent().storage.last_tick(*database_info)
             else:
-                branch.tick = -1
-        self.send_packet(GetBranches.Reply(query, branches))
+                database.tick = -1
+        self.send_packet(GetDatabases.Reply(query, databases))
 
-    def _handle_new_repository(self, query):
-        self.parent().database.insert_repo(query.repo)
-        self.send_packet(NewRepository.Reply(query))
+    def _handle_new_project(self, query):
+        self.parent().storage.insert_project(query.project)
+        self.send_packet(NewProject.Reply(query))
 
-    def _handle_new_branch(self, query):
-        self.parent().database.insert_branch(query.branch)
-        self.send_packet(NewBranch.Reply(query))
+    def _handle_new_database(self, query):
+        self.parent().storage.insert_database(query.database)
+        self.send_packet(NewDatabase.Reply(query))
 
-    def _handle_upload_database(self, query):
-        branch = self.parent().database.select_branch(query.repo, query.branch)
-        file_name = "%s_%s.idb" % (branch.repo, branch.name)
+    def _handle_upload_file(self, query):
+        database = self.parent().storage.select_database(
+            query.project, query.database
+        )
+        file_name = "%s_%s.idb" % (database.project, database.name)
         file_path = self.parent().server_file(file_name)
 
         # Write the file received to disk
         with open(file_path, "wb") as output_file:
             output_file.write(query.content)
         self._logger.info("Saved file %s" % file_name)
-        self.send_packet(UploadDatabase.Reply(query))
+        self.send_packet(UpdateFile.Reply(query))
 
-    def _handle_download_database(self, query):
-        branch = self.parent().database.select_branch(query.repo, query.branch)
-        file_name = "%s_%s.idb" % (branch.repo, branch.name)
+    def _handle_download_file(self, query):
+        database = self.parent().storage.select_database(
+            query.project, query.database
+        )
+        file_name = "%s_%s.idb" % (database.project, database.name)
         file_path = self.parent().server_file(file_name)
 
         # Read file from disk and sent it
-        reply = DownloadDatabase.Reply(query)
+        reply = DownloadFile.Reply(query)
         with open(file_path, "rb") as input_file:
             reply.content = input_file.read()
         self.send_packet(reply)
 
     def _handle_subscribe(self, packet):
-        self._repo = packet.repo
-        self._branch = packet.branch
+        self._project = packet.project
+        self._database = packet.database
         self._name = packet.name
         self._color = packet.color
         self._ea = packet.ea
@@ -199,8 +205,8 @@ class ServerClient(ClientSocket):
         for peer in self.parent().get_peers(self):
             self.send_packet(
                 Subscribe(
-                    packet.repo,
-                    packet.branch,
+                    packet.project,
+                    packet.database,
                     packet.tick,
                     peer.name,
                     peer.color,
@@ -209,8 +215,8 @@ class ServerClient(ClientSocket):
             )
 
         # Send all missed events
-        events = self.parent().database.select_events(
-            self._repo, self._branch, packet.tick
+        events = self.parent().storage.select_events(
+            self._project, self._database, packet.tick
         )
         self._logger.debug("Sending %d missed events" % len(events))
         for event in events:
@@ -225,8 +231,8 @@ class ServerClient(ClientSocket):
         for peer in self.parent().get_peers(self):
             self.send_packet(Unsubscribe(peer.name))
 
-        self._repo = None
-        self._branch = None
+        self._project = None
+        self._database = None
         self._name = None
         self._color = None
 
@@ -263,16 +269,16 @@ class Server(ServerSocket):
         self._ssl = ssl
         self._clients = []
 
-        # Initialize the database
-        self._database = Database(self.server_file("database.db"))
-        self._database.initialize()
+        # Initialize the storage
+        self._storage = Storage(self.server_file("database.db"))
+        self._storage.initialize()
 
         self._discovery = ClientsDiscovery(logger)
 
     @property
-    def database(self):
-        """Get the database in use."""
-        return self._database
+    def storage(self):
+        """Get the storage in use."""
+        return self._storage
 
     @property
     def host(self):
@@ -342,7 +348,10 @@ class Server(ServerSocket):
         """Get the other clients on the same database."""
         peers = []
         for peer in self._clients:
-            if peer.repo != client.repo or peer.branch != client.branch:
+            if (
+                peer.project != client.project
+                or peer.database != client.database
+            ):
                 continue
             if peer == client or (matches and not matches(peer)):
                 continue

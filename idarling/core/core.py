@@ -29,8 +29,8 @@ class Core(Module):
 
     def __init__(self, plugin):
         super(Core, self).__init__(plugin)
-        self._repo = None
-        self._branch = None
+        self._project = None
+        self._database = None
         self._tick = 0
 
         self._idb_hooks = None
@@ -44,25 +44,25 @@ class Core(Module):
         self._hooked = False
 
     @property
-    def repo(self):
-        """Get the current repository."""
-        return self._repo
+    def project(self):
+        """Get the current project."""
+        return self._project
 
-    @repo.setter
-    def repo(self, name):
-        """Set the the current repository and save the netnode."""
-        self._repo = name
+    @project.setter
+    def project(self, project):
+        """Set the the current project and save the netnode."""
+        self._project = project
         self.save_netnode()
 
     @property
-    def branch(self):
-        """Get the current branch."""
-        return self._branch
+    def database(self):
+        """Get the current database."""
+        return self._database
 
-    @branch.setter
-    def branch(self, name):
-        """Set the current branch and save the netnode."""
-        self._branch = name
+    @database.setter
+    def database(self, database):
+        """Set the current database and save the netnode."""
+        self._database = database
         self.save_netnode()
 
     @property
@@ -101,18 +101,7 @@ class Core(Module):
                 core.load_netnode()
 
                 # Send a subscribe packet if this database is on the server
-                if core.repo and core.branch:
-                    self._plugin.network.send_packet(
-                        Subscribe(
-                            core.repo,
-                            core.branch,
-                            core.tick,
-                            self._plugin.config["user"]["name"],
-                            self._plugin.config["user"]["color"],
-                            ida_kernwin.get_screen_ea(),
-                        )
-                    )
-                    core.hook_all()
+                core.subscribe()
 
                 self._plugin.interface.painter.set_custom_nav_colorizer()
 
@@ -138,8 +127,8 @@ class Core(Module):
 
                 self._plugin.interface.painter.uninstall()
 
-                core.repo = None
-                core.branch = None
+                core.project = None
+                core.database = None
                 core.ticks = 0
                 return 0
 
@@ -182,50 +171,50 @@ class Core(Module):
         """
         Load data from our custom netnode. Netnodes are the mechanism used by
         IDA to load and save information into a database. IDArling uses its own
-        netnode to remember which repo and branch a database corresponds to.
+        netnode to remember which project and database a database belongs to.
         """
         node = ida_netnode.netnode(Core.NETNODE_NAME, 0, True)
 
-        self._repo = node.hashval("repo") or None
-        self._branch = node.hashval("branch") or None
+        self._project = node.hashval("project") or None
+        self._database = node.hashval("database") or None
         self._tick = int(node.hashval("tick") or "0")
 
         self._plugin.logger.debug(
-            "Loaded netnode: repo=%s, branch=%s, tick=%d"
-            % (self._repo, self._branch, self._tick)
+            "Loaded netnode: project=%s, database=%s, tick=%d"
+            % (self._project, self._database, self._tick)
         )
 
     def save_netnode(self):
         """Save data into our custom netnode."""
         node = ida_netnode.netnode(Core.NETNODE_NAME, 0, True)
 
-        if self._repo:
-            node.hashset("repo", str(self._repo))
-        if self._branch:
-            node.hashset("branch", str(self._branch))
+        if self._project:
+            node.hashset("project", str(self._project))
+        if self._database:
+            node.hashset("database", str(self._database))
         if self._tick:
             node.hashset("tick", str(self._tick))
 
         self._plugin.logger.debug(
-            "Saved netnode: repo=%s, branch=%s, tick=%d"
-            % (self._repo, self._branch, self._tick)
+            "Saved netnode: project=%s, database=%s, tick=%d"
+            % (self._project, self._database, self._tick)
         )
 
     def subscribe(self):
         """Send the subscribe packet."""
-        if self._repo and self._branch:
+        if self._project and self._database:
             name = self._plugin.config["user"]["name"]
             color = self._plugin.config["user"]["color"]
             ea = ida_kernwin.get_screen_ea()
             self._plugin.network.send_packet(
                 Subscribe(
-                    self._repo, self._branch, self._tick, name, color, ea
+                    self._project, self._database, self._tick, name, color, ea
                 )
             )
             self.hook_all()
 
     def unsubscribe(self):
         """Send the unsubscribe packet."""
-        if self._repo and self._branch:
+        if self._project and self._database:
             name = self._plugin.config["user"]["name"]
             self._plugin.network.send_packet(Unsubscribe(name))

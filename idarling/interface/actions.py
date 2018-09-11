@@ -27,7 +27,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMessageBox, QProgressDialog
 
 from .dialogs import OpenDialog, SaveDialog
-from ..shared.commands import DownloadDatabase, Subscribe, UploadDatabase
+from ..shared.commands import DownloadFile, Subscribe, UpdateFile
 
 
 class Action(object):
@@ -164,7 +164,7 @@ class OpenActionHandler(ActionHandler):
     _DIALOG = OpenDialog
 
     def _dialog_accepted(self, dialog):
-        repo, branch = dialog.get_result()
+        project, database = dialog.get_result()
 
         # Create the download progress dialog
         text = "Downloading database from server, please wait..."
@@ -178,7 +178,7 @@ class OpenActionHandler(ActionHandler):
         progress.setWindowIcon(QIcon(icon_path))
 
         # Send a packet to download the database
-        packet = DownloadDatabase.Query(repo.name, branch.name)
+        packet = DownloadFile.Query(project.name, database.name)
         callback = partial(self._on_progress, progress)
 
         def set_download_callback(reply):
@@ -186,11 +186,11 @@ class OpenActionHandler(ActionHandler):
 
         d = self._plugin.network.send_packet(packet)
         d.add_initback(set_download_callback)
-        d.add_callback(partial(self._database_downloaded, branch, progress))
+        d.add_callback(partial(self._database_downloaded, database, progress))
         d.add_errback(self._plugin.logger.exception)
         progress.show()
 
-    def _database_downloaded(self, branch, progress, reply):
+    def _database_downloaded(self, database, progress, reply):
         """Called when the file has finished downloading."""
         # Close the progress dialog
         progress.close()
@@ -199,7 +199,7 @@ class OpenActionHandler(ActionHandler):
         app_path = QCoreApplication.applicationFilePath()
         app_name = QFileInfo(app_path).fileName()
         file_ext = "i64" if "64" in app_name else "idb"
-        file_name = "%s_%s.%s" % (branch.repo, branch.name, file_ext)
+        file_name = "%s_%s.%s" % (database.project, database.name, file_ext)
         file_path = self._plugin.user_resource("files", file_name)
 
         # Write the packet content to disk
@@ -301,9 +301,9 @@ class SaveActionHandler(ActionHandler):
         return super(SaveActionHandler, self).update(ctx)
 
     def _dialog_accepted(self, dialog):
-        repo, branch = dialog.get_result()
-        self._plugin.core.repo = repo.name
-        self._plugin.core.branch = branch.name
+        project, database = dialog.get_result()
+        self._plugin.core.project = project.name
+        self._plugin.core.database = database.name
 
         # Save the current database
         self._plugin.core.save_netnode()
@@ -311,7 +311,7 @@ class SaveActionHandler(ActionHandler):
         ida_loader.save_database(input_path, 0)
 
         # Create the packet that will hold the database
-        packet = UploadDatabase.Query(repo.name, branch.name)
+        packet = UpdateFile.Query(project.name, database.name)
         with open(input_path, "rb") as input_file:
             packet.content = input_file.read()
 
@@ -330,12 +330,12 @@ class SaveActionHandler(ActionHandler):
         packet.upback = partial(self._on_progress, progress)
         d = self._plugin.network.send_packet(packet)
         d.add_callback(
-            partial(self._database_uploaded, repo, branch, progress)
+            partial(self._database_uploaded, project, database, progress)
         )
         d.add_errback(self._plugin.logger.exception)
         progress.show()
 
-    def _database_uploaded(self, repo, branch, progress, _):
+    def _database_uploaded(self, project, database, progress, _):
         # Close the progress dialog
         progress.close()
 
@@ -355,7 +355,12 @@ class SaveActionHandler(ActionHandler):
         ea = ida_kernwin.get_screen_ea()
         self._plugin.network.send_packet(
             Subscribe(
-                repo.name, branch.name, self._plugin.core.tick, name, color, ea
+                project.name,
+                database.name,
+                self._plugin.core.tick,
+                name,
+                color,
+                ea,
             )
         )
         self._plugin.core.hook_all()

@@ -13,11 +13,11 @@
 import json
 import sqlite3
 
-from .models import Branch, Repository
+from .models import Database, Project
 from .packets import Default, DefaultEvent
 
 
-class Database(object):
+class Storage(object):
     """
     This object is used to access the SQL database used by the server. It
     also defines some utility methods. Currently, only SQLite3 is implemented.
@@ -31,7 +31,7 @@ class Database(object):
     def initialize(self):
         """Create all the default tables."""
         self._create(
-            "repos",
+            "projects",
             [
                 "name text not null",
                 "hash text not null",
@@ -42,57 +42,60 @@ class Database(object):
             ],
         )
         self._create(
-            "branches",
+            "databases",
             [
-                "repo text not null",
+                "project text not null",
                 "name text not null",
                 "date text not null",
-                "foreign key(repo) references repos(name)",
-                "primary key(repo, name)",
+                "foreign key(project) references projects(name)",
+                "primary key(project, name)",
             ],
         )
         self._create(
             "events",
             [
-                "repo text not null",
-                "branch text not null",
+                "project text not null",
+                "database text not null",
                 "tick integer not null",
                 "dict text not null",
-                "foreign key(repo) references repos(name)",
-                "foreign key(repo, branch) references branches(repo, name)",
-                "primary key(repo, branch, tick)",
+                "foreign key(project) references projects(name)",
+                "foreign key(project, database)"
+                "     references databases(project, name)",
+                "primary key(project, database, tick)",
             ],
         )
 
-    def insert_repo(self, repo):
-        """Insert a new repository into the database."""
-        self._insert("repos", Default.attrs(repo.__dict__))
+    def insert_project(self, project):
+        """Insert a new project into the database."""
+        self._insert("projects", Default.attrs(project.__dict__))
 
-    def select_repo(self, name):
-        """Select the repository with the given name."""
-        objects = self.select_repos(name, 1)
+    def select_project(self, name):
+        """Select the project with the given name."""
+        objects = self.select_projects(name, 1)
         return objects[0] if objects else None
 
-    def select_repos(self, name=None, limit=None):
-        """Select the repositories with the given name."""
-        results = self._select("repos", {"name": name}, limit)
-        return [Repository(**result) for result in results]
+    def select_projects(self, name=None, limit=None):
+        """Select the projects with the given name."""
+        results = self._select("projects", {"name": name}, limit)
+        return [Project(**result) for result in results]
 
-    def insert_branch(self, branch):
-        """Insert a new branch into the database."""
-        attrs = Default.attrs(branch.__dict__)
+    def insert_database(self, database):
+        """Insert a new database into the database."""
+        attrs = Default.attrs(database.__dict__)
         attrs.pop("tick")
-        self._insert("branches", attrs)
+        self._insert("databases", attrs)
 
-    def select_branch(self, repo, name):
-        """Select the branch with the given repo and name."""
-        objects = self.select_branches(repo, name, 1)
+    def select_database(self, project, name):
+        """Select the database with the given project and name."""
+        objects = self.select_databases(project, name, 1)
         return objects[0] if objects else None
 
-    def select_branches(self, repo=None, name=None, limit=None):
-        """Select the branches with the given repo and name."""
-        results = self._select("branches", {"repo": repo, "name": name}, limit)
-        return [Branch(**result) for result in results]
+    def select_databases(self, project=None, name=None, limit=None):
+        """Select the databases with the given project and name."""
+        results = self._select(
+            "databases", {"project": project, "name": name}, limit
+        )
+        return [Database(**result) for result in results]
 
     def insert_event(self, client, event):
         """Insert a new event into the database."""
@@ -100,19 +103,19 @@ class Database(object):
         self._insert(
             "events",
             {
-                "repo": client.repo,
-                "branch": client.branch,
+                "project": client.project,
+                "database": client.database,
                 "tick": event.tick,
                 "dict": json.dumps(dct),
             },
         )
 
-    def select_events(self, repo, branch, tick):
+    def select_events(self, project, database, tick):
         """Get all events sent after the given tick count."""
         c = self._conn.cursor()
-        sql = "select * from events where repo = ? and branch = ?"
+        sql = "select * from events where project = ? and database = ?"
         sql += "and tick > ? order by tick asc;"
-        c.execute(sql, [repo, branch, tick])
+        c.execute(sql, [project, database, tick])
         events = []
         for result in c.fetchall():
             dct = json.loads(result["dict"])
@@ -120,12 +123,12 @@ class Database(object):
             events.append(DefaultEvent.new(dct))
         return events
 
-    def last_tick(self, repo, branch):
-        """Get the last tick of the specified repo and branch."""
+    def last_tick(self, project, database):
+        """Get the last tick of the specified project and database."""
         c = self._conn.cursor()
-        sql = "select tick from events where repo = ? and branch = ? "
+        sql = "select tick from events where project = ? and database = ? "
         sql += "order by tick desc limit 1;"
-        c.execute(sql, [repo, branch])
+        c.execute(sql, [project, database])
         result = c.fetchone()
         return result["tick"] if result else 0
 
