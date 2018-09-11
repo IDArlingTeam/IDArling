@@ -25,7 +25,7 @@ from PyQt5.QtWidgets import (
 )
 
 from .widget import StatusWidget
-from ..shared.commands import InviteTo
+from ..shared.commands import InviteToLocation
 
 
 class EventFilter(QObject):
@@ -110,7 +110,7 @@ class EventFilter(QObject):
                     the disassembler view to the specified user.
                     """
                     loc = ida_kernwin.get_screen_ea()
-                    packet = InviteTo(name, loc)
+                    packet = InviteToLocation(name, loc)
                     self._plugin.network.send_packet(packet)
 
                 # Handler for when the action is clicked

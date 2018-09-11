@@ -25,7 +25,7 @@ import ida_typeinf
 
 import events as evt  # noqa: I100,I202
 from .events import Event  # noqa: I201
-from ..shared.commands import UpdateCursors
+from ..shared.commands import UpdateLocation
 
 
 class Hooks(object):
@@ -707,7 +707,7 @@ class ViewHooks(Hooks, ida_kernwin.View_Hooks):
             name = self._plugin.config["user"]["name"]
             color = self._plugin.config["user"]["color"]
             self._plugin.network.send_packet(
-                UpdateCursors(name, now.plce.toea(), color)
+                UpdateLocation(name, now.plce.toea(), color)
             )
 
 

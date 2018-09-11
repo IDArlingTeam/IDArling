@@ -16,7 +16,7 @@ import ida_netnode
 
 from .hooks import HexRaysHooks, Hooks, IDBHooks, IDPHooks, UIHooks, ViewHooks
 from ..module import Module
-from ..shared.commands import Subscribe, Unsubscribe
+from ..shared.commands import JoinSession, LeaveSession
 
 
 class Core(Module):
@@ -100,8 +100,8 @@ class Core(Module):
             def ready_to_run(self, *_):
                 core.load_netnode()
 
-                # Send a subscribe packet if this database is on the server
-                core.subscribe()
+                # Send a join packet if this database is on the server
+                core.join()
 
                 self._plugin.interface.painter.set_custom_nav_colorizer()
 
@@ -123,7 +123,7 @@ class Core(Module):
 
             def closebase(self):
                 core.unhook_all()
-                core.unsubscribe()
+                core.leave()
 
                 self._plugin.interface.painter.uninstall()
 
@@ -200,21 +200,21 @@ class Core(Module):
             % (self._project, self._database, self._tick)
         )
 
-    def subscribe(self):
-        """Send the subscribe packet."""
+    def join(self):
+        """Join the collaborative session."""
         if self._project and self._database:
             name = self._plugin.config["user"]["name"]
             color = self._plugin.config["user"]["color"]
             ea = ida_kernwin.get_screen_ea()
             self._plugin.network.send_packet(
-                Subscribe(
+                JoinSession(
                     self._project, self._database, self._tick, name, color, ea
                 )
             )
             self.hook_all()
 
-    def unsubscribe(self):
-        """Send the unsubscribe packet."""
+    def leave(self):
+        """Leave the collaborative session."""
         if self._project and self._database:
             name = self._plugin.config["user"]["name"]
-            self._plugin.network.send_packet(Unsubscribe(name))
+            self._plugin.network.send_packet(LeaveSession(name))

@@ -112,7 +112,7 @@ class Network(Module):
         # Update the user interface
         self._plugin.interface.update()
         # Subscribe to the events
-        self._plugin.core.subscribe()
+        self._plugin.core.join()
         return True
 
     def disconnect(self):

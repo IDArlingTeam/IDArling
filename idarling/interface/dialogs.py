@@ -42,12 +42,12 @@ from PyQt5.QtWidgets import (
 )
 
 from ..shared.commands import (
-    GetDatabases,
-    GetProjects,
-    NewDatabase,
-    NewProject,
-    UserColorChanged,
-    UserRenamed,
+    CreateDatabase,
+    CreateProject,
+    ListDatabases,
+    ListProjects,
+    UpdateUserColor,
+    UpdateUserName,
 )
 from ..shared.models import Database, Project
 
@@ -141,7 +141,7 @@ class OpenDialog(QDialog):
         layout.addWidget(buttons_widget)
 
         # Ask the server for the list of projects
-        d = self._plugin.network.send_packet(GetProjects.Query())
+        d = self._plugin.network.send_packet(ListProjects.Query())
         d.add_callback(self._projects_received)
         d.add_errback(self._plugin.logger.exception)
 
@@ -168,7 +168,7 @@ class OpenDialog(QDialog):
         self._date_label.setText("<b>Date:</b> %s" % str(project.date))
 
         # Ask the server for the list of databases
-        d = self._plugin.network.send_packet(GetDatabases.Query(project.name))
+        d = self._plugin.network.send_packet(ListDatabases.Query(project.name))
         d.add_callback(partial(self._databases_received))
         d.add_errback(self._plugin.logger.exception)
 
@@ -280,7 +280,7 @@ class SaveDialog(OpenDialog):
         date_format = "%Y/%m/%d %H:%M"
         date = datetime.datetime.now().strftime(date_format)
         project = Project(name, hash, file, type, date)
-        d = self._plugin.network.send_packet(NewProject.Query(project))
+        d = self._plugin.network.send_packet(CreateProject.Query(project))
         d.add_callback(partial(self._new_project_received, project))
         d.add_errback(self._plugin.logger.exception)
 
@@ -327,7 +327,7 @@ class SaveDialog(OpenDialog):
         date_format = "%Y/%m/%d %H:%M"
         date = datetime.datetime.now().strftime(date_format)
         database = Database(self._project.name, name, date, -1)
-        d = self._plugin.network.send_packet(NewDatabase.Query(database))
+        d = self._plugin.network.send_packet(CreateDatabase.Query(database))
         d.add_callback(partial(self._new_database_received, database))
         d.add_errback(self._plugin.logger.exception)
 
@@ -720,13 +720,13 @@ class SettingsDialog(QDialog):
         name = self._name_line_edit.text()
         if self._plugin.config["user"]["name"] != name:
             old_name = self._plugin.config["user"]["name"]
-            self._plugin.network.send_packet(UserRenamed(old_name, name))
+            self._plugin.network.send_packet(UpdateUserName(old_name, name))
             self._plugin.config["user"]["name"] = name
 
         if self._plugin.config["user"]["color"] != self._color:
             name = self._plugin.config["user"]["name"]
             old_color = self._plugin.config["user"]["color"]
-            packet = UserColorChanged(name, old_color, self._color)
+            packet = UpdateUserColor(name, old_color, self._color)
             self._plugin.network.send_packet(packet)
             self._plugin.config["user"]["color"] = self._color
             self._plugin.interface.widget.refresh()

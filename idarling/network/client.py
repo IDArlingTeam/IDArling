@@ -16,12 +16,12 @@ from PyQt5.QtGui import QImage, QPixmap  # noqa: I202
 
 from ..interface.widget import StatusWidget
 from ..shared.commands import (
-    InviteTo,
-    Subscribe,
-    Unsubscribe,
-    UpdateCursors,
-    UserColorChanged,
-    UserRenamed,
+    InviteToLocation,
+    JoinSession,
+    LeaveSession,
+    UpdateLocation,
+    UpdateUserColor,
+    UpdateUserName,
 )
 from ..shared.packets import Command, Event
 from ..shared.sockets import ClientSocket
@@ -39,12 +39,12 @@ class Client(ClientSocket):
 
         # Setup command handlers
         self._handlers = {
-            UpdateCursors: self._handle_update_cursors,
-            Subscribe: self._handle_subscribe,
-            Unsubscribe: self._handle_unsubscribe,
-            InviteTo: self._handle_invite_to,
-            UserRenamed: self._handle_user_renamed,
-            UserColorChanged: self._handle_user_color_changed,
+            UpdateLocation: self._handle_update_cursors,
+            JoinSession: self._handle_subscribe,
+            LeaveSession: self._handle_unsubscribe,
+            InviteToLocation: self._handle_invite_to,
+            UpdateUserName: self._handle_user_renamed,
+            UpdateUserColor: self._handle_user_color_changed,
         }
 
     def disconnect(self, err=None):

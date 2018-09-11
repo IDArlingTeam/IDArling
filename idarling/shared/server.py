@@ -16,18 +16,18 @@ import socket
 import ssl
 
 from .commands import (
+    CreateDatabase,
+    CreateProject,
     DownloadFile,
-    GetDatabases,
-    GetProjects,
-    InviteTo,
-    NewDatabase,
-    NewProject,
-    Subscribe,
-    Unsubscribe,
-    UpdateCursors,
+    InviteToLocation,
+    JoinSession,
+    LeaveSession,
+    ListDatabases,
+    ListProjects,
     UpdateFile,
-    UserColorChanged,
-    UserRenamed,
+    UpdateLocation,
+    UpdateUserColor,
+    UpdateUserName,
 )
 from .discovery import ClientsDiscovery
 from .packets import Command, Event
@@ -90,25 +90,25 @@ class ServerClient(ClientSocket):
 
         # Setup command handlers
         self._handlers = {
-            GetProjects.Query: self._handle_get_projects,
-            GetDatabases.Query: self._handle_get_databases,
-            NewProject.Query: self._handle_new_project,
-            NewDatabase.Query: self._handle_new_database,
+            ListProjects.Query: self._handle_get_projects,
+            ListDatabases.Query: self._handle_get_databases,
+            CreateProject.Query: self._handle_new_project,
+            CreateDatabase.Query: self._handle_new_database,
             UpdateFile.Query: self._handle_upload_file,
             DownloadFile.Query: self._handle_download_file,
-            Subscribe: self._handle_subscribe,
-            Unsubscribe: self._handle_unsubscribe,
-            InviteTo: self._handle_invite_to,
-            UpdateCursors: self._handle_update_cursors,
-            UserRenamed: self._handle_user_renamed,
-            UserColorChanged: self._handle_user_color_changed,
+            JoinSession: self._handle_subscribe,
+            LeaveSession: self._handle_unsubscribe,
+            InviteToLocation: self._handle_invite_to,
+            UpdateLocation: self._handle_update_cursors,
+            UpdateUserName: self._handle_user_renamed,
+            UpdateUserColor: self._handle_user_color_changed,
         }
 
     def disconnect(self, err=None, notify=True):
         # Notify our peers we disconnected
         self.parent().reject(self)
         if self._project and self._database and notify:
-            self.parent().forward_peers(self, Unsubscribe(self.name, False))
+            self.parent().forward_peers(self, LeaveSession(self.name, False))
         ClientSocket.disconnect(self, err)
         self._logger.info("Disconnected")
 
@@ -142,7 +142,7 @@ class ServerClient(ClientSocket):
 
     def _handle_get_projects(self, query):
         projects = self.parent().storage.select_projects()
-        self.send_packet(GetProjects.Reply(query, projects))
+        self.send_packet(ListProjects.Reply(query, projects))
 
     def _handle_get_databases(self, query):
         databases = self.parent().storage.select_databases(query.project)
@@ -154,15 +154,15 @@ class ServerClient(ClientSocket):
                 database.tick = self.parent().storage.last_tick(*database_info)
             else:
                 database.tick = -1
-        self.send_packet(GetDatabases.Reply(query, databases))
+        self.send_packet(ListDatabases.Reply(query, databases))
 
     def _handle_new_project(self, query):
         self.parent().storage.insert_project(query.project)
-        self.send_packet(NewProject.Reply(query))
+        self.send_packet(CreateProject.Reply(query))
 
     def _handle_new_database(self, query):
         self.parent().storage.insert_database(query.database)
-        self.send_packet(NewDatabase.Reply(query))
+        self.send_packet(CreateDatabase.Reply(query))
 
     def _handle_upload_file(self, query):
         database = self.parent().storage.select_database(
@@ -204,7 +204,7 @@ class ServerClient(ClientSocket):
         # Inform ourselves about our peers existence
         for peer in self.parent().get_peers(self):
             self.send_packet(
-                Subscribe(
+                JoinSession(
                     packet.project,
                     packet.database,
                     packet.tick,
@@ -229,7 +229,7 @@ class ServerClient(ClientSocket):
 
         # Inform ourselves that our peers ceased to exist
         for peer in self.parent().get_peers(self):
-            self.send_packet(Unsubscribe(peer.name))
+            self.send_packet(LeaveSession(peer.name))
 
         self._project = None
         self._database = None

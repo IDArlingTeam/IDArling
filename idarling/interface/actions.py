@@ -27,7 +27,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMessageBox, QProgressDialog
 
 from .dialogs import OpenDialog, SaveDialog
-from ..shared.commands import DownloadFile, Subscribe, UpdateFile
+from ..shared.commands import DownloadFile, JoinSession, UpdateFile
 
 
 class Action(object):
@@ -354,7 +354,7 @@ class SaveActionHandler(ActionHandler):
         name = self._plugin.config["user"]["name"]
         ea = ida_kernwin.get_screen_ea()
         self._plugin.network.send_packet(
-            Subscribe(
+            JoinSession(
                 project.name,
                 database.name,
                 self._plugin.core.tick,

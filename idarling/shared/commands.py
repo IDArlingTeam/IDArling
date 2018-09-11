@@ -21,15 +21,15 @@ from .packets import (
 )
 
 
-class GetProjects(ParentCommand):
-    __command__ = "get_projects"
+class ListProjects(ParentCommand):
+    __command__ = "list_projects"
 
     class Query(IQuery, DefaultCommand):
         pass
 
     class Reply(IReply, Command):
         def __init__(self, query, projects):
-            super(GetProjects.Reply, self).__init__(query)
+            super(ListProjects.Reply, self).__init__(query)
             self.projects = projects
 
         def build_command(self, dct):
@@ -41,17 +41,17 @@ class GetProjects(ParentCommand):
             ]
 
 
-class GetDatabases(ParentCommand):
-    __command__ = "get_databases"
+class ListDatabases(ParentCommand):
+    __command__ = "list_databases"
 
     class Query(IQuery, DefaultCommand):
         def __init__(self, project):
-            super(GetDatabases.Query, self).__init__()
+            super(ListDatabases.Query, self).__init__()
             self.project = project
 
     class Reply(IReply, Command):
         def __init__(self, query, databases):
-            super(GetDatabases.Reply, self).__init__(query)
+            super(ListDatabases.Reply, self).__init__(query)
             self.databases = databases
 
         def build_command(self, dct):
@@ -65,12 +65,12 @@ class GetDatabases(ParentCommand):
             ]
 
 
-class NewProject(ParentCommand):
-    __command__ = "new_project"
+class CreateProject(ParentCommand):
+    __command__ = "create_project"
 
     class Query(IQuery, Command):
         def __init__(self, project):
-            super(NewProject.Query, self).__init__()
+            super(CreateProject.Query, self).__init__()
             self.project = project
 
         def build_command(self, dct):
@@ -83,12 +83,12 @@ class NewProject(ParentCommand):
         pass
 
 
-class NewDatabase(ParentCommand):
-    __command__ = "new_database"
+class CreateDatabase(ParentCommand):
+    __command__ = "create_database"
 
     class Query(IQuery, Command):
         def __init__(self, database):
-            super(NewDatabase.Query, self).__init__()
+            super(CreateDatabase.Query, self).__init__()
             self.database = database
 
         def build_command(self, dct):
@@ -127,11 +127,11 @@ class DownloadFile(ParentCommand):
         pass
 
 
-class Subscribe(DefaultCommand):
-    __command__ = "subscribe"
+class JoinSession(DefaultCommand):
+    __command__ = "join_session"
 
     def __init__(self, project, database, tick, name, color, ea, silent=True):
-        super(Subscribe, self).__init__()
+        super(JoinSession, self).__init__()
         self.project = project
         self.database = database
         self.tick = tick
@@ -141,48 +141,48 @@ class Subscribe(DefaultCommand):
         self.silent = silent
 
 
-class Unsubscribe(DefaultCommand):
-    __command__ = "unsubscribe"
+class LeaveSession(DefaultCommand):
+    __command__ = "leave_session"
 
     def __init__(self, name, silent=True):
-        super(Unsubscribe, self).__init__()
+        super(LeaveSession, self).__init__()
         self.name = name
         self.silent = silent
 
 
-class UpdateCursors(DefaultCommand):
-    __command__ = "update_cursors"
-
-    def __init__(self, name, ea, color):
-        super(UpdateCursors, self).__init__()
-        self.name = name
-        self.ea = ea
-        self.color = color
-
-
-class UserRenamed(DefaultCommand):
-    __command__ = "user_renamed"
+class UpdateUserName(DefaultCommand):
+    __command__ = "update_user_name"
 
     def __init__(self, old_name, new_name):
-        super(UserRenamed, self).__init__()
+        super(UpdateUserName, self).__init__()
         self.old_name = old_name
         self.new_name = new_name
 
 
-class UserColorChanged(DefaultCommand):
-    __command__ = "user_color_changed"
+class UpdateUserColor(DefaultCommand):
+    __command__ = "update_user_color"
 
     def __init__(self, name, old_color, new_color):
-        super(UserColorChanged, self).__init__()
+        super(UpdateUserColor, self).__init__()
         self.name = name
         self.old_color = old_color
         self.new_color = new_color
 
 
-class InviteTo(DefaultCommand):
-    __command__ = "invite_to"
+class UpdateLocation(DefaultCommand):
+    __command__ = "update_location"
+
+    def __init__(self, name, ea, color):
+        super(UpdateLocation, self).__init__()
+        self.name = name
+        self.ea = ea
+        self.color = color
+
+
+class InviteToLocation(DefaultCommand):
+    __command__ = "invite_to_location"
 
     def __init__(self, name, loc):
-        super(InviteTo, self).__init__()
+        super(InviteToLocation, self).__init__()
         self.name = name
         self.loc = loc
