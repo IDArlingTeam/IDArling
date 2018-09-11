@@ -73,6 +73,7 @@ class Painter(object):
         super(Painter, self).__init__()
         self._plugin = plugin
         self._installed = False
+        self.nbytes = 0
 
         self._painted_instructions = collections.defaultdict(collections.deque)
         self._painted_functions = collections.defaultdict(collections.deque)
@@ -133,6 +134,7 @@ class Painter(object):
         """This is the custom nav colorizer used by the painter."""
         # There is a bug in IDA: with a huge number of segments, all the navbar
         # is colored with the user color. This will be resolved in IDA 7.2.
+        self.nbytes = nbytes
         if self._plugin.config["user"]["navbar_colorizer"]:
             for infos in self._users_positions.values():
                 if ea - nbytes * 2 <= infos["address"] <= ea + nbytes * 2:
