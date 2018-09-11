@@ -21,7 +21,7 @@ class IntegratedServer(Server):
 
     def __init__(self, plugin, parent=None):
         self._plugin = plugin
-        Server.__init__(self, plugin.logger, None, parent)
+        Server.__init__(self, plugin.logger, parent)
 
     def server_file(self, filename):
         return self._plugin.user_resource("files", filename)

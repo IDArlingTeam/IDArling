@@ -35,6 +35,7 @@ class Interface(Module):
         self._invites = []
 
         # Find the QMainWindow instance
+        self._plugin.logger.debug("Searching for the main window")
         for widget in qApp.topLevelWidgets():
             if isinstance(widget, QMainWindow):
                 self._window = widget
@@ -49,12 +50,10 @@ class Interface(Module):
 
     @property
     def widget(self):
-        """Get the status widget."""
         return self._widget
 
     @property
     def painter(self):
-        """Get the painter instance."""
         return self._painter
 
     @property
@@ -62,6 +61,7 @@ class Interface(Module):
         """Get all active invites."""
         invites = []
         for invite in self._invites:
+            # Check if still active
             if (
                 invite.callback
                 and not invite.triggered
@@ -76,7 +76,6 @@ class Interface(Module):
         self._painter.install()
         self._filter.install()
         self._widget.install(self._window)
-        self._plugin.logger.debug("Installed user interface elements")
         return True
 
     def _uninstall(self):
@@ -85,7 +84,6 @@ class Interface(Module):
         self._save_action.uninstall()
         self._filter.uninstall()
         self._widget.uninstall(self._window)
-        self._plugin.logger.debug("Uninstalled user interface elements")
         return True
 
     def update(self):
@@ -93,6 +91,7 @@ class Interface(Module):
         if not self._plugin.network.connected:
             self.clear_invites()
             self._painter.clear()
+
         self._open_action.update()
         self._save_action.update()
         self._widget.refresh()
@@ -102,8 +101,10 @@ class Interface(Module):
         Display a toast notification to the user. The notification will have
         the specified text, icon and callback function (triggered on click).
         """
+        # Check if notifications aren't disabled
         if not self._plugin.config["user"]["notifications"]:
             return
+
         invite = Invite(self._plugin, self._window)
         invite.time = time.time()
         invite.text = text
@@ -113,5 +114,6 @@ class Interface(Module):
         self._invites.append(invite)
 
     def clear_invites(self):
+        """Clears the invites list."""
         del self._invites[:]
         self._widget.refresh()

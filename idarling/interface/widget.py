@@ -96,17 +96,19 @@ class StatusWidget(QWidget):
         self._timer.timeout.connect(self.refresh)
 
     def install(self, window):
-        self._timer.start()
+        self._plugin.logger.debug("Installing the status bar widget")
         window.statusBar().addPermanentWidget(self)
+        self._timer.start()
         self.refresh()
 
     def uninstall(self, window):
-        self._timer.stop()
+        self._plugin.logger.debug("Uninstalling the status bar widget")
         window.statusBar().removeWidget(self)
+        self._timer.stop()
 
     def refresh(self):
         """Called to update the widget when the network state has changed."""
-        self._plugin.logger.trace("Updating widget state")
+        self._plugin.logger.trace("Refreshing the status bar widget")
 
         # Get the corresponding color, text and icon
         if self._plugin.network.connected:
@@ -207,7 +209,6 @@ class StatusWidget(QWidget):
 
     def _context_menu(self, point):
         """Called when the context menu is being requested."""
-        self._plugin.logger.debug("Opening widget context menu")
         width = 3 + self._servers_text_widget.sizeHint().width()
         width += 3 + self._servers_icon_widget.sizeHint().width()
 
@@ -244,7 +245,7 @@ class StatusWidget(QWidget):
             else:
                 self._plugin.network.stop_server()
 
-        integrated.setChecked(self._plugin.network.server_running())
+        integrated.setChecked(self._plugin.network.started)
         integrated.triggered.connect(integrated_action_triggered)
         menu.addAction(integrated)
 
@@ -288,7 +289,7 @@ class StatusWidget(QWidget):
         servers = self._plugin.network.discovery.servers
         servers = [s for s, t in servers if time.time() - t < 10.0]
         if (
-            self._plugin.network.server_running()
+            self._plugin.network.started
             and self._plugin.network.server in servers
         ):
             servers.remove(self._plugin.network.server)

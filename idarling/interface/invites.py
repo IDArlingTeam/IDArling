@@ -74,23 +74,20 @@ class Invite(QWidget):
 
     @property
     def text(self):
-        """Get the text of the invite."""
         return self._text.text()
 
     @text.setter
     def text(self, text):
-        """Set the text of the invite."""
         self._text.setText(text)
         self.adjustSize()
 
     @property
     def icon(self):
-        """Get the icon of the invite."""
         return self._icon.pixmap()
 
     @icon.setter
     def icon(self, pixmap):
-        """Set the icon of the invite."""
+        # Resize the given pixmap
         pixmap_height = self._text.sizeHint().height()
         self._icon.setPixmap(
             pixmap.scaled(
@@ -104,12 +101,10 @@ class Invite(QWidget):
 
     @property
     def callback(self):
-        """Get the callback function."""
         return self._callback
 
     @callback.setter
     def callback(self, callback):
-        """Set a callback function."""
         self._callback = callback
 
     @property
@@ -155,6 +150,7 @@ class Invite(QWidget):
 
     def show(self):
         """Shows the invite to user. It triggers a fade in effect."""
+        self._plugin.logger.debug("Showing invite %s" % self.text)
         self.setWindowOpacity(0.0)
 
         self._animation.setDuration(500)

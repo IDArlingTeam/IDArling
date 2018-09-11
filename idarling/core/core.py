@@ -45,41 +45,32 @@ class Core(Module):
 
     @property
     def project(self):
-        """Get the current project."""
         return self._project
 
     @project.setter
     def project(self, project):
-        """Set the the current project and save the netnode."""
         self._project = project
         self.save_netnode()
 
     @property
     def database(self):
-        """Get the current database."""
         return self._database
 
     @database.setter
     def database(self, database):
-        """Set the current database and save the netnode."""
         self._database = database
         self.save_netnode()
 
     @property
     def tick(self):
-        """Get the current tick count."""
         return self._tick
 
     @tick.setter
     def tick(self, tick):
-        """Set the current tick count and save the netnode."""
         self._tick = tick
         self.save_netnode()
 
     def _install(self):
-        self._plugin.logger.debug("Installing hooks")
-        core = self
-
         # Instantiate the hooks
         self._idb_hooks = IDBHooks(self._plugin)
         self._idp_hooks = IDPHooks(self._plugin)
@@ -87,10 +78,13 @@ class Core(Module):
         self._view_hooks = ViewHooks(self._plugin)
         self._ui_hooks = UIHooks(self._plugin)
 
+        core = self
+        self._plugin.logger.debug("Installing core hooks")
+
         class UIHooksCore(Hooks, ida_kernwin.UI_Hooks):
             """
-            The UI core hook is used to determine when IDA is fully loaded
-            and we can starting hooking to receive our user events.
+            The UI core hook is used to determine when IDA is fully loaded,
+            meaning that we can starting hooking to receive our user events.
             """
 
             def __init__(self, plugin):
@@ -98,14 +92,13 @@ class Core(Module):
                 Hooks.__init__(self, plugin)
 
             def ready_to_run(self, *_):
+                self._plugin.logger.debug("Ready to run hook")
                 core.load_netnode()
-
-                # Send a join packet if this database is on the server
-                core.join()
-
+                core.join_session()
                 self._plugin.interface.painter.set_custom_nav_colorizer()
 
             def database_inited(self, *_):
+                self._plugin.logger.debug("Database inited hook")
                 self._plugin.interface.painter.install()
 
         self._ui_hooks_core = UIHooksCore(self._plugin)
@@ -122,10 +115,10 @@ class Core(Module):
                 Hooks.__init__(self, plugin)
 
             def closebase(self):
-                core.unhook_all()
-                core.leave()
-
+                self._plugin.logger.debug("Closebase hook")
                 self._plugin.interface.painter.uninstall()
+                core.leave_session()
+                core.save_netnode()
 
                 core.project = None
                 core.database = None
@@ -137,17 +130,18 @@ class Core(Module):
         return True
 
     def _uninstall(self):
-        self._plugin.logger.debug("Uninstalling hooks")
+        self._plugin.logger.debug("Uninstalling core hooks")
         self._idb_hooks_core.unhook()
         self._ui_hooks_core.unhook()
         self.unhook_all()
         return True
 
     def hook_all(self):
-        """Install all the user event hooks."""
+        """Install all the user events hooks."""
         if self._hooked:
             return
 
+        self._plugin.logger.debug("Installing hooks")
         self._idb_hooks.hook()
         self._idp_hooks.hook()
         self._hxe_hooks.hook()
@@ -156,10 +150,11 @@ class Core(Module):
         self._hooked = True
 
     def unhook_all(self):
-        """Uninstall all the user event hooks."""
+        """Uninstall all the user events hooks."""
         if not self._hooked:
             return
 
+        self._plugin.logger.debug("Uninstalling hooks")
         self._idb_hooks.unhook()
         self._idp_hooks.unhook()
         self._hxe_hooks.unhook()
@@ -200,8 +195,9 @@ class Core(Module):
             % (self._project, self._database, self._tick)
         )
 
-    def join(self):
+    def join_session(self):
         """Join the collaborative session."""
+        self._plugin.logger.debug("Joining session")
         if self._project and self._database:
             name = self._plugin.config["user"]["name"]
             color = self._plugin.config["user"]["color"]
@@ -213,8 +209,10 @@ class Core(Module):
             )
             self.hook_all()
 
-    def leave(self):
+    def leave_session(self):
         """Leave the collaborative session."""
+        self._plugin.logger.debug("Leaving session")
         if self._project and self._database:
             name = self._plugin.config["user"]["name"]
             self._plugin.network.send_packet(LeaveSession(name))
+            self.unhook_all()

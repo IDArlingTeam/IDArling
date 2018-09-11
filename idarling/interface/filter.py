@@ -37,15 +37,17 @@ class EventFilter(QObject):
     def __init__(self, plugin, parent=None):
         super(EventFilter, self).__init__(parent)
         self._plugin = plugin
-        self._augment = False
+        self._intercept = False
 
     def install(self):
+        self._plugin.logger.debug("Installing the event filter")
         qApp.instance().installEventFilter(self)
 
     def uninstall(self):
+        self._plugin.logger.debug("Uninstalling the event filter")
         qApp.instance().removeEventFilter(self)
 
-    def replace_icon(self, label):
+    def _replace_icon(self, label):
         pixmap = QPixmap(self._plugin.plugin_resource("idarling.png"))
         pixmap = pixmap.scaled(
             label.sizeHint().width(),
@@ -55,9 +57,62 @@ class EventFilter(QObject):
         )
         label.setPixmap(pixmap)
 
+    def _insert_menu(self, obj):
+        # Find where to install our submenu
+        sep = None
+        for act in obj.actions():
+            if act.isSeparator():
+                sep = act
+            if "Undefine" in act.text():
+                break
+        obj.insertSeparator(sep)
+
+        # Setup our custom menu text and icon
+        menu = QMenu("Invite to location", obj)
+        pixmap = QPixmap(self._plugin.plugin_resource("invite.png"))
+        menu.setIcon(QIcon(pixmap))
+
+        # Setup our first submenu entry text and icon
+        everyone = QAction("Everyone", menu)
+        pixmap = QPixmap(self._plugin.plugin_resource("users.png"))
+        everyone.setIcon(QIcon(pixmap))
+
+        def invite_to(name):
+            """Send an invitation to the current location."""
+            loc = ida_kernwin.get_screen_ea()
+            packet = InviteToLocation(name, loc)
+            self._plugin.network.send_packet(packet)
+
+        # Handler for when the action is clicked
+        def invite_to_everyone():
+            invite_to("everyone")
+
+        everyone.triggered.connect(invite_to_everyone)
+        menu.addAction(everyone)
+
+        menu.addSeparator()
+        template = QImage(self._plugin.plugin_resource("user.png"))
+
+        def create_action(name, color):
+            action = QAction(name, menu)
+            pixmap = StatusWidget.make_icon(template, color)
+            action.setIcon(QIcon(pixmap))
+
+            # Handler for when the action is clicked
+            def invite_to_user():
+                invite_to(name)
+
+            action.triggered.connect(invite_to_user)
+            return action
+
+        # Insert an action for each connected user
+        painter = self._plugin.interface.painter
+        for name, info in painter.users_positions.items():
+            menu.addAction(create_action(name, info["color"]))
+        obj.insertMenu(sep, menu)
+
     def eventFilter(self, obj, ev):  # noqa: N802
-        # We're looking for a QShowEvent being triggered on a QDialog
-        # having the title "Dialog"
+        # We're looking for a QShowEvent on a QDialog named "Dialog"
         if (
             isinstance(obj, QDialog)
             and isinstance(ev, QShowEvent)
@@ -69,7 +124,7 @@ class EventFilter(QObject):
                     # Look for a QLabel with an icon
                     for subchild in child.children():
                         if isinstance(subchild, QLabel) and subchild.pixmap():
-                            self.replace_icon(subchild)
+                            self._replace_icon(subchild)
 
         # We're looking for a QContextMenuEvent on a QWidget
         if isinstance(obj, QWidget) and isinstance(ev, QContextMenuEvent):
@@ -78,67 +133,14 @@ class EventFilter(QObject):
             while parent:
                 if parent.windowTitle().startswith("IDA View"):
                     # Intercept the next context menu
-                    self._augment = True
+                    self._intercept = True
                 parent = parent.parent()
 
         # We're looking for a QShowEvent on a QMenu
         if isinstance(obj, QMenu) and isinstance(ev, QShowEvent):
             # Is it the disassembler context menu?
-            if self._augment:
-                # Find where to install our submenu
-                sep = None
-                for act in obj.actions():
-                    if act.isSeparator():
-                        sep = act
-                    if "Undefine" in act.text():
-                        break
-                obj.insertSeparator(sep)
+            if self._intercept:
+                self._insert_menu(obj)
+                self._intercept = False
 
-                # Setup our custom menu text and icon
-                menu = QMenu("Invite to location", obj)
-                pixmap = QPixmap(self._plugin.plugin_resource("invite.png"))
-                menu.setIcon(QIcon(pixmap))
-
-                # Setup our first submenu entry text and icon
-                everyone = QAction("Everyone", menu)
-                pixmap = QPixmap(self._plugin.plugin_resource("users.png"))
-                everyone.setIcon(QIcon(pixmap))
-
-                def invite_to(name):
-                    """
-                    Send an invitation to the current location within
-                    the disassembler view to the specified user.
-                    """
-                    loc = ida_kernwin.get_screen_ea()
-                    packet = InviteToLocation(name, loc)
-                    self._plugin.network.send_packet(packet)
-
-                # Handler for when the action is clicked
-                def invite_to_everyone():
-                    invite_to("everyone")
-
-                everyone.triggered.connect(invite_to_everyone)
-                menu.addAction(everyone)
-
-                menu.addSeparator()
-                template = QImage(self._plugin.plugin_resource("user.png"))
-
-                def create_action(name, color):
-                    action = QAction(name, menu)
-                    pixmap = StatusWidget.make_icon(template, color)
-                    action.setIcon(QIcon(pixmap))
-
-                    # Handler for when the action is clicked
-                    def invite_to_user():
-                        invite_to(name)
-
-                    action.triggered.connect(invite_to_user)
-                    return action
-
-                # Insert an action for each connected user
-                painter = self._plugin.interface.painter
-                for name, info in painter.users_positions.items():
-                    menu.addAction(create_action(name, info["color"]))
-                obj.insertMenu(sep, menu)
-                self._augment = False
         return False

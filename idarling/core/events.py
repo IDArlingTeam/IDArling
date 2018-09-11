@@ -35,9 +35,9 @@ if sys.version_info > (3,):
 
 class Event(DefaultEvent):
     """
-    This is a common class for events that provides utilities methods to
-    encode/decode string and raw bytes. Events should also implement __call__
-    which is called when it needs to be replayed into IDA.
+    This is a common class for all events that provides utility methods to
+    encode/decode strings and raw bytes. Events should also implement __call__
+    which is called when the event needs to be replayed into IDA.
     """
 
     @staticmethod
@@ -69,7 +69,7 @@ class Event(DefaultEvent):
         return s.decode("raw_unicode_escape")
 
     def __call__(self):
-        """Reproduce the underlying user action into IDA."""
+        """Reproduce the underlying user event into IDA."""
         raise NotImplementedError("__call__() not implemented")
 
 

@@ -44,7 +44,7 @@ class ClientsDiscovery(QObject):
 
     def start(self, host, port, ssl):
         """Start the discovery process and broadcast the given information."""
-        self._logger.debug("Starting clients discovery...")
+        self._logger.debug("Starting clients discovery")
         self._info = "%s %d %s" % (host, port, ssl)
 
         # Create a datagram socket capable of broadcasting
@@ -65,7 +65,7 @@ class ClientsDiscovery(QObject):
 
     def stop(self):
         """Stop the discovery process."""
-        self._logger.debug("Stopping clients discovery...")
+        self._logger.debug("Stopping clients discovery")
         self._read_notifier.setEnabled(False)
         try:
             self._socket.close()
@@ -77,7 +77,7 @@ class ClientsDiscovery(QObject):
 
     def _send_request(self):
         """This function sends to discovery request packets."""
-        self._logger.trace("Sending discovery request...")
+        self._logger.trace("Sending discovery request")
         request = DISCOVERY_REQUEST + " " + self._info
         request = request.encode("utf-8")
         while len(request):
@@ -113,12 +113,11 @@ class ServersDiscovery(QObject):
 
     @property
     def servers(self):
-        """Get the servers discovered."""
         return self._servers
 
     def start(self):
         """Start the discovery process and listen for discovery requests."""
-        self._logger.debug("Starting servers discovery....")
+        self._logger.debug("Starting servers discovery")
 
         # Create a datagram socket bound on port 31013
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -137,8 +136,8 @@ class ServersDiscovery(QObject):
         self._started = True
 
     def stop(self):
-        """Stop the discovery process"""
-        self._logger.debug("Stopping servers discovery...")
+        """Stop the discovery process."""
+        self._logger.debug("Stopping servers discovery")
         self._read_notifier.setEnabled(False)
         try:
             self._socket.close()
@@ -158,14 +157,13 @@ class ServersDiscovery(QObject):
             # Get the server information
             _, host, port, ssl = request.split()
             server = {"host": host, "port": int(port), "no_ssl": ssl != "True"}
-            self._logger.trace("Server discovered: %s" % server)
 
             # Remove the old value
             self._servers = [(s, t) for (s, t) in self._servers if s != server]
             # Append the new value
             self._servers.append((server, time.time()))
 
-            self._logger.trace("Sending discovery reply to %s:%d..." % address)
+            self._logger.trace("Sending discovery reply to %s:%d" % address)
             # Reply to the discovery request
             reply = DISCOVERY_REPLY
             reply = reply.encode("utf-8")

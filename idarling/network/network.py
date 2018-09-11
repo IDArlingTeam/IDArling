@@ -28,30 +28,31 @@ class Network(Module):
 
     def __init__(self, plugin):
         super(Network, self).__init__(plugin)
+        self._discovery = ServersDiscovery(plugin.logger)
+
         self._client = None
         self._server = None
         self._integrated = None
-        self._discovery = ServersDiscovery(plugin.logger)
 
     @property
     def client(self):
-        """Get the client socket."""
         return self._client
 
     @property
     def server(self):
-        """Get the server information."""
         return self._server
 
     @property
     def discovery(self):
-        """Get the discovery socket."""
         return self._discovery
 
     @property
     def connected(self):
-        """Are we connected to a server?"""
         return self._client.connected if self._client else False
+
+    @property
+    def started(self):
+        return bool(self._integrated)
 
     def _install(self):
         self._discovery.start()
@@ -68,7 +69,7 @@ class Network(Module):
         if self.connected:
             return False
 
-        self._server = server.copy()  # Copy just in case
+        self._server = server.copy()  # Make a copy
         host = self._server["host"]
         if host == "0.0.0.0":  # Windows can't connect to 0.0.0.0
             host = "127.0.0.1"
@@ -112,7 +113,7 @@ class Network(Module):
         # Update the user interface
         self._plugin.interface.update()
         # Subscribe to the events
-        self._plugin.core.join()
+        self._plugin.core.join_session()
         return True
 
     def disconnect(self):
@@ -135,9 +136,8 @@ class Network(Module):
         """Start the integrated server."""
         if self._integrated:
             return False
-        self.disconnect()
 
-        self._plugin.logger.info("Starting integrated server...")
+        self._plugin.logger.info("Starting the integrated server...")
         server = IntegratedServer(self._plugin)
         if not server.start("0.0.0.0"):
             return False  # Couldn't start the server
@@ -148,18 +148,16 @@ class Network(Module):
             "no_ssl": True,
         }
         # Connect the client to the server
+        self.disconnect()
         return self.connect(integrated_arg)
 
     def stop_server(self):
         """Stop the integrated server."""
         if not self._integrated:
             return False
-        self._plugin.logger.info("Stopping integrated server...")
+
+        self._plugin.logger.info("Stopping the integrated server...")
+        self.disconnect()
         self._integrated.stop()
         self._integrated = None
-        self.disconnect()
         return True
-
-    def server_running(self):
-        """Is the integrated server running?"""
-        return bool(self._integrated)

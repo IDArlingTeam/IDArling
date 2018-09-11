@@ -20,8 +20,6 @@ import ida_diskio
 import ida_idaapi
 import ida_kernwin
 
-from PyQt5.QtCore import QCoreApplication  # noqa: I202
-
 from .core.core import Core
 from .interface.interface import Interface
 from .network.network import Network
@@ -98,7 +96,7 @@ class Plugin(ida_idaapi.plugin_t):
 
     def __init__(self):
         # Check if the plugin is running with IDA terminal
-        if QCoreApplication.instance() is None:
+        if not ida_kernwin.is_idaq():
             raise RuntimeError("IDArling cannot be used in terminal mode")
 
         # Load the default configuration
@@ -114,27 +112,22 @@ class Plugin(ida_idaapi.plugin_t):
 
     @property
     def config(self):
-        """Get the plugin config."""
         return self._config
 
     @property
     def logger(self):
-        """Get the plugin logger."""
         return self._logger
 
     @property
     def core(self):
-        """Get the core module."""
         return self._core
 
     @property
     def interface(self):
-        """Get the interface module."""
         return self._interface
 
     @property
     def network(self):
-        """Get the network module."""
         return self._network
 
     def init(self):
@@ -155,7 +148,7 @@ class Plugin(ida_idaapi.plugin_t):
             return skip
 
         self._print_banner()
-        self._logger.info("Successfully initialized")
+        self._logger.info("Initialized properly")
         keep = ida_idaapi.PLUGIN_KEEP
         return keep
 
@@ -213,5 +206,5 @@ class Plugin(ida_idaapi.plugin_t):
         """Save the configuration file."""
         config_path = self.user_resource("files", "config.json")
         with open(config_path, "wb") as config_file:
-            self._logger.debug("Saved config: %s" % self._config)
             config_file.write(json.dumps(self._config))
+            self._logger.debug("Saved config: %s" % self._config)

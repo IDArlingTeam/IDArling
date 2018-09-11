@@ -39,20 +39,21 @@ class Client(ClientSocket):
 
         # Setup command handlers
         self._handlers = {
-            UpdateLocation: self._handle_update_cursors,
-            JoinSession: self._handle_subscribe,
-            LeaveSession: self._handle_unsubscribe,
-            InviteToLocation: self._handle_invite_to,
-            UpdateUserName: self._handle_user_renamed,
-            UpdateUserColor: self._handle_user_color_changed,
+            JoinSession: self._handle_join_session,
+            LeaveSession: self._handle_leave_session,
+            UpdateLocation: self._handle_update_location,
+            InviteToLocation: self._handle_invite_to_location,
+            UpdateUserName: self._handle_update_user_name,
+            UpdateUserColor: self._handle_update_user_color,
         }
 
     def disconnect(self, err=None):
+        self._plugin.logger.info("Connection lost")
         ClientSocket.disconnect(self, err)
         self._plugin.network.disconnect()
+
         # Update the user interface
         self._plugin.interface.update()
-        self._plugin.logger.info("Connection lost")
 
     def recv_packet(self, packet):
         if isinstance(packet, Command):
@@ -85,7 +86,8 @@ class Client(ClientSocket):
             packet.tick = self._plugin.core.tick
         return ClientSocket.send_packet(self, packet)
 
-    def _handle_subscribe(self, packet):
+    def _handle_join_session(self, packet):
+        # Add the user to the navbar
         self._plugin.interface.painter.paint(
             packet.name, packet.color, packet.ea
         )
@@ -99,7 +101,7 @@ class Client(ClientSocket):
         icon = StatusWidget.make_icon(template, packet.color)
         self._plugin.interface.show_invite(text, icon)
 
-    def _handle_unsubscribe(self, packet):
+    def _handle_leave_session(self, packet):
         # Show a toast notification
         if packet.silent:
             return
@@ -109,11 +111,13 @@ class Client(ClientSocket):
         icon = StatusWidget.make_icon(template, info["color"])
         self._plugin.interface.show_invite(text, icon)
 
+        # Remove the user from the navbar
         if self._plugin.interface.painter.installed:
             self._plugin.interface.painter.unpaint(packet.name)
         self._plugin.interface.widget.refresh()
 
-    def _handle_invite_to(self, packet):
+    def _handle_invite_to_location(self, packet):
+        # Show a toast notification
         text = "%s - Jump to %#x" % (packet.name, packet.loc)
         icon = self._plugin.plugin_resource("location.png")
 
@@ -122,17 +126,20 @@ class Client(ClientSocket):
 
         self._plugin.interface.show_invite(text, QPixmap(icon), callback)
 
-    def _handle_update_cursors(self, packet):
+    def _handle_update_location(self, packet):
+        # Notify the painter
         self._plugin.interface.painter.paint(
             packet.name, packet.color, packet.ea
         )
 
-    def _handle_user_renamed(self, packet):
-        self._plugin.interface.painter.rename_user(
+    def _handle_update_user_name(self, packet):
+        # Notify the painter
+        self._plugin.interface.painter.update_user_name(
             packet.old_name, packet.new_name
         )
 
-    def _handle_user_color_changed(self, packet):
-        self._plugin.interface.painter.change_user_color(
+    def _handle_update_user_color(self, packet):
+        # Notify the painter
+        self._plugin.interface.painter.update_user_color(
             packet.name, packet.old_color, packet.new_color
         )

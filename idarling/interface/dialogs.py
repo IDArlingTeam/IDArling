@@ -62,7 +62,6 @@ class OpenDialog(QDialog):
         self._databases = None
 
         # General setup of the dialog
-        self._plugin.logger.debug("Showing the database selection dialog")
         self.setWindowTitle("Open from Remote Server")
         icon_path = self._plugin.plugin_resource("download.png")
         self.setWindowIcon(QIcon(icon_path))
@@ -142,11 +141,11 @@ class OpenDialog(QDialog):
 
         # Ask the server for the list of projects
         d = self._plugin.network.send_packet(ListProjects.Query())
-        d.add_callback(self._projects_received)
+        d.add_callback(self._projects_listed)
         d.add_errback(self._plugin.logger.exception)
 
-    def _projects_received(self, reply):
-        """Called when the list of projects is received."""
+    def _projects_listed(self, reply):
+        """Called when the projects list is received."""
         self._projects = reply.projects
         self._refresh_projects()
 
@@ -169,11 +168,11 @@ class OpenDialog(QDialog):
 
         # Ask the server for the list of databases
         d = self._plugin.network.send_packet(ListDatabases.Query(project.name))
-        d.add_callback(partial(self._databases_received))
+        d.add_callback(partial(self._databases_listed))
         d.add_errback(self._plugin.logger.exception)
 
-    def _databases_received(self, reply):
-        """Called when the list of databases is received."""
+    def _databases_listed(self, reply):
+        """Called when the databases list is received."""
         self._databases = reply.databases
         self._refresh_databases()
 
@@ -208,10 +207,8 @@ class OpenDialog(QDialog):
     def get_result(self):
         """Get the project and database selected by the user."""
         project = self._projects_table.selectedItems()[0].data(Qt.UserRole)
-        return (
-            project,
-            self._databases_table.selectedItems()[0].data(Qt.UserRole),
-        )
+        database = self._databases_table.selectedItems()[0].data(Qt.UserRole)
+        return project, database
 
 
 class SaveDialog(OpenDialog):
@@ -229,35 +226,37 @@ class SaveDialog(OpenDialog):
         icon_path = self._plugin.plugin_resource("upload.png")
         self.setWindowIcon(QIcon(icon_path))
 
-        # Setup the layout and widgets
+        # Change the accept button text
         self._accept_button.setText("Save")
 
-        # Add a button to create a new project
-        new_project_button = QPushButton("New Project", self._left_side)
-        new_project_button.clicked.connect(self._new_project_clicked)
-        self._left_layout.addWidget(new_project_button)
+        # Add a button to create a project
+        create_project_button = QPushButton("Create Project", self._left_side)
+        create_project_button.clicked.connect(self._create_project_clicked)
+        self._left_layout.addWidget(create_project_button)
 
-        # Add a button to create a new database
-        self._new_database_button = QPushButton(
-            "New Database", self._databases_group
+        # Add a button to create a database
+        self._create_database_button = QPushButton(
+            "Create Database", self._databases_group
         )
-        self._new_database_button.setEnabled(False)
-        self._new_database_button.clicked.connect(self._new_database_clicked)
-        self._databases_layout.addWidget(self._new_database_button)
+        self._create_database_button.setEnabled(False)
+        self._create_database_button.clicked.connect(
+            self._create_database_clicked
+        )
+        self._databases_layout.addWidget(self._create_database_button)
 
     def _project_clicked(self):
         super(SaveDialog, self)._project_clicked()
         self._project = self._projects_table.selectedItems()[0].data(
             Qt.UserRole
         )
-        self._new_database_button.setEnabled(True)
+        self._create_database_button.setEnabled(True)
 
-    def _new_project_clicked(self):
-        dialog = NewProjectDialog(self._plugin)
-        dialog.accepted.connect(partial(self._new_project_accepted, dialog))
+    def _create_project_clicked(self):
+        dialog = CreateProjectDialog(self._plugin)
+        dialog.accepted.connect(partial(self._create_project_accepted, dialog))
         dialog.exec_()
 
-    def _new_project_accepted(self, dialog):
+    def _create_project_accepted(self, dialog):
         """Called when the project creation dialog is accepted."""
         name = dialog.get_result()
 
@@ -281,11 +280,11 @@ class SaveDialog(OpenDialog):
         date = datetime.datetime.now().strftime(date_format)
         project = Project(name, hash, file, type, date)
         d = self._plugin.network.send_packet(CreateProject.Query(project))
-        d.add_callback(partial(self._new_project_received, project))
+        d.add_callback(partial(self._project_created, project))
         d.add_errback(self._plugin.logger.exception)
 
-    def _new_project_received(self, project, _):
-        """Called when the new project reply is received."""
+    def _project_created(self, project, _):
+        """Called when the create project reply is received."""
         self._projects.append(project)
         self._refresh_projects()
         row = len(self._projects) - 1
@@ -301,14 +300,16 @@ class SaveDialog(OpenDialog):
             if project.hash != hash:
                 item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
 
-    def _new_database_clicked(self):
-        """Called when the new database button is clicked."""
-        dialog = NewDatabaseDialog(self._plugin)
-        dialog.accepted.connect(partial(self._new_database_accepted, dialog))
+    def _create_database_clicked(self):
+        """Called when the create database button is clicked."""
+        dialog = CreateDatabaseDialog(self._plugin)
+        dialog.accepted.connect(
+            partial(self._create_database_accepted, dialog)
+        )
         dialog.exec_()
 
-    def _new_database_accepted(self, dialog):
-        """Called when the new database dialog is accepted."""
+    def _create_database_accepted(self, dialog):
+        """Called when the database creation dialog is accepted."""
         name = dialog.get_result()
 
         # Ensure we don't already have a database with that name
@@ -328,10 +329,10 @@ class SaveDialog(OpenDialog):
         date = datetime.datetime.now().strftime(date_format)
         database = Database(self._project.name, name, date, -1)
         d = self._plugin.network.send_packet(CreateDatabase.Query(database))
-        d.add_callback(partial(self._new_database_received, database))
+        d.add_callback(partial(self._database_created, database))
         d.add_errback(self._plugin.logger.exception)
 
-    def _new_database_received(self, database, _):
+    def _database_created(self, database, _):
         """Called when the new database reply is received."""
         self._databases.append(database)
         self._refresh_databases()
@@ -346,16 +347,16 @@ class SaveDialog(OpenDialog):
                 item.setFlags(item.flags() | Qt.ItemIsEnabled)
 
 
-class NewProjectDialog(QDialog):
-    """The dialog shown when an user wants to create a new project."""
+class CreateProjectDialog(QDialog):
+    """The dialog shown when an user wants to create a project."""
 
     def __init__(self, plugin):
-        super(NewProjectDialog, self).__init__()
+        super(CreateProjectDialog, self).__init__()
         self._plugin = plugin
 
         # General setup of the dialog
-        self._plugin.logger.debug("New project dialog")
-        self.setWindowTitle("New Project")
+        self._plugin.logger.debug("Create project dialog")
+        self.setWindowTitle("Create Project")
         icon_path = plugin.plugin_resource("upload.png")
         self.setWindowIcon(QIcon(icon_path))
         self.resize(100, 100)
@@ -384,15 +385,15 @@ class NewProjectDialog(QDialog):
         return self._nameEdit.text()
 
 
-class NewDatabaseDialog(NewProjectDialog):
+class CreateDatabaseDialog(CreateProjectDialog):
     """
-    The dialog shown when an user wants to create a new database. We extend the
-    new project dialog to avoid duplicating the UI setup code.
+    The dialog shown when an user wants to create a database. We extend the
+    create project dialog to avoid duplicating the UI setup code.
     """
 
     def __init__(self, plugin):
-        super(NewDatabaseDialog, self).__init__(plugin)
-        self.setWindowTitle("New Database")
+        super(CreateDatabaseDialog, self).__init__(plugin)
+        self.setWindowTitle("Create Database")
         self._nameLabel.setText("<b>Database Name</b>")
 
 
