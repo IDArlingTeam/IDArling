@@ -113,6 +113,8 @@ class RenamedEvent(Event):
             self.ea, Event.encode(self.new_name), flags | ida_name.SN_NOWARN
         )
         ida_kernwin.request_refresh(ida_kernwin.IWID_DISASMS)
+        if ida_hexrays.init_hexrays_plugin():
+            HexRaysEvent.refresh_pseudocode_view()
 
 
 class FuncAddedEvent(Event):
