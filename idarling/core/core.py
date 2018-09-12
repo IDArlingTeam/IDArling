@@ -16,7 +16,7 @@ import ida_netnode
 
 from .hooks import HexRaysHooks, Hooks, IDBHooks, IDPHooks, UIHooks, ViewHooks
 from ..module import Module
-from ..shared.commands import JoinSession, LeaveSession
+from ..shared.commands import JoinSession, LeaveSession, ListDatabases
 
 
 class Core(Module):
@@ -199,15 +199,35 @@ class Core(Module):
         """Join the collaborative session."""
         self._plugin.logger.debug("Joining session")
         if self._project and self._database:
-            name = self._plugin.config["user"]["name"]
-            color = self._plugin.config["user"]["color"]
-            ea = ida_kernwin.get_screen_ea()
-            self._plugin.network.send_packet(
-                JoinSession(
-                    self._project, self._database, self._tick, name, color, ea
+
+            def databases_listed(reply):
+                if any(d.name == self._database for d in reply.databases):
+                    self._plugin.logger.debug("Database is on the server")
+                else:
+                    self._plugin.logger.debug("Database is not on the server")
+                    return  # Do not go further
+
+                name = self._plugin.config["user"]["name"]
+                color = self._plugin.config["user"]["color"]
+                ea = ida_kernwin.get_screen_ea()
+                self._plugin.network.send_packet(
+                    JoinSession(
+                        self._project,
+                        self._database,
+                        self._tick,
+                        name,
+                        color,
+                        ea,
+                    )
                 )
+                self.hook_all()
+
+            d = self._plugin.network.send_packet(
+                ListDatabases.Query(self._project)
             )
-            self.hook_all()
+            if d:
+                d.add_callback(databases_listed)
+                d.add_errback(self._plugin.logger.exception)
 
     def leave_session(self):
         """Leave the collaborative session."""
