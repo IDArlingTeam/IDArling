@@ -113,8 +113,7 @@ class RenamedEvent(Event):
             self.ea, Event.encode(self.new_name), flags | ida_name.SN_NOWARN
         )
         ida_kernwin.request_refresh(ida_kernwin.IWID_DISASMS)
-        if ida_hexrays.init_hexrays_plugin():
-            HexRaysEvent.refresh_pseudocode_view()
+        HexRaysEvent.refresh_pseudocode_view(self.ea)
 
 
 class FuncAddedEvent(Event):
@@ -809,14 +808,19 @@ class BytePatchedEvent(Event):
 
 class HexRaysEvent(Event):
     @staticmethod
-    def refresh_pseudocode_view():
+    def refresh_pseudocode_view(ea):
         """Refreshes the pseudocode view in IDA."""
         names = ["Pseudocode-%c" % chr(ord("A") + i) for i in range(5)]
         for name in names:
             widget = ida_kernwin.find_widget(name)
             if widget:
                 vu = ida_hexrays.get_widget_vdui(widget)
-                vu.refresh_view(True)
+
+                # Check if the address is in the same function
+                func_ea = vu.cfunc.entry_ea
+                func = ida_funcs.get_func(func_ea)
+                if ida_funcs.func_contains(func, ea):
+                    vu.refresh_view(True)
 
 
 class UserLabelsEvent(HexRaysEvent):
@@ -833,7 +837,7 @@ class UserLabelsEvent(HexRaysEvent):
             name = Event.encode(name)
             ida_hexrays.user_labels_insert(labels, org_label, name)
         ida_hexrays.save_user_labels(self.ea, labels)
-        HexRaysEvent.refresh_pseudocode_view()
+        HexRaysEvent.refresh_pseudocode_view(self.ea)
 
 
 class UserCmtsEvent(HexRaysEvent):
@@ -852,7 +856,7 @@ class UserCmtsEvent(HexRaysEvent):
             tl.itp = tl_itp
             cmts.insert(tl, ida_hexrays.citem_cmt_t(Event.encode(cmt)))
         ida_hexrays.save_user_cmts(self.ea, cmts)
-        HexRaysEvent.refresh_pseudocode_view()
+        HexRaysEvent.refresh_pseudocode_view(self.ea)
 
 
 class UserIflagsEvent(HexRaysEvent):
@@ -872,14 +876,14 @@ class UserIflagsEvent(HexRaysEvent):
         # ida_hexrays.save_user_iflags(self.ea, iflags)
 
         ida_hexrays.save_user_iflags(self.ea, ida_hexrays.user_iflags_new())
-        HexRaysEvent.refresh_pseudocode_view()
+        HexRaysEvent.refresh_pseudocode_view(self.ea)
 
         cfunc = ida_hexrays.decompile(self.ea)
         for (cl_ea, cl_op), f in self.iflags:
             cl = ida_hexrays.citem_locator_t(cl_ea, cl_op)
             cfunc.set_user_iflags(cl, f)
         cfunc.save_user_iflags()
-        HexRaysEvent.refresh_pseudocode_view()
+        HexRaysEvent.refresh_pseudocode_view(self.ea)
 
 
 class UserLvarSettingsEvent(HexRaysEvent):
@@ -909,7 +913,7 @@ class UserLvarSettingsEvent(HexRaysEvent):
         lvinf.stkoff_delta = self.lvar_settings["stkoff_delta"]
         lvinf.ulv_flags = self.lvar_settings["ulv_flags"]
         ida_hexrays.save_user_lvar_settings(self.ea, lvinf)
-        HexRaysEvent.refresh_pseudocode_view()
+        HexRaysEvent.refresh_pseudocode_view(self.ea)
 
     @staticmethod
     def _get_lvar_saved_info(dct):
@@ -983,4 +987,4 @@ class UserNumformsEvent(HexRaysEvent):
             nf.type_name = Event.encode(_nf["type_name"])
             ida_hexrays.user_numforms_insert(numforms, ol, nf)
         ida_hexrays.save_user_numforms(self.ea, numforms)
-        HexRaysEvent.refresh_pseudocode_view()
+        HexRaysEvent.refresh_pseudocode_view(self.ea)

@@ -52,9 +52,6 @@ class Client(ClientSocket):
         ClientSocket.disconnect(self, err)
         self._plugin.network.disconnect()
 
-        # Update the user interface
-        self._plugin.interface.update()
-
     def recv_packet(self, packet):
         if isinstance(packet, Command):
             # Call the corresponding handler

@@ -124,6 +124,10 @@ class Network(Module):
             self._client.disconnect()
         self._client = None
         self._server = None
+
+        # Update the user interface
+        self._plugin.interface.update()
+        self._plugin.interface.clear_invites()
         return True
 
     def send_packet(self, packet):
