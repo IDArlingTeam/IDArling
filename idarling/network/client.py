@@ -16,6 +16,7 @@ from PyQt5.QtGui import QImage, QPixmap  # noqa: I202
 
 from ..interface.widget import StatusWidget
 from ..shared.commands import (
+    DownloadFile,
     InviteToLocation,
     JoinSession,
     LeaveSession,
@@ -45,6 +46,7 @@ class Client(ClientSocket):
             InviteToLocation: self._handle_invite_to_location,
             UpdateUserName: self._handle_update_user_name,
             UpdateUserColor: self._handle_update_user_color,
+            DownloadFile.Query: self._handle_download_file,
         }
 
     def disconnect(self, err=None):
@@ -139,4 +141,10 @@ class Client(ClientSocket):
         # Notify the painter
         self._plugin.interface.painter.update_user_color(
             packet.name, packet.old_color, packet.new_color
+        )
+
+    def _handle_download_file(self, query):
+        # Upload the current database
+        self._plugin.interface.save_action.handler.upload_file(
+            self._plugin, DownloadFile.Reply(query)
         )

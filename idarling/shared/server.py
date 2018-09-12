@@ -131,6 +131,25 @@ class ServerClient(ClientSocket):
             self.parent().storage.insert_event(self, packet)
             # Forward the event to the other users
             self.parent().forward_users(self, packet)
+
+            # Ask for a snapshot of the database if needed
+            interval = self.parent().SNAPSHOT_INTERVAL
+            if packet.tick and interval and packet.tick % interval == 0:
+
+                def file_downloaded(reply):
+                    file_name = "%s_%s.idb" % (self._project, self._database)
+                    file_path = self.parent().server_file(file_name)
+
+                    # Write the file received to disk
+                    with open(file_path, "wb") as output_file:
+                        output_file.write(reply.content)
+                    self._logger.info("Auto-saved file %s" % file_name)
+
+                d = self.send_packet(
+                    DownloadFile.Query(self._project, self._database)
+                )
+                d.add_callback(file_downloaded)
+                d.add_errback(self._logger.exception)
         else:
             return False
         return True
@@ -188,7 +207,9 @@ class ServerClient(ClientSocket):
 
     def _handle_join_session(self, packet):
         self._project = packet.project
+        assert ".." not in self._project
         self._database = packet.database
+        assert ".." not in self._database
         self._name = packet.name
         self._color = packet.color
         self._ea = packet.ea
@@ -256,6 +277,8 @@ class Server(ServerSocket):
     This class represents a server socket for the server. It is used by both
     the integrated and dedicated server implementations. It doesn't do much.
     """
+
+    SNAPSHOT_INTERVAL = 0  # ticks
 
     def __init__(self, logger, parent=None):
         ServerSocket.__init__(self, logger, parent)

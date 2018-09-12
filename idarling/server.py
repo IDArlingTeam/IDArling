@@ -57,6 +57,7 @@ def start(args):
     sys.excepthook = traceback.print_exception
 
     server = DedicatedServer(args.level)
+    server.SNAPSHOT_INTERVAL = args.interval
     server.start(args.host, args.port, args.ssl)
 
     # Allow the use of Ctrl-C to stop the server
@@ -127,6 +128,15 @@ def main():
         choices=levels,
         default="INFO",
         help="the log level",
+    )
+
+    # Interval in ticks between database snapshot
+    parser.add_argument(
+        "-i",
+        "--interval",
+        type=int,
+        default=0,
+        help="database snapshot interval",
     )
 
     start(parser.parse_args())

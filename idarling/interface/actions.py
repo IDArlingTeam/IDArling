@@ -49,6 +49,10 @@ class Action(object):
         self._icon_id = ida_idaapi.BADADDR
         self._handler = handler
 
+    @property
+    def handler(self):
+        return self._handler
+
     def install(self):
         action_name = self.__class__.__name__
 
@@ -298,23 +302,13 @@ class SaveActionHandler(ActionHandler):
 
     _DIALOG = SaveDialog
 
-    def update(self, ctx):
-        if not ida_loader.get_path(ida_loader.PATH_TYPE_IDB):
-            return ida_kernwin.AST_DISABLE
-        return super(SaveActionHandler, self).update(ctx)
-
-    def _dialog_accepted(self, dialog):
-        project, database = dialog.get_result()
-        self._plugin.core.project = project.name
-        self._plugin.core.database = database.name
-
+    @staticmethod
+    def upload_file(plugin, packet):
         # Save the current database
-        self._plugin.core.save_netnode()
+        plugin.core.save_netnode()
         input_path = ida_loader.get_path(ida_loader.PATH_TYPE_IDB)
         ida_loader.save_database(input_path, 0)
 
-        # Create the packet that will hold the file
-        packet = UpdateFile.Query(project.name, database.name)
         with open(input_path, "rb") as input_file:
             packet.content = input_file.read()
 
@@ -326,17 +320,21 @@ class SaveActionHandler(ActionHandler):
         window_flags = progress.windowFlags()  # Disable close button
         progress.setWindowFlags(window_flags & ~Qt.WindowCloseButtonHint)
         progress.setWindowTitle("Save to server")
-        icon_path = self._plugin.plugin_resource("upload.png")
+        icon_path = plugin.plugin_resource("upload.png")
         progress.setWindowIcon(QIcon(icon_path))
 
         # Send the packet to upload the file
-        packet.upback = partial(self._on_progress, progress)
-        d = self._plugin.network.send_packet(packet)
-        d.add_callback(partial(self._file_uploaded, progress))
-        d.add_errback(self._plugin.logger.exception)
+        packet.upback = partial(SaveActionHandler._on_progress, progress)
+        d = plugin.network.send_packet(packet)
+        if d:
+            d.add_callback(
+                partial(SaveActionHandler.file_uploaded, plugin, progress)
+            )
+            d.add_errback(plugin.logger.exception)
         progress.show()
 
-    def _file_uploaded(self, progress, _):
+    @staticmethod
+    def file_uploaded(plugin, progress, _):
         progress.close()
 
         # Show a success dialog
@@ -345,9 +343,23 @@ class SaveActionHandler(ActionHandler):
         success.setStandardButtons(QMessageBox.Ok)
         success.setText("Database successfully uploaded!")
         success.setWindowTitle("Save to server")
-        icon_path = self._plugin.plugin_resource("upload.png")
+        icon_path = plugin.plugin_resource("upload.png")
         success.setWindowIcon(QIcon(icon_path))
         success.exec_()
 
         # Subscribe to the event stream
-        self._plugin.core.join_session()
+        plugin.core.join_session()
+
+    def update(self, ctx):
+        if not ida_loader.get_path(ida_loader.PATH_TYPE_IDB):
+            return ida_kernwin.AST_DISABLE
+        return super(SaveActionHandler, self).update(ctx)
+
+    def _dialog_accepted(self, dialog):
+        project, database = dialog.get_result()
+        self._plugin.core.project = project.name
+        self._plugin.core.database = database.name
+
+        # Create the packet that will hold the file
+        packet = UpdateFile.Query(project.name, database.name)
+        SaveActionHandler.upload_file(self._plugin, packet)

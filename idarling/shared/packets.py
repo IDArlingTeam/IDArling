@@ -395,7 +395,7 @@ class Query(Packet):
 
     def __init__(self):
         super(Query, self).__init__()
-        self._id = Query._NEXT_ID.next()
+        self._id = next(Query._NEXT_ID)
 
     @property
     def id(self):

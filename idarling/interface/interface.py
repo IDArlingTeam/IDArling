@@ -70,6 +70,14 @@ class Interface(Module):
                 invites.append(invite)
         return invites
 
+    @property
+    def open_action(self):
+        return self._open_action
+
+    @property
+    def save_action(self):
+        return self._save_action
+
     def _install(self):
         self._open_action.install()
         self._save_action.install()
