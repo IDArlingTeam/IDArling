@@ -11,6 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import colorsys
+from functools import partial
 import time
 
 from PyQt5.QtCore import QPoint, QRect, QSize, Qt, QTimer
@@ -209,13 +210,18 @@ class StatusWidget(QWidget):
 
     def _context_menu(self, point):
         """Called when the context menu is being requested."""
-        width = 3 + self._servers_text_widget.sizeHint().width()
-        width += 3 + self._servers_icon_widget.sizeHint().width()
+        width_server = 3 + self._servers_text_widget.sizeHint().width()
+        width_server += 3 + self._servers_icon_widget.sizeHint().width()
+        width_invites = width_server
+        width_invites += 3 + self._invites_text_widget.sizeHint().width()
+        width_invites += 3 + self._invites_icon_widget.sizeHint().width()
 
-        if point.x() < width + 3:
+        if point.x() < width_server + 3:
             self._servers_context_menu(point)
-        else:
+        elif width_server < point.x() < width_invites + 3:
             self._invites_context_menu(point)
+        else:
+            self._users_context_menu(point)
 
     def _servers_context_menu(self, point):
         """Populates the server context menu."""
@@ -343,6 +349,45 @@ class StatusWidget(QWidget):
                 menu.addAction(action)
 
         # Show the context menu
+        menu.exec_(self.mapToGlobal(point))
+
+    def _users_context_menu(self, point):
+        """Populate the invites context menu."""
+        menu = QMenu(self)
+
+        template = QImage(self._plugin.plugin_resource("user.png"))
+
+        painter = self._plugin.interface.painter
+
+        follow_all = QAction("Follow all", menu)
+        pixmap = QPixmap(self._plugin.plugin_resource("users.png"))
+        follow_all.setIcon(QIcon(pixmap))
+        follow_all.setEnabled(bool(painter.users_positions))
+        follow_all.setCheckable(True)
+        follow_all.setChecked(self._plugin.interface.followed == "everyone")
+
+        def follow_triggered(name):
+            interface = self._plugin.interface
+            interface.followed = name if interface.followed != name else None
+
+        follow_all.triggered.connect(partial(follow_triggered, "everyone"))
+        menu.addAction(follow_all)
+        if painter.users_positions:
+            menu.addSeparator()
+
+        # Get all active users
+        for name, info in painter.users_positions.items():
+            is_followed = self._plugin.interface.followed == name
+            text = "Follow %s" % name
+            action = QAction(text, menu)
+            action.setCheckable(True)
+            action.setChecked(is_followed)
+            pixmap = StatusWidget.make_icon(template, info["color"])
+            action.setIcon(QIcon(pixmap))
+
+            action.triggered.connect(partial(follow_triggered, name))
+            menu.addAction(action)
+
         menu.exec_(self.mapToGlobal(point))
 
     def paintEvent(self, event):  # noqa: N802

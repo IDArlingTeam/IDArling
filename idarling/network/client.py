@@ -130,6 +130,9 @@ class Client(ClientSocket):
         self._plugin.interface.painter.paint(
             packet.name, packet.color, packet.ea
         )
+        followed = self._plugin.interface.followed
+        if followed == packet.name or followed == "everyone":
+            ida_kernwin.jumpto(packet.ea)
 
     def _handle_update_user_name(self, packet):
         # Notify the painter

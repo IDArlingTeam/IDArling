@@ -33,6 +33,7 @@ class Interface(Module):
     def __init__(self, plugin):
         super(Interface, self).__init__(plugin)
         self._invites = []
+        self._followed = None
 
         # Find the QMainWindow instance
         self._plugin.logger.debug("Searching for the main window")
@@ -77,6 +78,14 @@ class Interface(Module):
     @property
     def save_action(self):
         return self._save_action
+
+    @property
+    def followed(self):
+        return self._followed
+
+    @followed.setter
+    def followed(self, followed):
+        self._followed = followed
 
     def _install(self):
         self._open_action.install()
