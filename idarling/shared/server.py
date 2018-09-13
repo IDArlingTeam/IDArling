@@ -140,7 +140,7 @@ class ServerClient(ClientSocket):
                     file_name = "%s_%s.idb" % (self._project, self._database)
                     file_path = self.parent().server_file(file_name)
 
-                    # Write the file received to disk
+                    # Write the file to disk
                     with open(file_path, "wb") as output_file:
                         output_file.write(reply.content)
                     self._logger.info("Auto-saved file %s" % file_name)
@@ -207,9 +207,7 @@ class ServerClient(ClientSocket):
 
     def _handle_join_session(self, packet):
         self._project = packet.project
-        assert ".." not in self._project
         self._database = packet.database
-        assert ".." not in self._database
         self._name = packet.name
         self._color = packet.color
         self._ea = packet.ea

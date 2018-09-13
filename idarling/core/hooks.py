@@ -113,56 +113,14 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
 
     def local_types_changed(self):
         local_types = []
-        for ordinal in range(1, ida_typeinf.get_ordinal_qty(None)):
-            ret = ida_typeinf.idc_get_local_type_raw(ordinal)
-            if ret is not None:
-                type_str, fields_str = ret
-                type_name = ida_typeinf.get_numbered_type_name(
-                    ida_typeinf.cvar.idati, ordinal
-                )
-                cur_ti = ida_typeinf.tinfo_t()
-                cur_ti.deserialize(
-                    ida_typeinf.cvar.idati, type_str, fields_str
-                )
-                type_serialized = cur_ti.serialize()
-                local_types.append(
-                    (
-                        ordinal,
-                        type_serialized[0],
-                        type_serialized[1],
-                        type_name,
-                    )
-                )
-            else:
-                local_types.append(None)
-
-        if self.last_local_type is None:
-            self.last_local_type = local_types
-            sent_types = local_types
-        else:
-
-            def differ_local_types(types1, types2):
-                # [(i, types1, types2), ...]
-                ret_types = []
-                for i in range(max([len(types1), len(types2)])):
-                    if i >= len(types1):
-                        ret_types.append((i, None, types2[i]))
-                    elif i >= len(types2):
-                        ret_types.append((i, types1[i], None))
-                    else:
-                        if types1[i] != types2[i]:
-                            ret_types.append((i, types1[i], types2[i]))
-                return ret_types
-
-            diff = differ_local_types(self.last_local_type, local_types)
-            self.last_local_type = local_types
-            if len(diff) == 1 and diff[0][2] is None:
-                return 0
-            elif len(diff) == 0:
-                return 0
-            sent_types = [t[2] for t in diff]
-
-        self._send_packet(evt.LocalTypesChangedEvent(sent_types))
+        ti = ida_typeinf.get_idati()
+        for ordinal in range(1, ida_typeinf.get_ordinal_qty(ti)):
+            name = ida_typeinf.get_numbered_type_name(ti, ordinal)
+            type_info = ida_typeinf.tinfo_t()
+            type_info.get_numbered_type(ti, ordinal)
+            ret = type_info.serialize()
+            local_types.append((ordinal, name, ret))
+        self._send_packet(evt.LocalTypesChangedEvent(local_types))
         return 0
 
     def op_type_changed(self, ea, n):

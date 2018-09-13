@@ -283,57 +283,39 @@ class TiChangedEvent(Event):
 class LocalTypesChangedEvent(Event):
     __event__ = "local_types_changed"
 
-    def __init__(self, local_type):
+    def __init__(self, local_types):
         super(LocalTypesChangedEvent, self).__init__()
-        self.local_type = []
-        if local_type is not None:
-            for t in local_type:
-                if t is not None:
-                    self.local_type.append(
-                        (
-                            t[0],
-                            Event.decode_bytes(t[1]),
-                            Event.decode_bytes(t[2]),
-                            Event.decode_bytes(t[3]),
-                        )
-                    )
-                else:
-                    self.local_type.append(None)
+        self.local_types = []
+        for ordinal, name, ret in local_types:
+            name = Event.decode_bytes(name)
+            type, fields, fieldcmts = ret
+            type = Event.decode_bytes(type)
+            fields = Event.decode_bytes(fields)
+            fieldcmts = Event.decode_bytes(fieldcmts)
+            ret = type, fields, fieldcmts
+            self.local_types.append((ordinal, name, ret))
 
     def __call__(self):
-        local_type = []
-        for t in self.local_type:
-            if t is not None:
-                local_type.append(
-                    (
-                        t[0],
-                        Event.encode_bytes(t[1]),
-                        Event.encode_bytes(t[2]),
-                        Event.encode_bytes(t[3]),
-                    )
-                )
-            else:
-                local_type.append(None)
+        ti = ida_typeinf.get_idati()
 
-        def alloc_oridinal(target_ordinal):
-            # Get_ordinal_qty() will return (current max ordinal + 1)
-            missing_ord = (
-                target_ordinal - ida_typeinf.get_ordinal_qty(None) + 1
-            )
-            if missing_ord > 0:
-                ida_typeinf.alloc_type_ordinals(None, missing_ord)
+        ordinal_qty = ida_typeinf.get_ordinal_qty(ti)
+        last_ordinal = self.local_types[-1][0]
+        if ordinal_qty < last_ordinal:
+            ida_typeinf.alloc_type_ordinals(ti, last_ordinal - ordinal_qty)
+        else:
+            for ordinal in range(last_ordinal + 1, ordinal_qty + 1):
+                ida_typeinf.del_numbered_type(ti, ordinal)
 
-        for t in local_type:
-            if t is not None:
-                alloc_oridinal(t[0])
+        for ordinal, name, ret in self.local_types:
+            name = Event.encode_bytes(name)
+            type, fields, fieldcmts = ret
+            type = Event.encode_bytes(type)
+            fields = Event.encode_bytes(fields)
+            fieldcmts = Event.encode_bytes(fieldcmts)
 
-                # Can't change some local types if we don't delete them first
-                ida_typeinf.del_numbered_type(None, t[0])
-
-                cur_tinfo = ida_typeinf.tinfo_t()
-                cur_tinfo.deserialize(None, t[1], t[2])
-                cur_tinfo.set_numbered_type(None, t[0], 0, t[3])
-                ida_typeinf.import_type(None, -1, t[-1])
+            type_info = ida_typeinf.tinfo_t()
+            type_info.deserialize(ti, type, fields, fieldcmts)
+            type_info.set_numbered_type(ti, ordinal, 0, name)
 
         ida_kernwin.request_refresh(ida_kernwin.IWID_LOCTYPS)
 

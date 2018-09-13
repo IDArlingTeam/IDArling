@@ -50,7 +50,6 @@ class Core(Module):
     @project.setter
     def project(self, project):
         self._project = project
-        assert ".." not in self._project
         self.save_netnode()
 
     @property
@@ -60,7 +59,6 @@ class Core(Module):
     @database.setter
     def database(self, database):
         self._database = database
-        assert ".." not in self._database
         self.save_netnode()
 
     @property
@@ -173,9 +171,7 @@ class Core(Module):
         node = ida_netnode.netnode(Core.NETNODE_NAME, 0, True)
 
         self._project = node.hashval("project") or None
-        assert ".." not in self._project
         self._database = node.hashval("database") or None
-        assert ".." not in self._database
         self._tick = int(node.hashval("tick") or "0")
 
         self._plugin.logger.debug(
