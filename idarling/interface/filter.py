@@ -10,9 +10,10 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import ida_funcs
 import ida_kernwin
 
-from PyQt5.QtCore import QObject, Qt  # noqa: I202
+from PyQt5.QtCore import QEvent, QObject, Qt  # noqa: I202
 from PyQt5.QtGui import QContextMenuEvent, QIcon, QImage, QPixmap, QShowEvent
 from PyQt5.QtWidgets import (
     QAction,
@@ -21,6 +22,7 @@ from PyQt5.QtWidgets import (
     QGroupBox,
     QLabel,
     QMenu,
+    QTableView,
     QWidget,
 )
 
@@ -111,24 +113,43 @@ class EventFilter(QObject):
             menu.addAction(create_action(name, info["color"]))
         obj.insertMenu(sep, menu)
 
-    def eventFilter(self, obj, ev):  # noqa: N802
-        # We're looking for a QShowEvent on a QDialog named "Dialog"
-        if (
-            isinstance(obj, QDialog)
-            and isinstance(ev, QShowEvent)
-            and obj.windowTitle() == "About"
-        ):
-            # Look for a QGroupBox
-            for child in obj.children():
-                if isinstance(child, QGroupBox):
-                    # Look for a QLabel with an icon
-                    for subchild in child.children():
-                        if isinstance(subchild, QLabel) and subchild.pixmap():
-                            self._replace_icon(subchild)
+    def _set_tooltip(self, obj, ev):
+        obj.setToolTip("")
+        index = obj.parent().indexAt(ev.pos())
+        index = index.sibling(index.row(), 0)
 
-        # We're looking for a QContextMenuEvent on a QWidget
+        # Find the corresponding username
+        user_positions = self._plugin.interface.painter.users_positions
+        for name, pos in user_positions.items():
+            # Same function name?
+            ea = pos["address"]
+            if ida_funcs.get_func_name(ea) != index.data():
+                continue
+            # Same function color?
+            if ida_funcs.get_func(ea).color != pos["color"]:
+                continue
+            # Set the tooltip
+            obj.setToolTip(name)
+
+    def eventFilter(self, obj, ev):  # noqa: N802
+        # Is it a QShowEvent on a QDialog named "Dialog"?
+        if (
+            ev.__class__ == ev,
+            QShowEvent
+            and obj.__class__ == QDialog
+            and obj.windowTitle() == "About",
+        ):
+            # Find a child QGroupBox
+            for groupBox in obj.children():
+                if groupBox.__class__ == QGroupBox:
+                    # Find a child QLabel with an icon
+                    for label in groupBox.children():
+                        if isinstance(label, QLabel) and label.pixmap():
+                            self._replace_icon(label)
+
+        # Is it a QContextMenuEvent on a QWidget?
         if isinstance(obj, QWidget) and isinstance(ev, QContextMenuEvent):
-            # Look for a parent object named "IDA View"
+            # Find a parent titled "IDA View"
             parent = obj
             while parent:
                 if parent.windowTitle().startswith("IDA View"):
@@ -136,11 +157,28 @@ class EventFilter(QObject):
                     self._intercept = True
                 parent = parent.parent()
 
-        # We're looking for a QShowEvent on a QMenu
+        # Is it a QShowEvent on a QMenu?
         if isinstance(obj, QMenu) and isinstance(ev, QShowEvent):
-            # Is it the disassembler context menu?
+            # Should we intercept?
             if self._intercept:
                 self._insert_menu(obj)
                 self._intercept = False
+
+        # Is it a ToolTip event on a QWidget with a parent?
+        if (
+            ev.type() == QEvent.ToolTip
+            and obj.__class__ == QWidget
+            and obj.parent()
+        ):
+            table_view = obj.parent()
+            # Is it a QTableView with a parent?
+            if table_view.__class__ == QTableView and table_view.parent():
+                func_window = table_view.parent()
+                # Is it a QWidget titled "Functions window"?
+                if (
+                    func_window.__class__ == QWidget
+                    and func_window.windowTitle() == "Functions window"
+                ):
+                    self._set_tooltip(obj, ev)
 
         return False
