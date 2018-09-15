@@ -13,6 +13,7 @@
 import collections
 import errno
 import json
+import os
 import socket
 import ssl
 import sys
@@ -67,8 +68,8 @@ class ClientSocket(QObject):
         """Is the underlying socket connected?"""
         return self._connected
 
-    def connect(self, sock):
-        """Sets the underlying socket to utilize."""
+    def wrap_socket(self, sock):
+        """Sets the underlying socket to use."""
         self._read_notifier = QSocketNotifier(
             sock.fileno(), QSocketNotifier.Read, self
         )
@@ -79,17 +80,17 @@ class ClientSocket(QObject):
             sock.fileno(), QSocketNotifier.Write, self
         )
         self._write_notifier.activated.connect(self._notify_write)
-        self._write_notifier.setEnabled(False)
+        self._write_notifier.setEnabled(True)
 
         self._socket = sock
-        self._connected = True
 
     def disconnect(self, err=None):
         """Terminates the current connection."""
         if not self._socket:
             return
+
+        self._logger.debug("Disconnected")
         if err:
-            self._logger.warning("Connection lost")
             self._logger.exception(err)
         self._read_notifier.setEnabled(False)
         self._write_notifier.setEnabled(False)
@@ -135,8 +136,27 @@ class ClientSocket(QObject):
                 sio_keeplive_vals, (1, idle * 1000, intvl * 1000)
             )
 
+    def _check_socket(self):
+        """Check if the connection has been established yet."""
+        # Ignore if you're already connected
+        if self._connected:
+            return True
+
+        # Check if the connection was successful
+        ret = self._socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+        if ret != 0 and ret != errno.EINPROGRESS and ret != errno.EWOULDBLOCK:
+            self.disconnect(socket.error(ret, os.strerror(ret)))
+            return False
+        else:
+            self._connected = True
+            self._logger.debug("Connected")
+            return True
+
     def _notify_read(self):
         """Callback called when some data is ready to be read on the socket."""
+        if not self._check_socket():
+            return
+
         # Read as much data as is available
         while True:
             try:
@@ -202,6 +222,9 @@ class ClientSocket(QObject):
 
     def _notify_write(self):
         """Callback called when some data is ready to written on the socket."""
+        if not self._check_socket():
+            return
+
         while True:
             if not self._write_buffer:
                 if not self._outgoing:

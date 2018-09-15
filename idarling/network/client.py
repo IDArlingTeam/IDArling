@@ -49,11 +49,6 @@ class Client(ClientSocket):
             DownloadFile.Query: self._handle_download_file,
         }
 
-    def disconnect(self, err=None):
-        self._plugin.logger.info("Connection lost")
-        ClientSocket.disconnect(self, err)
-        self._plugin.network.disconnect()
-
     def recv_packet(self, packet):
         if isinstance(packet, Command):
             # Call the corresponding handler
@@ -84,6 +79,26 @@ class Client(ClientSocket):
             self._plugin.core.tick += 1
             packet.tick = self._plugin.core.tick
         return ClientSocket.send_packet(self, packet)
+
+    def disconnect(self, err=None):
+        ret = ClientSocket.disconnect(self, err)
+        self._plugin.network._client = None
+        self._plugin.network._server = None
+
+        # Update the user interface
+        self._plugin.interface.update()
+        self._plugin.interface.clear_invites()
+        return ret
+
+    def _check_socket(self):
+        was_connected = self._connected
+        ret = ClientSocket._check_socket(self)
+        if not was_connected and self._connected:
+            # Update the user interface
+            self._plugin.interface.update()
+            # Subscribe to the events
+            self._plugin.core.join_session()
+        return ret
 
     def _handle_join_session(self, packet):
         # Add the user to the navbar

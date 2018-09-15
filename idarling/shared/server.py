@@ -70,8 +70,8 @@ class ServerClient(ClientSocket):
     def ea(self):
         return self._ea
 
-    def connect(self, sock):
-        ClientSocket.connect(self, sock)
+    def wrap_socket(self, sock):
+        ClientSocket.wrap_socket(self, sock)
 
         # Setup command handlers
         self._handlers = {
@@ -351,7 +351,7 @@ class Server(ServerSocket):
 
         sock.settimeout(0)  # No timeout
         sock.setblocking(0)  # No blocking
-        client.connect(sock)
+        client.wrap_socket(sock)
         self._clients.append(client)
 
     def reject(self, client):

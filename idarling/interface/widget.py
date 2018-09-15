@@ -262,7 +262,7 @@ class StatusWidget(QWidget):
 
             for server in servers:
                 is_connected = (
-                    self._plugin.network.connected
+                    current_server is not None
                     and server["host"] == current_server["host"]
                     and server["port"] == current_server["port"]
                 )
@@ -278,14 +278,12 @@ class StatusWidget(QWidget):
                 Called when a action is clicked. Connects to the new server
                 or disconnects from the old server.
                 """
-                was_connected = (
-                    self._plugin.network.connected
-                    and self._plugin.network.server == server
-                )
+                server = server_action._server
+                was_connected = self._plugin.network.server == server
                 self._plugin.network.stop_server()
                 self._plugin.network.disconnect()
                 if not was_connected:
-                    self._plugin.network.connect(server_action._server)
+                    self._plugin.network.connect(server)
 
             servers_group.triggered.connect(server_action_triggered)
 
