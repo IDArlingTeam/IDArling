@@ -42,8 +42,7 @@ class ClientSocket(QObject):
     be read or written on the socket, not requiring an extra thread.
     """
 
-    MAX_READ_SIZE = 4096
-    MAX_WRITE_SIZE = 65535
+    MAX_DATA_SIZE = 65535
 
     def __init__(self, logger, parent=None):
         QObject.__init__(self, parent)
@@ -168,22 +167,21 @@ class ClientSocket(QObject):
         if not self._check_socket():
             return
 
-        # Read as much data as is available
-        while True:
-            try:
-                data = self._socket.recv(ClientSocket.MAX_READ_SIZE)
-                if not data:
-                    self.disconnect()
-                    break
-            except socket.error as e:
-                if (
-                    e.errno not in (errno.EAGAIN, errno.EWOULDBLOCK)
-                    and not isinstance(e, ssl.SSLWantReadError)
-                    and not isinstance(e, ssl.SSLWantWriteError)
-                ):
-                    self.disconnect(e)
-                break  # No more data available
-            self._read_buffer.extend(data)
+        # Read as many bytes as possible
+        try:
+            data = self._socket.recv(ClientSocket.MAX_DATA_SIZE)
+            if not data:
+                self.disconnect()
+                return
+        except socket.error as e:
+            if (
+                e.errno not in (errno.EAGAIN, errno.EWOULDBLOCK)
+                and not isinstance(e, ssl.SSLWantReadError)
+                and not isinstance(e, ssl.SSLWantWriteError)
+            ):
+                self.disconnect(e)
+            return  # No more data available
+        self._read_buffer.extend(data)
 
         # Split the received data on new lines (= packets)
         while True:
@@ -236,55 +234,51 @@ class ClientSocket(QObject):
         if not self._check_socket():
             return
 
-        while True:
-            if not self._write_buffer:
-                if not self._outgoing:
-                    break  # No more packets to send
-                self._write_packet = self._outgoing.popleft()
+        if not self._write_buffer:
+            if not self._outgoing:
+                return  # No more packets to send
+            self._write_packet = self._outgoing.popleft()
 
-                # Dump the packet as a line
-                try:
-                    line = json.dumps(self._write_packet.build_packet())
-                    line = line.encode("utf-8") + b"\n"
-                except Exception as e:
-                    msg = "Invalid packet being sent: %s" % self._write_packet
-                    self._logger.warning(msg)
-                    self._logger.exception(e)
-                    continue
-
-                # Write the container's content
-                self._write_buffer.extend(bytearray(line))
-                if isinstance(self._write_packet, Container):
-                    data = self._write_packet.content
-                    self._write_buffer.extend(bytearray(data))
-                    self._write_packet.size += len(line)
-
-            # Send as many bytes as possible
+            # Dump the packet as a line
             try:
-                count = min(
-                    len(self._write_buffer), ClientSocket.MAX_WRITE_SIZE
-                )
-                sent = self._socket.send(self._write_buffer[:count])
-                self._write_buffer = self._write_buffer[sent:]
-            except socket.error as e:
-                if (
-                    e.errno not in (errno.EAGAIN, errno.EWOULDBLOCK)
-                    and not isinstance(e, ssl.SSLWantReadError)
-                    and not isinstance(e, ssl.SSLWantWriteError)
-                ):
-                    self.disconnect(e)
-                break  # Can't write anything
+                line = json.dumps(self._write_packet.build_packet())
+                line = line.encode("utf-8") + b"\n"
+            except Exception as e:
+                msg = "Invalid packet being sent: %s" % self._write_packet
+                self._logger.warning(msg)
+                self._logger.exception(e)
+                return
 
-            # Trigger the upback
+            # Write the container's content
+            self._write_buffer.extend(bytearray(line))
+            if isinstance(self._write_packet, Container):
+                data = self._write_packet.content
+                self._write_buffer.extend(bytearray(data))
+                self._write_packet.size += len(line)
+
+        # Send as many bytes as possible
+        try:
+            count = min(len(self._write_buffer), ClientSocket.MAX_DATA_SIZE)
+            sent = self._socket.send(self._write_buffer[:count])
+            self._write_buffer = self._write_buffer[sent:]
+        except socket.error as e:
             if (
-                isinstance(self._write_packet, Container)
-                and self._write_packet.upback
+                e.errno not in (errno.EAGAIN, errno.EWOULDBLOCK)
+                and not isinstance(e, ssl.SSLWantReadError)
+                and not isinstance(e, ssl.SSLWantWriteError)
             ):
-                self._write_packet.size -= count
-                total = len(self._write_packet.content)
-                sent = max(total - self._write_packet.size, 0)
-                self._write_packet.upback(sent, total)
-                break
+                self.disconnect(e)
+            return  # Can't write anything
+
+        # Trigger the upback
+        if (
+            isinstance(self._write_packet, Container)
+            and self._write_packet.upback
+        ):
+            self._write_packet.size -= count
+            total = len(self._write_packet.content)
+            sent = max(total - self._write_packet.size, 0)
+            self._write_packet.upback(sent, total)
 
         if not self._write_buffer:
             self._write_notifier.setEnabled(False)
