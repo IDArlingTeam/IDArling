@@ -46,15 +46,9 @@ def start_logging(log_path, log_name, level):
     logger.addHandler(stream_handler)
 
     # Log to the disk with a second format
-
     file_handler = logging.FileHandler(log_path)
     log_format = "[%(asctime)s][%(levelname)s] %(message)s"
     formatter = logging.Formatter(fmt=log_format, datefmt="%H:%M:%S")
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-
-    # Log to the disk too
-    file_handler = logging.FileHandler(log_path)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 
