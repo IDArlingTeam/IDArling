@@ -76,7 +76,7 @@ class Network(Module):
         if host == "0.0.0.0":  # Windows can't connect to 0.0.0.0
             host = "127.0.0.1"
         port = self._server["port"]
-        no_ssl = self._server["port"]
+        no_ssl = self._server["no_ssl"]
 
         # Update the user interface
         self._plugin.interface.update()
@@ -87,7 +87,9 @@ class Network(Module):
         # Wrap the socket in a SSL tunnel
         if not no_ssl:
             ctx = ssl.create_default_context()
-            sock = ctx.wrap_socket(sock, server_hostname=host)
+            sock = ctx.wrap_socket(
+                sock, server_hostname=host, do_handshake_on_connect=False
+            )
         self._client.wrap_socket(sock)
 
         # Set TCP keep-alive options

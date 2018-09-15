@@ -347,7 +347,9 @@ class Server(ServerSocket):
 
         if self._ssl:
             # Wrap the socket in an SSL tunnel
-            sock = self._ssl.wrap_socket(sock, server_side=True)
+            sock = self._ssl.wrap_socket(
+                sock, server_side=True, do_handshake_on_connect=False
+            )
 
         sock.settimeout(0)  # No timeout
         sock.setblocking(0)  # No blocking
