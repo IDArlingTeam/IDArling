@@ -17,6 +17,7 @@ import shutil
 import sys
 import tempfile
 
+import ida_auto
 import ida_diskio
 import ida_idaapi
 import ida_kernwin
@@ -352,6 +353,8 @@ class SaveActionHandler(ActionHandler):
 
     def update(self, ctx):
         if not ida_loader.get_path(ida_loader.PATH_TYPE_IDB):
+            return ida_kernwin.AST_DISABLE
+        if not ida_auto.auto_is_ok():
             return ida_kernwin.AST_DISABLE
         return super(SaveActionHandler, self).update(ctx)
 
