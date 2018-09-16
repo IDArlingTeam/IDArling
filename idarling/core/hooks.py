@@ -422,6 +422,12 @@ class IDPHooks(Hooks, ida_idp.IDP_Hooks):
     def ev_adjust_argloc(self, *args):
         return ida_idp.IDP_Hooks.ev_adjust_argloc(self, *args)
 
+    def ev_gen_regvar_def(self, outctx, v):
+        self._send_packet(
+            evt.GenRegvarDefEvent(outctx.bin_ea, v.canon, v.user, v.cmt)
+        )
+        return ida_idp.IDP_Hooks.ev_gen_regvar_def(self, outctx, v)
+
 
 class HexRaysHooks(Hooks):
     def __init__(self, plugin):
