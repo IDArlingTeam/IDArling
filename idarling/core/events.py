@@ -789,26 +789,26 @@ class BytePatchedEvent(Event):
         ida_bytes.patch_byte(self.ea, self.value)
 
 
-class GenRegvarDefEvent(Event):
-    __event__ = "gen_regvar_def"
-
-    def __init__(self, ea, canonical_name, new_name, cmt):
-        super(GenRegvarDefEvent, self).__init__()
-        self.ea = ea
-        self.canonical_name = Event.decode(canonical_name)
-        self.new_name = Event.decode(new_name)
-        self.cmt = Event.decode(cmt)
-
-    def __call__(self):
-        func = ida_funcs.get_func(self.ea)
-        ida_frame.add_regvar(
-            func,
-            func.start_ea,
-            func.end_ea,
-            Event.encode(self.canonical_name),
-            Event.encode(self.new_name),
-            Event.encode(self.cmt),
-        )
+#class GenRegvarDefEvent(Event):
+#    __event__ = "gen_regvar_def"
+#
+#    def __init__(self, ea, canonical_name, new_name, cmt):
+#        super(GenRegvarDefEvent, self).__init__()
+#        self.ea = ea
+#        self.canonical_name = Event.decode(canonical_name)
+#        self.new_name = Event.decode(new_name)
+#        self.cmt = Event.decode(cmt)
+#
+#    def __call__(self):
+#        func = ida_funcs.get_func(self.ea)
+#        ida_frame.add_regvar(
+#            func,
+#            func.start_ea,
+#            func.end_ea,
+#            Event.encode(self.canonical_name),
+#            Event.encode(self.new_name),
+#            Event.encode(self.cmt),
+#        )
 
 
 class HexRaysEvent(Event):
