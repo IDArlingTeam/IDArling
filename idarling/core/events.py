@@ -789,7 +789,7 @@ class BytePatchedEvent(Event):
         ida_bytes.patch_byte(self.ea, self.value)
 
 
-#class GenRegvarDefEvent(Event):
+# class GenRegvarDefEvent(Event):
 #    __event__ = "gen_regvar_def"
 #
 #    def __init__(self, ea, canonical_name, new_name, cmt):
