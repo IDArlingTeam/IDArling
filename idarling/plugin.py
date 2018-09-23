@@ -63,14 +63,17 @@ class Plugin(ida_idaapi.plugin_t):
     @staticmethod
     def user_resource(directory, filename):
         """
-        Return the absolute path to a user resource located with the local
-        user's directory (should be %APPDATA%\Roaming\Hex-Rays\IDA Pro\idarling
-        under Windows and $HOME/.idapro/idarling/ under Linux and macOS).
+        Return the absolute path to a resource located in the user directory.
+        It should be:
+        * %APPDATA%\Roaming\Hex-Rays\IDA Pro\plugin\idarling under Windows
+        * $HOME/.idapro/plugins/idarling under Linux and MacOS.
         """
-        local_path = os.path.join(ida_diskio.get_user_idadir(), "idarling")
-        res_dir = os.path.join(local_path, directory)
+        user_dir = ida_diskio.get_user_idadir()
+        plug_dir = os.path.join(user_dir, "plugins")
+        local_dir = os.path.join(plug_dir, "idarling")
+        res_dir = os.path.join(local_dir, directory)
         if not os.path.exists(res_dir):
-            os.makedirs(res_dir)
+            os.makedirs(res_dir, 493)  # 0755
         return os.path.join(res_dir, filename)
 
     @staticmethod
