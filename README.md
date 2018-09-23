@@ -10,11 +10,18 @@ allows to synchronize in real-time the changes made to a database by multiple
 users, by connecting together different instances of IDA Pro.
 
 The main features of IDArling are:
-* live recording and replaying of all user interactions;
-* loading and saving of IDA databases to a central server;
-* interactive IDA status bar widget and custom dialogs;
-* Python plugin and server with no extra dependencies;
-* and even more to come...
+* hooking general user events
+* structure and enumeration support
+* Hex-Rays decompiler syncing
+* replay engine and auto-saving
+* database loading and saving
+* interactive status bar widget
+* user cursors (instructions, functions, navbar)
+* invite and following an user moves
+* dedicated server using Qt5
+* integrated server within IDA
+* LAN servers discovery
+* following an user moves in real time
 
 If you have any questions not worthy of a bug report, feel free to ping us at
 [#idarling on freenode](https://kiwiirc.com/client/irc.freenode.net/idarling)
@@ -33,16 +40,16 @@ release of the project!**
 Install the IDArling client into the IDA plugins folder.
 
 - Copy `idarling_plugin.py` and the `idarling` folder to the IDA plugins folder.
-    - On Windows, the folder is at `C:\Program Files\IDA 7.0\plugins`
-    - On macOS, the folder is at `/Applications/IDA\ Pro\ 7.0/idaq.app/Contents/MacOS/plugins`
-    - On Linux, the folder may be at `/opt/IDA/plugins/`
+    - On Windows, the folder is at `C:\Program Files\IDA 7.x\plugins`
+    - On macOS, the folder is at `/Applications/IDA\ Pro\ 7.x/idabin/plugins`
+    - On Linux, the folder may be at `~/ida-7.x/plugins/`
 - Alternatively, you can use the "easy install" method by copying the following
 line into the console:
 ```
 import urllib2; exec(urllib2.urlopen('https://raw.githubusercontent.com/IDArlingTeam/IDArling/master/easy_install.py')).read()
 ```
 
-**Warning:** The plugin is only compatible with IDA Pro 7.0 on Windows, macOS,
+**Warning:** The plugin is only compatible with IDA Pro 7.x on Windows, macOS,
 and Linux.
 
 The dedicated server requires PyQt5, which is integrated into IDA. If you're
@@ -51,28 +58,16 @@ a pre-built package that can be installed with a simple `pip install PyQt5`.
 
 ## Usage
 
-IDArling loads automatically when IDA is opened, installing new elements into
-the user interface.
-
-First use the widget in the status bar to add the server of your choice in the
-*Network Settings*. Then connect to the server using the widget again. Finally,
-you should be able to access the following menus:
+Open the *Settings* dialog accessible from the right-clicking the widget located
+in the status bar. Show the servers list by clicking on the *Network Settings*
+tabs and add your server to it. Connect to the server by clicking on it after 
+right-clicking the widget again. Finally, you should be able to access the
+following menus to upload or download a database:
 
 ```
 - File --> Open from server
 - File --> Save to server
 ```
-
-## FAQ
-
-* Where is my old servers?
-
-In commit `08eca13d4ecd51cd518cb54546f971e3b43edf04`, the config file name was
-changed from `state.json` to `config.json` to enhance the config file storage.
-Thus, your old servers won't be displayed in your server list. But don't worry,
-you can still find them in your previous config file. The path of your config
-file depends your platform. For example, under Linux, the path should be
-`$HOME/.idapro/idarling/files/state.json`.
 
 # Thanks
 

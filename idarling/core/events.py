@@ -14,7 +14,6 @@ import sys
 
 import ida_bytes
 import ida_enum
-import ida_frame
 import ida_funcs
 import ida_hexrays
 import ida_kernwin
