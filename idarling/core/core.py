@@ -10,9 +10,16 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import ctypes
+import os
+import sys
+
+import ida_diskio
 import ida_idp
 import ida_kernwin
 import ida_netnode
+
+from PyQt5.QtCore import QCoreApplication, QFileInfo  # noqa: I202
 
 from .hooks import HexRaysHooks, Hooks, IDBHooks, IDPHooks, UIHooks, ViewHooks
 from ..module import Module
@@ -26,6 +33,23 @@ class Core(Module):
     """
 
     NETNODE_NAME = "$ idarling"
+
+    @staticmethod
+    def get_ida_dll(app_name=None):
+        if app_name is None:
+            app_path = QCoreApplication.applicationFilePath()
+            app_name = QFileInfo(app_path).fileName()
+        idaname = "ida64" if "64" in app_name else "ida"
+        if sys.platform == "win32":
+            dllname, dlltype = idaname + ".dll", ctypes.windll
+        elif sys.platform == "linux2":
+            dllname, dlltype = "lib" + idaname + ".so", ctypes.cdll
+        elif sys.platform == "darwin":
+            dllname, dlltype = "lib" + idaname + ".dylib", ctypes.cdll
+        dllpath = ida_diskio.idadir(None)
+        if not os.path.exists(os.path.join(dllpath, dllname)):
+            dllpath = dllpath.replace("ida64", "ida")
+        return dlltype[os.path.join(dllpath, dllname)]
 
     def __init__(self, plugin):
         super(Core, self).__init__(plugin)

@@ -10,6 +10,8 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import ctypes
+
 import ida_bytes
 import ida_enum
 import ida_funcs
@@ -112,14 +114,58 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         return 0
 
     def local_types_changed(self):
+        from .core import Core
+
+        dll = Core.get_ida_dll()
+
+        get_idati = dll.get_idati
+        get_idati.argtypes = []
+        get_idati.restype = ctypes.c_void_p
+
+        get_numbered_type = dll.get_numbered_type
+        get_numbered_type.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_uint32,
+            ctypes.POINTER(ctypes.c_char_p),
+            ctypes.POINTER(ctypes.c_char_p),
+            ctypes.POINTER(ctypes.c_char_p),
+            ctypes.POINTER(ctypes.c_char_p),
+            ctypes.POINTER(ctypes.c_int),
+        ]
+        get_numbered_type.restype = ctypes.c_bool
+
         local_types = []
-        ti = ida_typeinf.get_idati()
-        for ordinal in range(1, ida_typeinf.get_ordinal_qty(ti)):
-            name = ida_typeinf.get_numbered_type_name(ti, ordinal)
-            type_info = ida_typeinf.tinfo_t()
-            type_info.get_numbered_type(ti, ordinal)
-            ret = type_info.serialize()
-            local_types.append((ordinal, name, ret))
+        py_ti = ida_typeinf.get_idati()
+        for py_ord in range(1, ida_typeinf.get_ordinal_qty(py_ti)):
+            name = ida_typeinf.get_numbered_type_name(py_ti, py_ord)
+
+            ti = get_idati()
+            ordinal = ctypes.c_uint32(py_ord)
+            type = ctypes.c_char_p()
+            fields = ctypes.c_char_p()
+            cmt = ctypes.c_char_p()
+            fieldcmts = ctypes.c_char_p()
+            sclass = ctypes.c_int()
+            get_numbered_type(
+                ti,
+                ordinal,
+                ctypes.pointer(type),
+                ctypes.pointer(fields),
+                ctypes.pointer(cmt),
+                ctypes.pointer(fieldcmts),
+                ctypes.pointer(sclass),
+            )
+            local_types.append(
+                (
+                    py_ord,
+                    name,
+                    type.value,
+                    fields.value,
+                    cmt.value,
+                    fieldcmts.value,
+                    sclass.value,
+                )
+            )
         self._send_packet(evt.LocalTypesChangedEvent(local_types))
         return 0
 

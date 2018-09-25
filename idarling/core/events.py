@@ -10,6 +10,7 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import ctypes
 import sys
 
 import ida_bytes
@@ -286,36 +287,73 @@ class LocalTypesChangedEvent(Event):
     def __init__(self, local_types):
         super(LocalTypesChangedEvent, self).__init__()
         self.local_types = []
-        for ordinal, name, ret in local_types:
+        for py_ord, name, type, fields, cmt, fieldcmts, sclass in local_types:
             name = Event.decode_bytes(name)
-            type, fields, fieldcmts = ret
             type = Event.decode_bytes(type)
             fields = Event.decode_bytes(fields)
+            cmt = Event.decode_bytes(cmt)
             fieldcmts = Event.decode_bytes(fieldcmts)
-            ret = type, fields, fieldcmts
-            self.local_types.append((ordinal, name, ret))
+            self.local_types.append(
+                (py_ord, name, type, fields, cmt, fieldcmts, sclass)
+            )
 
     def __call__(self):
-        ti = ida_typeinf.get_idati()
+        from .core import Core
 
-        ordinal_qty = ida_typeinf.get_ordinal_qty(ti)
+        dll = Core.get_ida_dll()
+
+        get_idati = dll.get_idati
+        get_idati.argtypes = []
+        get_idati.restype = ctypes.c_void_p
+
+        set_numbered_type = dll.set_numbered_type
+        set_numbered_type.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_uint32,
+            ctypes.c_int,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_int,
+        ]
+        set_numbered_type.restype = ctypes.c_int
+
+        py_ti = ida_typeinf.get_idati()
+        ordinal_qty = ida_typeinf.get_ordinal_qty(py_ti) - 1
         last_ordinal = self.local_types[-1][0]
         if ordinal_qty < last_ordinal:
-            ida_typeinf.alloc_type_ordinals(ti, last_ordinal - ordinal_qty)
+            ida_typeinf.alloc_type_ordinals(py_ti, last_ordinal - ordinal_qty)
         else:
-            for ordinal in range(last_ordinal + 1, ordinal_qty + 1):
-                ida_typeinf.del_numbered_type(ti, ordinal)
+            for py_ordinal in range(last_ordinal + 1, ordinal_qty + 1):
+                ida_typeinf.del_numbered_type(py_ti, py_ordinal)
 
-        for ordinal, name, ret in self.local_types:
-            name = Event.encode_bytes(name)
-            type, fields, fieldcmts = ret
-            type = Event.encode_bytes(type)
-            fields = Event.encode_bytes(fields)
-            fieldcmts = Event.encode_bytes(fieldcmts)
-
-            type_info = ida_typeinf.tinfo_t()
-            type_info.deserialize(ti, type, fields, fieldcmts)
-            type_info.set_numbered_type(ti, ordinal, 0, name)
+        local_types = self.local_types
+        for py_ord, name, type, fields, cmt, fieldcmts, sclass in local_types:
+            if type:
+                ti = get_idati()
+                ordinal = ctypes.c_uint32(py_ord)
+                ntf_flags = ctypes.c_int(ida_typeinf.NTF_REPLACE)
+                name = ctypes.c_char_p(name)
+                type = ctypes.c_char_p(type)
+                fields = ctypes.c_char_p(fields)
+                cmt = ctypes.c_char_p(cmt)
+                fieldcmts = ctypes.c_char_p(fieldcmts)
+                sclass = ctypes.c_int(sclass)
+                set_numbered_type(
+                    ti,
+                    ordinal,
+                    ntf_flags,
+                    name,
+                    type,
+                    fields,
+                    cmt,
+                    fieldcmts,
+                    sclass,
+                )
+            else:
+                ida_typeinf.del_numbered_type(py_ti, py_ord)
 
         ida_kernwin.request_refresh(ida_kernwin.IWID_LOCTYPS)
 

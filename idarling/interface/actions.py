@@ -14,11 +14,9 @@ import ctypes
 from functools import partial
 import os
 import shutil
-import sys
 import tempfile
 
 import ida_auto
-import ida_diskio
 import ida_idaapi
 import ida_kernwin
 import ida_loader
@@ -225,17 +223,7 @@ class OpenActionHandler(ActionHandler):
         # snapshot functionality in this effect.
 
         # Get the library to call functions not present in the bindings
-        idaname = "ida64" if "64" in app_name else "ida"
-        if sys.platform == "win32":
-            dllname, dlltype = idaname + ".dll", ctypes.windll
-        elif sys.platform == "linux2":
-            dllname, dlltype = "lib" + idaname + ".so", ctypes.cdll
-        elif sys.platform == "darwin":
-            dllname, dlltype = "lib" + idaname + ".dylib", ctypes.cdll
-        dllpath = ida_diskio.idadir(None)
-        if not os.path.exists(os.path.join(dllpath, dllname)):
-            dllpath = dllpath.replace("ida64", "ida")
-        dll = dlltype[os.path.join(dllpath, dllname)]
+        dll = self._plugin.core.get_ida_dll(app_name)
 
         # Close the old database using the term_database library function
         old_path = ida_loader.get_path(ida_loader.PATH_TYPE_IDB)
