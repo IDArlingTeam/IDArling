@@ -441,9 +441,6 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         return 0
 
     def segm_attrs_updated(self, s):
-        # FIXME: This hook isn't being triggered by segregs modification
-        # ida_segregs.get_sreg()
-        # ida_segregs.split_sreg_range()
         self._send_packet(
             evt.SegmAttrsUpdatedEvent(s.start_ea, s.perm, s.bitness)
         )
@@ -453,6 +450,13 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         self._send_packet(
             evt.BytePatchedEvent(ea, ida_bytes.get_wide_byte(ea))
         )
+        return 0
+
+    def sgr_changed(self, start_ea, end_ea, regnum, value, old_value, tag):
+        # FIXME: sgr_changed is not triggered when a segment register is
+        # being deleted by the user, so we need to sent the complete list
+        sreg_ranges = evt.SgrChanged.get_sreg_ranges(regnum)
+        self._send_packet(evt.SgrChanged(regnum, sreg_ranges))
         return 0
 
 

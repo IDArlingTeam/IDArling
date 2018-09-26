@@ -24,6 +24,7 @@ import ida_name
 import ida_pro
 import ida_range
 import ida_segment
+import ida_segregs
 import ida_struct
 import ida_typeinf
 import ida_ua
@@ -824,6 +825,60 @@ class BytePatchedEvent(Event):
 
     def __call__(self):
         ida_bytes.patch_byte(self.ea, self.value)
+
+
+class SgrChanged(Event):
+    __event__ = "sgr_changed"
+
+    @staticmethod
+    def get_sreg_ranges(rg):
+        sreg_ranges = []
+        sreg_ranges_qty = ida_segregs.get_sreg_ranges_qty(rg)
+        for n in range(sreg_ranges_qty):
+            sreg_range = ida_segregs.sreg_range_t()
+            ida_segregs.getn_sreg_range(sreg_range, rg, n)
+            sreg_ranges.append(
+                (
+                    sreg_range.start_ea,
+                    sreg_range.end_ea,
+                    sreg_range.val,
+                    sreg_range.tag,
+                )
+            )
+        return sreg_ranges
+
+    def __init__(self, rg, sreg_ranges):
+        super(SgrChanged, self).__init__()
+        self.rg = rg
+        self.sreg_ranges = sreg_ranges
+
+    def __call__(self):
+        new_ranges = {r[0]: r for r in self.sreg_ranges}
+        old_ranges = {r[0]: r for r in SgrChanged.get_sreg_ranges(self.rg)}
+
+        start_eas = sorted(
+            set(list(new_ranges.keys()) + list(old_ranges.keys()))
+        )
+        for start_ea in start_eas:
+            new_range = new_ranges.get(start_ea, None)
+            old_range = old_ranges.get(start_ea, None)
+
+            if new_range and not old_range:
+                _, __, val, tag = new_range
+                ida_segregs.split_sreg_range(start_ea, self.rg, val, tag, True)
+
+            if not new_range and old_range:
+                ida_segregs.del_sreg_range(start_ea, self.rg)
+
+            if new_range and old_range:
+                _, __, new_val, new_tag = new_range
+                _, __, old_val, old_tag = old_range
+                if new_val != old_val or new_tag != old_tag:
+                    ida_segregs.split_sreg_range(
+                        start_ea, self.rg, new_val, new_tag, True
+                    )
+
+        ida_kernwin.request_refresh(ida_kernwin.IWID_SEGREGS)
 
 
 # class GenRegvarDefEvent(Event):
