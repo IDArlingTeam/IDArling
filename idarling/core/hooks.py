@@ -27,7 +27,6 @@ import ida_typeinf
 
 import events as evt  # noqa: I100,I202
 from .events import Event  # noqa: I201
-from ..shared.commands import UpdateLocation
 
 
 class Hooks(object):
@@ -713,50 +712,3 @@ class HexRaysHooks(Hooks):
         if numforms != self._numforms:
             self._send_packet(evt.UserNumformsEvent(ea, numforms))
             self._numforms = numforms
-
-
-class ViewHooks(Hooks, ida_kernwin.View_Hooks):  # FIXME: Move to core hooks?
-    def __init__(self, plugin):
-        ida_kernwin.View_Hooks.__init__(self)
-        Hooks.__init__(self, plugin)
-
-    def view_loc_changed(self, view, now, was):
-        self._plugin.logger.debug("View loc changed hook")
-        if now.plce.toea() != was.plce.toea():
-            name = self._plugin.config["user"]["name"]
-            color = self._plugin.config["user"]["color"]
-            self._plugin.network.send_packet(
-                UpdateLocation(name, now.plce.toea(), color)
-            )
-
-
-class UIHooks(Hooks, ida_kernwin.UI_Hooks):  # FIXME: Move to core hooks?
-    def __init__(self, plugin):
-        ida_kernwin.UI_Hooks.__init__(self)
-        Hooks.__init__(self, plugin)
-        self._state = {}
-
-    def get_ea_hint(self, ea):
-        self._plugin.logger.debug("Get ea hint hook")
-        if self._plugin.network.connected:
-            painter = self._plugin.interface.painter
-            nbytes = painter.nbytes
-            for name, infos in painter.users_positions.items():
-                address = infos["address"]
-                if address - nbytes * 4 <= ea <= address + nbytes * 4:
-                    return str(name)
-
-    def saving(self):
-        self._plugin.logger.debug("Saving hook")
-        painter = self._plugin.interface.painter
-        users_positions = painter.users_positions
-        for user_position in users_positions.values():
-            address = user_position["address"]
-            color = painter.clear_database(address)
-            self._state[color] = address
-
-    def saved(self):
-        self._plugin.logger.debug("Saved hook")
-        painter = self._plugin.interface.painter
-        for color, address in self._state.items():
-            painter.repaint_database(color, address)
