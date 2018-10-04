@@ -61,7 +61,11 @@ class Painter(QObject):
             return self._model.columnCount()
 
         def data(self, index, role=Qt.DisplayRole):
-            if role == Qt.BackgroundRole:
+            # Check if disabled by the user
+            cursors = self._plugin.config["cursors"]
+            disabled = not cursors["all"] or not cursors["funcs"]
+
+            if role == Qt.BackgroundRole and not disabled:
                 func_ea = int(index.sibling(index.row(), 2).data(), 16)
                 func = ida_funcs.get_func(func_ea)
                 for user in self._plugin.core.get_users().values():
@@ -85,10 +89,14 @@ class Painter(QObject):
 
     def nav_colorizer(self, ea, nbytes):
         """This is the custom nav colorizer used by the painter."""
+        # Check if disabled by the user
+        cursors = self._plugin.config["cursors"]
+        disabled = not cursors["all"] or not cursors["navbar"]
+
         # There is a bug in IDA: with a huge number of segments, all the navbar
         # is colored with the user color. This will be resolved in IDA 7.2.
         self._nbytes = nbytes
-        if self._plugin.config["user"]["navbar_colorizer"]:
+        if not disabled:
             for user in self._plugin.core.get_users().values():
                 # Cursor color
                 if ea - nbytes * 2 <= user["ea"] <= ea + nbytes * 2:
@@ -109,6 +117,10 @@ class Painter(QObject):
         self.refresh()
 
     def get_ea_hint(self, ea):
+        cursors = self._plugin.config["cursors"]
+        if not cursors["all"] or not cursors["navbar"]:
+            return None
+
         for name, user in self._plugin.core.get_users().items():
             start_ea = user["ea"] - self._nbytes * 4
             end_ea = user["ea"] + self._nbytes * 4
@@ -117,6 +129,11 @@ class Painter(QObject):
                 return str(name)
 
     def get_bg_color(self, ea):
+        # Check if disabled by the user
+        cursors = self._plugin.config["cursors"]
+        if not cursors["all"] or not cursors["disasm"]:
+            return None
+
         for user in self._plugin.core.get_users().values():
             if ea == user["ea"]:
                 return user["color"]

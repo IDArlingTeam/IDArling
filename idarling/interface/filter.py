@@ -113,6 +113,10 @@ class EventFilter(QObject):
         obj.insertMenu(sep, menu)
 
     def _set_tooltip(self, obj, ev):
+        cursors = self._plugin.config["cursors"]
+        if not cursors["all"] or not cursors["funcs"]:
+            return
+
         obj.setToolTip("")
         index = obj.parent().indexAt(ev.pos())
         func_ea = int(index.sibling(index.row(), 2).data(), 16)

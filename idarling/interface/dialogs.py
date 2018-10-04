@@ -447,11 +447,45 @@ class SettingsDialog(QDialog):
         self._name_line_edit.setText(name)
         user_layout.addWidget(self._name_line_edit)
 
-        text = "Show other users in the navigation bar"
-        self._navbar_colorizer_checkbox = QCheckBox(text)
-        layout.addRow(self._navbar_colorizer_checkbox)
-        checked = self._plugin.config["user"]["navbar_colorizer"]
-        self._navbar_colorizer_checkbox.setChecked(checked)
+        text = "Disable all user cursors"
+        self._disable_all_cursors_checkbox = QCheckBox(text)
+        layout.addRow(self._disable_all_cursors_checkbox)
+        all_checked = not self._plugin.config["cursors"]["all"]
+        self._disable_all_cursors_checkbox.setChecked(all_checked)
+
+        def state_changed(state):
+            enabled = state == Qt.Unchecked
+            self._disable_navbar_cursors_checkbox.setEnabled(enabled)
+            self._disable_funcs_cursors_checkbox.setEnabled(enabled)
+            self._disable_disasm_cursors_checkbox.setEnabled(enabled)
+
+        self._disable_all_cursors_checkbox.stateChanged.connect(state_changed)
+
+        style_sheet = """QCheckBox{ margin-left: 20px; }"""
+
+        text = "Disable navigation bar user cursors"
+        self._disable_navbar_cursors_checkbox = QCheckBox(text)
+        layout.addRow(self._disable_navbar_cursors_checkbox)
+        checked = not self._plugin.config["cursors"]["navbar"]
+        self._disable_navbar_cursors_checkbox.setChecked(checked)
+        self._disable_navbar_cursors_checkbox.setEnabled(not all_checked)
+        self._disable_navbar_cursors_checkbox.setStyleSheet(style_sheet)
+
+        text = "Disable functions window user cursors"
+        self._disable_funcs_cursors_checkbox = QCheckBox(text)
+        layout.addRow(self._disable_funcs_cursors_checkbox)
+        checked = not self._plugin.config["cursors"]["funcs"]
+        self._disable_funcs_cursors_checkbox.setChecked(checked)
+        self._disable_navbar_cursors_checkbox.setEnabled(not all_checked)
+        self._disable_funcs_cursors_checkbox.setStyleSheet(style_sheet)
+
+        text = "Disable disassembly view user cursors"
+        self._disable_disasm_cursors_checkbox = QCheckBox(text)
+        layout.addRow(self._disable_disasm_cursors_checkbox)
+        checked = not self._plugin.config["cursors"]["disasm"]
+        self._disable_disasm_cursors_checkbox.setChecked(checked)
+        self._disable_navbar_cursors_checkbox.setEnabled(not all_checked)
+        self._disable_disasm_cursors_checkbox.setStyleSheet(style_sheet)
 
         text = "Allow other users to send notifications"
         self._notifications_checkbox = QCheckBox(text)
@@ -703,7 +737,7 @@ class SettingsDialog(QDialog):
         self._set_color(ida_color=config["user"]["color"])
 
         checked = config["user"]["navbar_colorizer"]
-        self._navbar_colorizer_checkbox.setChecked(checked)
+        self._disable_all_cursors_checkbox.setChecked(checked)
         checked = config["user"]["notifications"]
         self._notifications_checkbox.setChecked(checked)
 
@@ -732,8 +766,16 @@ class SettingsDialog(QDialog):
             self._plugin.config["user"]["color"] = self._color
             self._plugin.interface.widget.refresh()
 
-        checked = self._navbar_colorizer_checkbox.isChecked()
-        self._plugin.config["user"]["navbar_colorizer"] = checked
+        checked = self._disable_all_cursors_checkbox.isChecked()
+        self._plugin.config["cursors"]["all"] = not checked
+        checked = self._disable_navbar_cursors_checkbox.isChecked()
+        self._plugin.config["cursors"]["navbar"] = not checked
+        checked = self._disable_funcs_cursors_checkbox.isChecked()
+        self._plugin.config["cursors"]["funcs"] = not checked
+        checked = self._disable_disasm_cursors_checkbox.isChecked()
+        self._plugin.config["cursors"]["disasm"] = not checked
+        self._plugin.interface.painter.refresh()
+
         checked = self._notifications_checkbox.isChecked()
         self._plugin.config["user"]["notifications"] = checked
 
