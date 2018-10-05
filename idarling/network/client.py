@@ -10,6 +10,7 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import ida_auto
 import ida_kernwin
 
 from PyQt5.QtGui import QImage, QPixmap  # noqa: I202
@@ -37,6 +38,7 @@ class Client(ClientSocket):
     def __init__(self, plugin, parent=None):
         ClientSocket.__init__(self, plugin.logger, parent)
         self._plugin = plugin
+        self._events = []
 
         # Setup command handlers
         self._handlers = {
@@ -49,27 +51,41 @@ class Client(ClientSocket):
             DownloadFile.Query: self._handle_download_file,
         }
 
+    def call_events(self):
+        while self._events and ida_auto.get_auto_state() == ida_auto.AU_NONE:
+            packet = self._events.pop(0)
+            self._call_event(packet)
+
+    def _call_event(self, packet):
+        self._plugin.core.unhook_all()
+
+        try:
+            packet()
+        except Exception as e:
+            self._logger.warning("Error while calling event")
+            self._logger.exception(e)
+
+        self._plugin.core.hook_all()
+
+        # Check for de-synchronization
+        if self._plugin.core.tick >= packet.tick:
+            self._logger.warning("De-synchronization detected!")
+            packet.tick = self._plugin.core.tick
+        self._plugin.core.tick = packet.tick
+        self._plugin.logger.debug("returning from call_event")
+
     def recv_packet(self, packet):
         if isinstance(packet, Command):
             # Call the corresponding handler
             self._handlers[packet.__class__](packet)
 
         elif isinstance(packet, Event):
-            # Call the event
-            self._plugin.core.unhook_all()
-            try:
-                packet()
-            except Exception as e:
-                self._logger.warning("Error while calling event")
-                self._logger.exception(e)
+            # If we already have some events queued
+            if self._events or ida_auto.get_auto_state() != ida_auto.AU_NONE:
+                self._events.append(packet)
+            else:
+                self._call_event(packet)
 
-            # Check for de-synchronization
-            if self._plugin.core.tick >= packet.tick:
-                self._logger.warning("De-synchronization detected!")
-                packet.tick = self._plugin.core.tick
-            self._plugin.core.tick = packet.tick
-
-            self._plugin.core.hook_all()
         else:
             return False
         return True

@@ -14,6 +14,7 @@ import ctypes
 import os
 import sys
 
+import ida_auto
 import ida_diskio
 import ida_idp
 import ida_kernwin
@@ -65,6 +66,7 @@ class Core(Module):
 
         self._ui_hooks_core = None
         self._idb_hooks_core = None
+        self._idp_hooks_core = None
         self._hooked = False
 
     @property
@@ -131,7 +133,7 @@ class Core(Module):
         class IDBHooksCore(Hooks, ida_idp.IDB_Hooks):
             """
             The IDB core hook is used to know when the database is being
-            closed. We the need to unhook our user events.
+            closed. We then need to unhook our user events.
             """
 
             def __init__(self, plugin):
@@ -151,6 +153,27 @@ class Core(Module):
 
         self._idb_hooks_core = IDBHooksCore(self._plugin)
         self._idb_hooks_core.hook()
+
+        class IDPHooksCore(Hooks, ida_idp.IDP_Hooks):
+            """
+            The IDP core hook is sued to know when the auto-analysis has
+            finished so that we can call the queued events.
+            """
+
+            def __init__(self, plugin):
+                ida_idp.IDP_Hooks.__init__(self)
+                Hooks.__init__(self, plugin)
+
+            def auto_queue_empty(self, _):
+                self._plugin.logger.debug("Auto queue empty hook")
+                if ida_auto.get_auto_state() == ida_auto.AU_NONE:
+                    client = self._plugin.network.client
+                    if client:
+                        client.call_events()
+
+        self._idp_hooks_core = IDPHooksCore(self._plugin)
+        self._idp_hooks_core.hook()
+
         return True
 
     def _uninstall(self):
