@@ -108,28 +108,26 @@ class EventFilter(QObject):
             return action
 
         # Insert an action for each connected user
-        painter = self._plugin.interface.painter
-        for name, info in painter.users_positions.items():
-            menu.addAction(create_action(name, info["color"]))
+        for name, user in self._plugin.core.get_users().items():
+            menu.addAction(create_action(name, user["color"]))
         obj.insertMenu(sep, menu)
 
     def _set_tooltip(self, obj, ev):
+        cursors = self._plugin.config["cursors"]
+        if not cursors["funcs"]:
+            return
+
         obj.setToolTip("")
         index = obj.parent().indexAt(ev.pos())
-        index = index.sibling(index.row(), 0)
+        func_ea = int(index.sibling(index.row(), 2).data(), 16)
+        func = ida_funcs.get_func(func_ea)
 
         # Find the corresponding username
-        user_positions = self._plugin.interface.painter.users_positions
-        for name, pos in user_positions.items():
-            # Same function name?
-            ea = pos["address"]
-            if ida_funcs.get_func_name(ea) != index.data():
-                continue
-            # Same function color?
-            if ida_funcs.get_func(ea).color != pos["color"]:
-                continue
-            # Set the tooltip
-            obj.setToolTip(name)
+        for name, user in self._plugin.core.get_users().items():
+            if ida_funcs.func_contains(func, user["ea"]):
+                # Set the tooltip
+                obj.setToolTip(name)
+                break
 
     def eventFilter(self, obj, ev):  # noqa: N802
         # Is it a QShowEvent on a QDialog named "Dialog"?

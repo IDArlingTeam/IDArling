@@ -177,7 +177,7 @@ class StatusWidget(QWidget):
         )
 
         # Update the text of the users widget
-        users = len(self._plugin.interface.painter.users_positions)
+        users = len(self._plugin.core.get_users())
         self._users_text_widget.setText(" | %d" % users)
         self._users_text_widget.adjustSize()
 
@@ -355,12 +355,11 @@ class StatusWidget(QWidget):
 
         template = QImage(self._plugin.plugin_resource("user.png"))
 
-        painter = self._plugin.interface.painter
-
+        users = self._plugin.core.get_users()
         follow_all = QAction("Follow all", menu)
         pixmap = QPixmap(self._plugin.plugin_resource("users.png"))
         follow_all.setIcon(QIcon(pixmap))
-        follow_all.setEnabled(bool(painter.users_positions))
+        follow_all.setEnabled(bool(users))
         follow_all.setCheckable(True)
         follow_all.setChecked(self._plugin.interface.followed == "everyone")
 
@@ -370,21 +369,21 @@ class StatusWidget(QWidget):
 
         follow_all.triggered.connect(partial(follow_triggered, "everyone"))
         menu.addAction(follow_all)
-        if painter.users_positions:
+        if users:
             menu.addSeparator()
 
-        # Get all active users
-        for name, info in painter.users_positions.items():
-            is_followed = self._plugin.interface.followed == name
-            text = "Follow %s" % name
-            action = QAction(text, menu)
-            action.setCheckable(True)
-            action.setChecked(is_followed)
-            pixmap = StatusWidget.make_icon(template, info["color"])
-            action.setIcon(QIcon(pixmap))
+            # Get all active users
+            for name, user in users.items():
+                is_followed = self._plugin.interface.followed == name
+                text = "Follow %s" % name
+                action = QAction(text, menu)
+                action.setCheckable(True)
+                action.setChecked(is_followed)
+                pixmap = StatusWidget.make_icon(template, user["color"])
+                action.setIcon(QIcon(pixmap))
 
-            action.triggered.connect(partial(follow_triggered, name))
-            menu.addAction(action)
+                action.triggered.connect(partial(follow_triggered, name))
+                menu.addAction(action)
 
         menu.exec_(self.mapToGlobal(point))
 
