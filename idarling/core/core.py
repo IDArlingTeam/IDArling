@@ -21,9 +21,17 @@ import ida_netnode
 
 from PyQt5.QtCore import QCoreApplication, QFileInfo  # noqa: I202
 
-from .hooks import HexRaysHooks, Hooks, IDBHooks, IDPHooks, UIHooks, ViewHooks
+from .hooks import HexRaysHooks, IDBHooks, IDPHooks
 from ..module import Module
-from ..shared.commands import JoinSession, LeaveSession, ListDatabases
+from ..shared.commands import (
+    JoinSession,
+    LeaveSession,
+    ListDatabases,
+    UpdateLocation,
+)
+
+if sys.version_info > (3,):
+    long = int
 
 
 class Core(Module):
@@ -56,15 +64,16 @@ class Core(Module):
         self._project = None
         self._database = None
         self._tick = 0
+        self._users = {}
 
         self._idb_hooks = None
         self._idp_hooks = None
         self._hxe_hooks = None
-        self._view_hooks = None
-        self._ui_hooks = None
 
-        self._ui_hooks_core = None
         self._idb_hooks_core = None
+        self._idp_hooks_core = None
+        self._ui_hooks_core = None
+        self._view_hooks_core = None
         self._hooked = False
 
     @property
@@ -94,53 +103,35 @@ class Core(Module):
         self._tick = tick
         self.save_netnode()
 
+    def add_user(self, name, user):
+        self._users[name] = user
+        self._plugin.interface.painter.refresh()
+        self._plugin.interface.widget.refresh()
+
+    def remove_user(self, name):
+        user = self._users.pop(name)
+        self._plugin.interface.painter.refresh()
+        self._plugin.interface.widget.refresh()
+        return user
+
+    def get_user(self, name):
+        return self._users[name]
+
+    def get_users(self):
+        return self._users
+
     def _install(self):
         # Instantiate the hooks
         self._idb_hooks = IDBHooks(self._plugin)
         self._idp_hooks = IDPHooks(self._plugin)
         self._hxe_hooks = HexRaysHooks(self._plugin)
-        self._view_hooks = ViewHooks(self._plugin)
-        self._ui_hooks = UIHooks(self._plugin)
 
         core = self
         self._plugin.logger.debug("Installing core hooks")
 
-        class UIHooksCore(Hooks, ida_kernwin.UI_Hooks):
-            """
-            The UI core hook is used to determine when IDA is fully loaded,
-            meaning that we can starting hooking to receive our user events.
-            """
-
-            def __init__(self, plugin):
-                ida_kernwin.UI_Hooks.__init__(self)
-                Hooks.__init__(self, plugin)
-
-            def ready_to_run(self, *_):
-                self._plugin.logger.debug("Ready to run hook")
-                core.load_netnode()
-                core.join_session()
-                self._plugin.interface.painter.set_custom_nav_colorizer()
-
-            def database_inited(self, *_):
-                self._plugin.logger.debug("Database inited hook")
-                self._plugin.interface.painter.install()
-
-        self._ui_hooks_core = UIHooksCore(self._plugin)
-        self._ui_hooks_core.hook()
-
-        class IDBHooksCore(Hooks, ida_idp.IDB_Hooks):
-            """
-            The IDB core hook is used to know when the database is being
-            closed. We the need to unhook our user events.
-            """
-
-            def __init__(self, plugin):
-                ida_idp.IDB_Hooks.__init__(self)
-                Hooks.__init__(self, plugin)
-
+        class IDBHooksCore(ida_idp.IDB_Hooks):
             def closebase(self):
-                self._plugin.logger.debug("Closebase hook")
-                self._plugin.interface.painter.uninstall()
+                core._plugin.logger.trace("Closebase hook")
                 core.leave_session()
                 core.save_netnode()
 
@@ -149,14 +140,58 @@ class Core(Module):
                 core.ticks = 0
                 return 0
 
-        self._idb_hooks_core = IDBHooksCore(self._plugin)
+        self._idb_hooks_core = IDBHooksCore()
         self._idb_hooks_core.hook()
+
+        class IDPHooksCore(ida_idp.IDP_Hooks):
+            def ev_get_bg_color(self, color, ea):
+                core._plugin.logger.trace("Get bg color hook")
+                value = core._plugin.interface.painter.get_bg_color(ea)
+                if value is not None:
+                    ctypes.c_uint.from_address(long(color)).value = value
+                    return 1
+                return 0
+
+        self._idp_hooks_core = IDPHooksCore()
+        self._idp_hooks_core.hook()
+
+        class UIHooksCore(ida_kernwin.UI_Hooks):
+            def ready_to_run(self, *_):
+                core._plugin.logger.trace("Ready to run hook")
+                core.load_netnode()
+                core.join_session()
+                core._plugin.interface.painter.ready_to_run()
+
+            def get_ea_hint(self, ea):
+                core._plugin.logger.trace("Get ea hint hook")
+                return core._plugin.interface.painter.get_ea_hint(ea)
+
+            def widget_visible(self, widget):
+                core._plugin.logger.trace("Widget visible")
+                core._plugin.interface.painter.widget_visible(widget)
+
+        self._ui_hooks_core = UIHooksCore()
+        self._ui_hooks_core.hook()
+
+        class ViewHooksCore(ida_kernwin.View_Hooks):
+            def view_loc_changed(self, view, now, was):
+                core._plugin.logger.trace("View loc changed hook")
+                if now.plce.toea() != was.plce.toea():
+                    name = core._plugin.config["user"]["name"]
+                    color = core._plugin.config["user"]["color"]
+                    core._plugin.network.send_packet(
+                        UpdateLocation(name, now.plce.toea(), color)
+                    )
+
+        self._view_hooks_core = ViewHooksCore()
+        self._view_hooks_core.hook()
         return True
 
     def _uninstall(self):
         self._plugin.logger.debug("Uninstalling core hooks")
         self._idb_hooks_core.unhook()
         self._ui_hooks_core.unhook()
+        self._view_hooks_core.unhook()
         self.unhook_all()
         return True
 
@@ -169,8 +204,6 @@ class Core(Module):
         self._idb_hooks.hook()
         self._idp_hooks.hook()
         self._hxe_hooks.hook()
-        self._view_hooks.hook()
-        self._ui_hooks.hook()
         self._hooked = True
 
     def unhook_all(self):
@@ -182,8 +215,6 @@ class Core(Module):
         self._idb_hooks.unhook()
         self._idp_hooks.unhook()
         self._hxe_hooks.unhook()
-        self._view_hooks.unhook()
-        self._ui_hooks.unhook()
         self._hooked = False
 
     def load_netnode(self):
@@ -245,6 +276,7 @@ class Core(Module):
                     )
                 )
                 self.hook_all()
+                self._users.clear()
 
             d = self._plugin.network.send_packet(
                 ListDatabases.Query(self._project)
@@ -259,4 +291,5 @@ class Core(Module):
         if self._project and self._database:
             name = self._plugin.config["user"]["name"]
             self._plugin.network.send_packet(LeaveSession(name))
+            self._users.clear()
             self.unhook_all()

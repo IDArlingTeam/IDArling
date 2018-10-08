@@ -90,13 +90,11 @@ class Interface(Module):
     def _install(self):
         self._open_action.install()
         self._save_action.install()
-        self._painter.install()
         self._filter.install()
         self._widget.install(self._window)
         return True
 
     def _uninstall(self):
-        self._painter.uninstall()
         self._open_action.uninstall()
         self._save_action.uninstall()
         self._filter.uninstall()
@@ -107,7 +105,6 @@ class Interface(Module):
         """Update the actions and widget."""
         if not self._plugin.network.connected:
             self.clear_invites()
-            self._painter.clear()
 
         self._open_action.update()
         self._save_action.update()
