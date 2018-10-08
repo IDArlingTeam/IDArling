@@ -89,12 +89,7 @@ class Plugin(ida_idaapi.plugin_t):
             "level": logging.INFO,
             "servers": [],
             "keep": {"cnt": 4, "intvl": 15, "idle": 240},
-            "cursors": {
-                "all": True,
-                "navbar": True,
-                "funcs": True,
-                "disasm": True,
-            },
+            "cursors": {"navbar": True, "funcs": True, "disasm": True},
             "user": {"color": color, "name": "unnamed", "notifications": True},
         }
 

@@ -114,7 +114,7 @@ class EventFilter(QObject):
 
     def _set_tooltip(self, obj, ev):
         cursors = self._plugin.config["cursors"]
-        if not cursors["all"] or not cursors["funcs"]:
+        if not cursors["funcs"]:
             return
 
         obj.setToolTip("")

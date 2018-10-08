@@ -280,7 +280,7 @@ class ClientSocket(QObject):
             sent = max(total - self._write_packet.size, 0)
             self._write_packet.upback(sent, total)
 
-        if not self._write_buffer and not self._write_packet:
+        if not self._write_buffer and not self._outgoing:
             self._write_notifier.setEnabled(False)
 
     def event(self, event):
