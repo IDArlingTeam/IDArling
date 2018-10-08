@@ -14,6 +14,7 @@ import ctypes
 import os
 import sys
 
+import ida_auto
 import ida_diskio
 import ida_idp
 import ida_kernwin
@@ -152,11 +153,18 @@ class Core(Module):
                     return 1
                 return 0
 
+            def auto_queue_empty(self, _):
+                core._plugin.logger.debug("Auto queue empty hook")
+                if ida_auto.get_auto_state() == ida_auto.AU_NONE:
+                    client = core._plugin.network.client
+                    if client:
+                        client.call_events()
+
         self._idp_hooks_core = IDPHooksCore()
         self._idp_hooks_core.hook()
 
         class UIHooksCore(ida_kernwin.UI_Hooks):
-            def ready_to_run(self, *_):
+            def ready_to_run(self):
                 core._plugin.logger.trace("Ready to run hook")
                 core.load_netnode()
                 core.join_session()

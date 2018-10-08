@@ -12,6 +12,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import ctypes
 
+import ida_auto
 import ida_bytes
 import ida_enum
 import ida_funcs
@@ -40,7 +41,11 @@ class Hooks(object):
 
     def _send_packet(self, event):
         """Sends a packet to the server."""
-        self._plugin.network.send_packet(event)
+        # Check if it comes from the auto-analyzer
+        if ida_auto.get_auto_state() == ida_auto.AU_NONE:
+            self._plugin.network.send_packet(event)
+        else:
+            self._plugin.logger.debug("Ignoring a packet")
 
 
 class IDBHooks(Hooks, ida_idp.IDB_Hooks):
