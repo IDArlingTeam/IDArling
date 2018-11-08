@@ -5,4 +5,4 @@ install:
   - pip install black flake8 flake8-import-order pep8-naming
 script:
   - black -l 79 --check **/*.py
-  - flake8 --ignore=W503 **/*.py --import-order-style=google
+  - flake8 --ignore=W503,W605 **/*.py --import-order-style=google
