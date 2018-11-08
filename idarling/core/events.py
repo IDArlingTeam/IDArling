@@ -802,6 +802,21 @@ class SegmAttrsUpdatedEvent(Event):
         s.update()
 
 
+class SegmMoved(Event):
+    __event__ = "segm_moved_event"
+
+    def __init__(self, from_ea, to_ea, changed_netmap):
+        super(SegmMoved, self).__init__()
+        self.from_ea = from_ea
+        self.to_ea = to_ea
+        self.changed_netmap = changed_netmap
+
+    def __call__(self):
+        flags = ida_segment.MFS_NETMAP if self.changed_netmap else 0
+        s = ida_segment.getseg(self.from_ea)
+        ida_segment.move_segm(s, self.to_ea, flags)
+
+
 class UndefinedEvent(Event):
     __event__ = "undefined"
 
