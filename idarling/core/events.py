@@ -336,11 +336,11 @@ class LocalTypesChangedEvent(Event):
                 ti = get_idati()
                 ordinal = ctypes.c_uint32(py_ord)
                 ntf_flags = ctypes.c_int(ida_typeinf.NTF_REPLACE)
-                name = ctypes.c_char_p(name)
-                type = ctypes.c_char_p(type)
-                fields = ctypes.c_char_p(fields)
-                cmt = ctypes.c_char_p(cmt)
-                fieldcmts = ctypes.c_char_p(fieldcmts)
+                name = ctypes.c_char_p(Event.encode_bytes(name))
+                type = ctypes.c_char_p(Event.encode_bytes(type))
+                fields = ctypes.c_char_p(Event.encode_bytes(fields))
+                cmt = ctypes.c_char_p(Event.encode_bytes(cmt))
+                fieldcmts = ctypes.c_char_p(Event.encode_bytes(fieldcmts))
                 sclass = ctypes.c_int(sclass)
                 set_numbered_type(
                     ti,
@@ -353,8 +353,6 @@ class LocalTypesChangedEvent(Event):
                     fieldcmts,
                     sclass,
                 )
-            else:
-                ida_typeinf.del_numbered_type(py_ti, py_ord)
 
         ida_kernwin.request_refresh(ida_kernwin.IWID_LOCTYPS)
 
