@@ -65,7 +65,7 @@ class Plugin(ida_idaapi.plugin_t):
         """
         Return the absolute path to a resource located in the user directory.
         It should be:
-        * %APPDATA%\Roaming\Hex-Rays\IDA Pro\plugin\idarling under Windows
+        * %APPDATA%\\Roaming\\Hex-Rays\\IDA Pro\\plugin\\idarling under Windows
         * $HOME/.idapro/plugins/idarling under Linux and MacOS.
         """
         user_dir = ida_diskio.get_user_idadir()
