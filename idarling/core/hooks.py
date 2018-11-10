@@ -450,6 +450,10 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         )
         return 0
 
+    def segm_moved(self, from_ea, to_ea, size, changed_netmap):
+        self._send_packet(evt.SegmMoved(from_ea, to_ea, changed_netmap))
+        return 0
+
     def byte_patched(self, ea, old_value):
         self._send_packet(
             evt.BytePatchedEvent(ea, ida_bytes.get_wide_byte(ea))
