@@ -117,61 +117,61 @@ class IDBHooks(Hooks, ida_idp.IDB_Hooks):
         self._send_packet(evt.TiChangedEvent(ea, type))
         return 0
 
-    def local_types_changed(self):
-        from .core import Core
+    # def local_types_changed(self):
+    #     from .core import Core
 
-        dll = Core.get_ida_dll()
+    #     dll = Core.get_ida_dll()
 
-        get_idati = dll.get_idati
-        get_idati.argtypes = []
-        get_idati.restype = ctypes.c_void_p
+    #     get_idati = dll.get_idati
+    #     get_idati.argtypes = []
+    #     get_idati.restype = ctypes.c_void_p
 
-        get_numbered_type = dll.get_numbered_type
-        get_numbered_type.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_uint32,
-            ctypes.POINTER(ctypes.c_char_p),
-            ctypes.POINTER(ctypes.c_char_p),
-            ctypes.POINTER(ctypes.c_char_p),
-            ctypes.POINTER(ctypes.c_char_p),
-            ctypes.POINTER(ctypes.c_int),
-        ]
-        get_numbered_type.restype = ctypes.c_bool
+    #     get_numbered_type = dll.get_numbered_type
+    #     get_numbered_type.argtypes = [
+    #         ctypes.c_void_p,
+    #         ctypes.c_uint32,
+    #         ctypes.POINTER(ctypes.c_char_p),
+    #         ctypes.POINTER(ctypes.c_char_p),
+    #         ctypes.POINTER(ctypes.c_char_p),
+    #         ctypes.POINTER(ctypes.c_char_p),
+    #         ctypes.POINTER(ctypes.c_int),
+    #     ]
+    #     get_numbered_type.restype = ctypes.c_bool
 
-        local_types = []
-        py_ti = ida_typeinf.get_idati()
-        for py_ord in range(1, ida_typeinf.get_ordinal_qty(py_ti)):
-            name = ida_typeinf.get_numbered_type_name(py_ti, py_ord)
+    #     local_types = []
+    #     py_ti = ida_typeinf.get_idati()
+    #     for py_ord in range(1, ida_typeinf.get_ordinal_qty(py_ti)):
+    #         name = ida_typeinf.get_numbered_type_name(py_ti, py_ord)
 
-            ti = get_idati()
-            ordinal = ctypes.c_uint32(py_ord)
-            type = ctypes.c_char_p()
-            fields = ctypes.c_char_p()
-            cmt = ctypes.c_char_p()
-            fieldcmts = ctypes.c_char_p()
-            sclass = ctypes.c_int()
-            get_numbered_type(
-                ti,
-                ordinal,
-                ctypes.pointer(type),
-                ctypes.pointer(fields),
-                ctypes.pointer(cmt),
-                ctypes.pointer(fieldcmts),
-                ctypes.pointer(sclass),
-            )
-            local_types.append(
-                (
-                    py_ord,
-                    name,
-                    type.value,
-                    fields.value,
-                    cmt.value,
-                    fieldcmts.value,
-                    sclass.value,
-                )
-            )
-        self._send_packet(evt.LocalTypesChangedEvent(local_types))
-        return 0
+    #         ti = get_idati()
+    #         ordinal = ctypes.c_uint32(py_ord)
+    #         type = ctypes.c_char_p()
+    #         fields = ctypes.c_char_p()
+    #         cmt = ctypes.c_char_p()
+    #         fieldcmts = ctypes.c_char_p()
+    #         sclass = ctypes.c_int()
+    #         get_numbered_type(
+    #             ti,
+    #             ordinal,
+    #             ctypes.pointer(type),
+    #             ctypes.pointer(fields),
+    #             ctypes.pointer(cmt),
+    #             ctypes.pointer(fieldcmts),
+    #             ctypes.pointer(sclass),
+    #         )
+    #         local_types.append(
+    #             (
+    #                 py_ord,
+    #                 name,
+    #                 type.value,
+    #                 fields.value,
+    #                 cmt.value,
+    #                 fieldcmts.value,
+    #                 sclass.value,
+    #             )
+    #         )
+    #     self._send_packet(evt.LocalTypesChangedEvent(local_types))
+    #     return 0
 
     def op_type_changed(self, ea, n):
         def gather_enum_info(ea, n):
