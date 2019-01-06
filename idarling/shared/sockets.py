@@ -34,7 +34,6 @@ class PacketEvent(QEvent):
     def __init__(self):
         super(PacketEvent, self).__init__(PacketEvent.EVENT_TYPE)
 
-
 class ClientSocket(QObject):
     """
     This class is acts a bridge between a client socket and the Qt event loop.
@@ -260,7 +259,7 @@ class ClientSocket(QObject):
         try:
             count = min(len(self._write_buffer), ClientSocket.MAX_DATA_SIZE)
             sent = self._socket.send(self._write_buffer[:count])
-            self._write_buffer = self._write_buffer[sent:]
+            del self._write_buffer[:sent]
         except socket.error as e:
             if (
                 e.errno not in (errno.EAGAIN, errno.EWOULDBLOCK)
