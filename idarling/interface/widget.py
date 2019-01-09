@@ -30,9 +30,9 @@ class StatusWidget(QWidget):
     @staticmethod
     def ida_to_python(c):
         # IDA colors are 0xBBGGRR.
-        r = (c & 255) / 255.
-        g = ((c >> 8) & 255) / 255.
-        b = ((c >> 16) & 255) / 255.
+        r = (c & 255) / 255.0
+        g = ((c >> 8) & 255) / 255.0
+        b = ((c >> 16) & 255) / 255.0
         return r, g, b
 
     @staticmethod
@@ -41,7 +41,7 @@ class StatusWidget(QWidget):
         r = int(r * 255) << 16
         g = int(g * 255) << 8
         b = int(b * 255)
-        return 0xff000000 | r | g | b
+        return 0xFF000000 | r | g | b
 
     @staticmethod
     def make_icon(template, color):
@@ -62,9 +62,9 @@ class StatusWidget(QWidget):
         for x in range(image.width()):
             for y in range(image.height()):
                 c = image.pixel(x, y)
-                if (c & 0xffffff) == 0xffffff:
+                if (c & 0xFFFFFF) == 0xFFFFFF:
                     image.setPixel(x, y, light)
-                if (c & 0xffffff) == 0x000000:
+                if (c & 0xFFFFFF) == 0x000000:
                     image.setPixel(x, y, dark)
         return QPixmap(image)
 

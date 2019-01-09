@@ -34,6 +34,7 @@ class PacketEvent(QEvent):
     def __init__(self):
         super(PacketEvent, self).__init__(PacketEvent.EVENT_TYPE)
 
+
 class ClientSocket(QObject):
     """
     This class is acts a bridge between a client socket and the Qt event loop.
@@ -54,6 +55,7 @@ class ClientSocket(QObject):
         self._read_packet = None
 
         self._write_buffer = bytearray()
+        self._write_cursor = 0
         self._write_notifier = None
         self._write_packet = None
 
@@ -233,7 +235,7 @@ class ClientSocket(QObject):
         if not self._check_socket():
             return
 
-        if not self._write_buffer:
+        if self._write_cursor >= len(self._write_buffer):
             if not self._outgoing:
                 return  # No more packets to send
             self._write_packet = self._outgoing.popleft()
@@ -249,7 +251,8 @@ class ClientSocket(QObject):
                 return
 
             # Write the container's content
-            self._write_buffer.extend(bytearray(line))
+            self._write_buffer = bytearray(line)
+            self._write_cursor = 0
             if isinstance(self._write_packet, Container):
                 data = self._write_packet.content
                 self._write_buffer.extend(bytearray(data))
@@ -257,9 +260,11 @@ class ClientSocket(QObject):
 
         # Send as many bytes as possible
         try:
-            count = min(len(self._write_buffer), ClientSocket.MAX_DATA_SIZE)
-            sent = self._socket.send(self._write_buffer[:count])
-            del self._write_buffer[:sent]
+            pos = self._write_cursor
+            avail = len(self._write_buffer) - pos
+            count = min(avail, ClientSocket.MAX_DATA_SIZE)
+            data = self._write_buffer[pos : pos + count]  # noqa: E203
+            self._write_cursor += self._socket.send(data)
         except socket.error as e:
             if (
                 e.errno not in (errno.EAGAIN, errno.EWOULDBLOCK)
@@ -279,7 +284,10 @@ class ClientSocket(QObject):
             sent = max(total - self._write_packet.size, 0)
             self._write_packet.upback(sent, total)
 
-        if not self._write_buffer and not self._outgoing:
+        if (
+            self._write_cursor >= len(self._write_buffer)
+            and not self._outgoing
+        ):
             self._write_notifier.setEnabled(False)
 
     def event(self, event):
