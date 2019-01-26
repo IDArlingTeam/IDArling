@@ -740,8 +740,8 @@ class SettingsDialog(QDialog):
         self._set_color(ida_color=config["user"]["color"])
 
         navbar_checked = not config["cursors"]["navbar"]
-        funcs_checked = not config["cursor"]["funcs"]
-        disasm_checked = not config["cursor"]["disasm"]
+        funcs_checked = not config["cursors"]["funcs"]
+        disasm_checked = not config["cursors"]["disasm"]
         all_checked = navbar_checked and funcs_checked and disasm_checked
         self._disable_all_cursors_checkbox.setChecked(all_checked)
 
