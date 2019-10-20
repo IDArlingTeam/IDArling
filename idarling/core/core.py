@@ -233,9 +233,9 @@ class Core(Module):
         """
         node = ida_netnode.netnode(Core.NETNODE_NAME, 0, True)
 
-        self._project = node.hashval("project") or None
-        self._database = node.hashval("database") or None
-        self._tick = int(node.hashval("tick") or "0")
+        self._project = node.hashstr("project") or None
+        self._database = node.hashstr("database") or None
+        self._tick = int(node.hashstr("tick") or "0")
 
         self._plugin.logger.debug(
             "Loaded netnode: project=%s, database=%s, tick=%d"
