@@ -259,7 +259,6 @@ class SaveDialog(OpenDialog):
     def _create_project_accepted(self, dialog):
         """Called when the project creation dialog is accepted."""
         name = dialog.get_result()
-
         # Ensure we don't already have a project with that name
         if any(project.name == name for project in self._projects):
             failure = QMessageBox()
@@ -275,10 +274,10 @@ class SaveDialog(OpenDialog):
         # Get all the information we need and sent it to the server
         hash = ida_nalt.retrieve_input_file_md5().lower()
         file = ida_nalt.get_root_filename()
-        type = ida_loader.get_file_type_name()
+        ftype = ida_loader.get_file_type_name()
         date_format = "%Y/%m/%d %H:%M"
         date = datetime.datetime.now().strftime(date_format)
-        project = Project(name, hash, file, type, date)
+        project = Project(name, hash, file, ftype, date)
         d = self._plugin.network.send_packet(CreateProject.Query(project))
         d.add_callback(partial(self._project_created, project))
         d.add_errback(self._plugin.logger.exception)
