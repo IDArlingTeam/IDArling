@@ -51,7 +51,7 @@ class Core(Module):
         idaname = "ida64" if "64" in app_name else "ida"
         if sys.platform == "win32":
             dllname, dlltype = idaname + ".dll", ctypes.windll
-        elif sys.platform == "linux2":
+        elif sys.platform in ["linux", "linux2"]:
             dllname, dlltype = "lib" + idaname + ".so", ctypes.cdll
         elif sys.platform == "darwin":
             dllname, dlltype = "lib" + idaname + ".dylib", ctypes.cdll
