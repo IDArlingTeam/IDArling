@@ -246,12 +246,15 @@ class Core(Module):
         """Save data into our custom netnode."""
         node = ida_netnode.netnode(Core.NETNODE_NAME, 0, True)
 
+        # node.hashset does not work anymore with direct string
+        # use of hashet_buf instead
+        # (see https://github.com/idapython/src/blob/master/swig/netnode.i#L162)
         if self._project:
-            node.hashset("project", str(self._project))
+            node.hashset_buf("project", str(self._project))
         if self._database:
-            node.hashset("database", str(self._database))
+            node.hashset_buf("project", str(self._database))
         if self._tick:
-            node.hashset("tick", str(self._tick))
+            node.hashset_buf("project", str(self._tick))
 
         self._plugin.logger.debug(
             "Saved netnode: project=%s, database=%s, tick=%d"
