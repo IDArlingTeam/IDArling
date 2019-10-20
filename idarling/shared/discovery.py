@@ -46,7 +46,6 @@ class ClientsDiscovery(QObject):
         """Start the discovery process and broadcast the given information."""
         self._logger.debug("Starting clients discovery")
         self._info = "%s %d %s" % (host, port, ssl)
-
         # Create a datagram socket capable of broadcasting
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -82,10 +81,14 @@ class ClientsDiscovery(QObject):
         request = request.encode("utf-8")
         while len(request):
             try:
-                sent = self._socket.sendto(request, ("<broadcast>", 31013))
+                sent = self._socket.sendto(request, socket.MSG_DONTWAIT, ("<broadcast>", 31013))
                 request = request[sent:]
-            except socket.error:
-                self._logger.warning("Couldn't send discovery request")
+            except socket.error as e:
+                self._logger.warning("Couldn't send discovery request: {}".format(e))
+                # Force return, otherwise the while loop will halt IDA
+                # This is a temporary fix, and it's gonna yield the above
+                # warning every every n seconds..
+                return
 
     def _notify_read(self):
         """This function is called when a discovery reply is received."""
