@@ -237,6 +237,7 @@ class ClientSocket(QObject):
 
         if self._write_cursor >= len(self._write_buffer):
             if not self._outgoing:
+                self._write_notifier.setEnabled(False)
                 return  # No more packets to send
             self._write_packet = self._outgoing.popleft()
 
