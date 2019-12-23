@@ -15,6 +15,7 @@ import json
 import logging
 import os
 import random
+import sys
 
 import ida_diskio
 import ida_idaapi
@@ -184,6 +185,19 @@ class Plugin(ida_idaapi.plugin_t):
         ida_kernwin.warning("IDArling cannot be run as a script")
         return False
 
+    @staticmethod
+    def unicode_to_str(data):
+        if isinstance(data, unicode):
+            return data.encode("utf-8")
+        if isinstance(data, list):
+            return [Plugin.unicode_to_str(item) for item in data]
+        if isinstance(data, dict):
+            return {
+                Plugin.unicode_to_str(key): Plugin.unicode_to_str(value)
+                for key, value in data.iteritems()
+            }
+        return data
+
     def load_config(self):
         """
         Load the configuration file. It is a JSON file that contains all the
@@ -192,9 +206,13 @@ class Plugin(ida_idaapi.plugin_t):
         config_path = self.user_resource("files", "config.json")
         if not os.path.isfile(config_path):
             return
-        with open(config_path, "rb") as config_file:
+
+        with open(config_path, "r") as config_file:
             try:
-                self._config.update(json.loads(config_file.read()))
+                hook = self.unicode_to_str if sys.version_info[0] < 3 else None
+                self._config.update(
+                    json.loads(config_file.read(), object_hook=hook)
+                )
             except ValueError:
                 self._logger.warning("Couldn't load config file")
                 return
@@ -204,6 +222,6 @@ class Plugin(ida_idaapi.plugin_t):
     def save_config(self):
         """Save the configuration file."""
         config_path = self.user_resource("files", "config.json")
-        with open(config_path, "wb") as config_file:
+        with open(config_path, "w") as config_file:
             config_file.write(json.dumps(self._config))
             self._logger.debug("Saved config: %s" % self._config)
