@@ -12,6 +12,11 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import collections
 import itertools
+import sys
+
+
+if sys.version_info > (3,):
+    unicode = str
 
 
 def with_metaclass(meta, *bases):
@@ -49,6 +54,20 @@ class Serializable(object):
     def parse(self, dct):
         """Reads the object from the dictionary."""
         pass
+
+    @staticmethod
+    def decode_bytes(s):
+        """Encodes a unicode string into raw bytes."""
+        if isinstance(s, unicode):
+            return s
+        return s.decode("raw_unicode_escape")
+
+    @staticmethod
+    def encode_bytes(s):
+        """Decodes raw bytes into a unicode string."""
+        if isinstance(s, bytes):
+            return s
+        return s.encode("raw_unicode_escape")
 
 
 class Default(Serializable):

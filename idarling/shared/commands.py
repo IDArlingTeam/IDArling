@@ -18,6 +18,7 @@ from .packets import (
     ParentCommand,
     Query as IQuery,
     Reply as IReply,
+    Serializable,
 )
 
 
@@ -34,6 +35,14 @@ class ListProjects(ParentCommand):
 
         def build_command(self, dct):
             dct["projects"] = [project.build({}) for project in self.projects]
+            projects = []
+            for project in self.projects:
+                d = {}
+                project.build(d)
+                hash = d["hash"]
+                d["hash"] = Serializable.decode_bytes(hash)
+                projects.append(d)
+            dct["projects"] = projects
 
         def parse_command(self, dct):
             self.projects = [
@@ -75,8 +84,12 @@ class CreateProject(ParentCommand):
 
         def build_command(self, dct):
             self.project.build(dct["project"])
+            hash = dct["project"]["hash"]
+            dct["project"]["hash"] = Serializable.decode_bytes(hash)
 
         def parse_command(self, dct):
+            hash = dct["project"]["hash"]
+            dct["project"]["hash"] = Serializable.encode_bytes(hash)
             self.project = Project.new(dct["project"])
 
     class Reply(IReply, Command):
