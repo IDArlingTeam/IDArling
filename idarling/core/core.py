@@ -292,7 +292,6 @@ class Core(Module):
             d = self._plugin.network.send_packet(
                 ListDatabases.Query(self._project)
             )
-            print("from if join", d)
             if d:
                 d.add_callback(databases_listed)
                 d.add_errback(self._plugin.logger.exception)
