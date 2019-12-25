@@ -252,9 +252,9 @@ class Core(Module):
         if self._project:
             node.hashset_buf("project", str(self._project))
         if self._database:
-            node.hashset_buf("project", str(self._database))
+            node.hashset_buf("database", str(self._database))
         if self._tick:
-            node.hashset_buf("project", str(self._tick))
+            node.hashset_buf("tick", str(self._tick))
 
         self._plugin.logger.debug(
             "Saved netnode: project=%s, database=%s, tick=%d"
@@ -292,6 +292,7 @@ class Core(Module):
             d = self._plugin.network.send_packet(
                 ListDatabases.Query(self._project)
             )
+            print("from if join", d)
             if d:
                 d.add_callback(databases_listed)
                 d.add_errback(self._plugin.logger.exception)
