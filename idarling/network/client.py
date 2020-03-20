@@ -125,7 +125,7 @@ class Client(ClientSocket):
         if packet.silent:
             return
         text = "%s joined the session" % packet.name
-        template = QImage(self._plugin.plugin_resource("user.png"))
+        template = self._plugin.plugin_resource("user.png")
         icon = StatusWidget.make_icon(template, packet.color)
         self._plugin.interface.show_invite(text, icon)
 
@@ -139,7 +139,7 @@ class Client(ClientSocket):
         if packet.silent:
             return
         text = "%s left the session" % packet.name
-        template = QImage(self._plugin.plugin_resource("user.png"))
+        template = self._plugin.plugin_resource("user.png")
         icon = StatusWidget.make_icon(template, user["color"])
         self._plugin.interface.show_invite(text, icon)
 

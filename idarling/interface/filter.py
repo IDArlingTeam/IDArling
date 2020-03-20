@@ -93,7 +93,7 @@ class EventFilter(QObject):
         menu.addAction(everyone)
 
         menu.addSeparator()
-        template = QImage(self._plugin.plugin_resource("user.png"))
+        template = self._plugin.plugin_resource("user.png")
 
         def create_action(name, color):
             action = QAction(name, menu)
