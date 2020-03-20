@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import colorsys
-from functools import partial
+from functools import partial, lru_cache
 import time
 
 from PyQt5.QtCore import QPoint, QRect, QSize, Qt, QTimer
@@ -44,6 +44,7 @@ class StatusWidget(QWidget):
         return 0xFF000000 | r | g | b
 
     @staticmethod
+    @lru_cache(maxsize=32)
     def make_icon(template, color):
         """
         Create an icon for the specified user color. It will be used to
@@ -182,7 +183,7 @@ class StatusWidget(QWidget):
         self._users_text_widget.adjustSize()
 
         # Update the icon of the users widget
-        template = QImage(self._plugin.plugin_resource("user.png"))
+        template = self._plugin.plugin_resource("user.png")
         color = self._plugin.config["user"]["color"]
         pixmap = self.make_icon(template, color)
         pixmap_height = self._servers_text_widget.sizeHint().height()
