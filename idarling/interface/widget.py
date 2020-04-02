@@ -354,7 +354,7 @@ class StatusWidget(QWidget):
         """Populate the invites context menu."""
         menu = QMenu(self)
 
-        template = QImage(self._plugin.plugin_resource("user.png"))
+        template = self._plugin.plugin_resource("user.png")
 
         users = self._plugin.core.get_users()
         follow_all = QAction("Follow all", menu)
